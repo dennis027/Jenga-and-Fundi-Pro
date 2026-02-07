@@ -12,6 +12,7 @@ import { GigServices } from '../../services/gig-services';
 import { SharedImports } from '../../shared-imports/imports';
 import regionsData from '../../../assets/JSON-Files/regions.json';
 import { MatSnackBar } from '@angular/material/snack-bar';
+import { forkJoin } from 'rxjs'; // ADD THIS
 
 
 interface JobType {
@@ -132,7 +133,7 @@ export class GigSummary implements OnInit, OnDestroy {
         icon: 'refresh',
         ariaLabel: 'Refresh Gigs',
         onClick: () => {
-          this.fetchGigs();
+          this.fetchGigs(); // This will now reload everything
         },
       }
     ]);
@@ -141,162 +142,147 @@ export class GigSummary implements OnInit, OnDestroy {
     this.initGigForm();
 
     if (isPlatformBrowser(this.platformId)) {
-      this.getOrganizations();
-      this.getGigsAvailable();
-      this.getGigType();
-      this.getUserRelatedGigs();
-      this.fetchGigs();
+      this.loadAllData(); // CHANGED: Load all data together
     }
 
     this.fetchRegions();
     this.setupLocationListeners();
-
   }
 
+  // NEW METHOD: Load all data in parallel
+  private loadAllData(): void {
+    this.isLoading.set(true);
 
- fetchRegions() {
-  }
+    forkJoin({
+      organizations: this.gigServices.getOrganizations(),
+      gigTypes: this.gigServices.getGigTypes(),
+      userGigs: this.gigServices.userRelatedGigs(),
+      gigsAvailable: this.gigServices.getGigsAvailable()
+    }).subscribe({
+      next: (results) => {
+        console.log('All data loaded:', results);
 
+        // Set organizations
+        this.organizations = results.organizations;
 
+        // Set gig types and build map
+        this.gigTypes = results.gigTypes;
+        this.gigTypes.forEach(jt => {
+          this.gigTypesMap.set(jt.id, jt.name);
+          this.jobTypesMap.set(jt.id, jt.name);
+        });
 
-setupLocationListeners(): void {
-  // Load counties from JSON - use county_name instead of county
-  this.counties = this.regions.map((r: any) => r.county_name);
+        // Set user gigs
+        this.userRelatedGigs = results.userGigs;
+        this.gigs.set([...this.userRelatedGigs]); // Update signal
 
-  // Disable child controls initially
-  this.gigForm.get('constituency')?.disable();
-  this.gigForm.get('ward')?.disable();
-
-  // COUNTY → CONSTITUENCY
-  this.gigForm.get('county')?.valueChanges.subscribe((county: string) => {
-    this.constituencies = [];
-    this.wards = [];
-
-    this.gigForm.patchValue({
-      constituency: '',
-      ward: ''
+        this.isLoading.set(false);
+      },
+      error: (error) => {
+        console.error('Error loading data:', error);
+        this.isLoading.set(false);
+        
+        if (error.status === 401) {
+          this.router.navigate(['/login']);
+        } else {
+          this.showError('Failed to load gigs. Please try again.');
+        }
+      }
     });
+  }
 
-    if (!county) {
-      this.gigForm.get('constituency')?.disable();
-      this.gigForm.get('ward')?.disable();
-      return;
-    }
+  // UPDATED: Simplified fetchGigs to just reload
+  fetchGigs(): void {
+    this.loadAllData();
+  }
 
-    // Find county data using county_name
-    const countyData = this.regions.find(
-      (r: any) => r.county_name === county
-    );
+  // REMOVE THESE OLD METHODS - They're now handled by loadAllData()
+  /*
+  getOrganizations(): void { ... }
+  getGigsAvailable(): void { ... }
+  getGigType(): void { ... }
+  getUserRelatedGigs(): void { ... }
+  */
 
-    // Map constituencies using constituency_name
-    this.constituencies = countyData
-      ? countyData.constituencies.map((c: any) => c.constituency_name)
-      : [];
+  fetchRegions() {
+  }
 
-    if (this.constituencies.length > 0) {
-      this.gigForm.get('constituency')?.enable();
-    }
+  setupLocationListeners(): void {
+    // Load counties from JSON - use county_name instead of county
+    this.counties = this.regions.map((r: any) => r.county_name);
+
+    // Disable child controls initially
+    this.gigForm.get('constituency')?.disable();
     this.gigForm.get('ward')?.disable();
-  });
 
-  // CONSTITUENCY → WARD
-  this.gigForm.get('constituency')?.valueChanges.subscribe((constituency: string) => {
-    this.wards = [];
-    this.gigForm.patchValue({ ward: '' });
+    // COUNTY → CONSTITUENCY
+    this.gigForm.get('county')?.valueChanges.subscribe((county: string) => {
+      this.constituencies = [];
+      this.wards = [];
 
-    if (!constituency) {
+      this.gigForm.patchValue({
+        constituency: '',
+        ward: ''
+      });
+
+      if (!county) {
+        this.gigForm.get('constituency')?.disable();
+        this.gigForm.get('ward')?.disable();
+        return;
+      }
+
+      // Find county data using county_name
+      const countyData = this.regions.find(
+        (r: any) => r.county_name === county
+      );
+
+      // Map constituencies using constituency_name
+      this.constituencies = countyData
+        ? countyData.constituencies.map((c: any) => c.constituency_name)
+        : [];
+
+      if (this.constituencies.length > 0) {
+        this.gigForm.get('constituency')?.enable();
+      }
       this.gigForm.get('ward')?.disable();
-      return;
-    }
+    });
 
-    // Find county data using county_name
-    const countyData = this.regions.find(
-      (r: any) => r.county_name === this.gigForm.get('county')?.value
-    );
+    // CONSTITUENCY → WARD
+    this.gigForm.get('constituency')?.valueChanges.subscribe((constituency: string) => {
+      this.wards = [];
+      this.gigForm.patchValue({ ward: '' });
 
-    // Find constituency data using constituency_name
-    const constituencyData = countyData?.constituencies.find(
-      (c: any) => c.constituency_name === constituency
-    );
+      if (!constituency) {
+        this.gigForm.get('ward')?.disable();
+        return;
+      }
 
-    // Wards is already an array of strings in your JSON
-    this.wards = constituencyData ? constituencyData.wards : [];
+      // Find county data using county_name
+      const countyData = this.regions.find(
+        (r: any) => r.county_name === this.gigForm.get('county')?.value
+      );
 
-    if (this.wards.length > 0) {
-      this.gigForm.get('ward')?.enable();
-    }
-  });
-}
+      // Find constituency data using constituency_name
+      const constituencyData = countyData?.constituencies.find(
+        (c: any) => c.constituency_name === constituency
+      );
 
-// Also update initGigForm to not add validators to disabled fields initially
-initGigForm(): void {
-  this.gigForm = this.fb.group({
-    job_type: ['', Validators.required],
-    start_date: ['', Validators.required],
-    duration_value: [null, [Validators.required, Validators.min(1)]],
-    duration_unit: ['', Validators.required],
-    organization:['', Validators.required],
-  });
-}
-  getOrganizations(): void {
-    this.gigServices.getOrganizations().subscribe({
-      next: (data) => {
-        console.log('Organizations:', data);
-        this.organizations = data;
-      },
-      error: (error) => {
-        console.error('Error fetching organizations:', error);
-        if (error.status === 401) {
-          this.router.navigate(['/login']);
-        }
+      // Wards is already an array of strings in your JSON
+      this.wards = constituencyData ? constituencyData.wards : [];
+
+      if (this.wards.length > 0) {
+        this.gigForm.get('ward')?.enable();
       }
     });
   }
 
-  getGigsAvailable(): void {
-    this.gigServices.getGigsAvailable().subscribe({
-      next: (data) => {
-        console.log('Gigs Available:', data);
-      },
-      error: (error) => {
-        console.error('Error fetching gigs available:', error);
-        if (error.status === 401) {
-          this.router.navigate(['/login']);
-        }
-      }
-    });
-  }
-
-  getGigType(): void {
-    this.gigServices.getGigTypes().subscribe({
-      next: (data) => {
-        console.log('Gig Types:', data);
-        this.gigTypes = data;
-            this.gigTypes.forEach(jt => {
-           this.gigTypesMap.set(jt.id, jt.name);
-          });
-      },
-      error: (error) => {
-        console.error('Error fetching gig types:', error);
-        if (error.status === 401) {
-          this.router.navigate(['/login']);
-        }
-      }
-    });
-  }
-
-  getUserRelatedGigs(): void {
-    this.gigServices.userRelatedGigs().subscribe({
-      next: (data) => {
-        console.log('User Related Gigs:', data);
-        this.userRelatedGigs = data;
-      },
-      error: (error) => {
-        console.error('Error fetching user related gigs:', error);
-        if (error.status === 401) {
-          this.router.navigate(['/login']);
-        }
-      }
+  initGigForm(): void {
+    this.gigForm = this.fb.group({
+      job_type: ['', Validators.required],
+      start_date: ['', Validators.required],
+      duration_value: [null, [Validators.required, Validators.min(1)]],
+      duration_unit: ['', Validators.required],
+      organization:['', Validators.required],
     });
   }
 
@@ -305,21 +291,6 @@ initGigForm(): void {
     if (this.dialogRef) {
       this.dialogRef.close();
     }
-  }
-
-  fetchGigs(): void {
-    this.isLoading.set(true);
-
-    // Load job types
-    this.gigTypes.forEach(jt => {
-      this.jobTypesMap.set(jt.id, jt.name);
-    });
-
-    // Simulate API call
-    setTimeout(() => {
-      this.gigs.set([...this.userRelatedGigs]);
-      this.isLoading.set(false);
-    }, 1000);
   }
 
   getJobTypeName(jobTypeId: number): string {
@@ -358,41 +329,25 @@ initGigForm(): void {
 
     console.log('SUBMIT PAYLOAD', payload);
 
-    // Simulate API call
-    setTimeout(() => {
-      const newGig: any = {
-        id: Math.floor(Math.random() * 10000),
-        job_type: parseInt(payload.job_type),
-        start_date: payload.start_date,
-        duration_value: payload.duration_value,
-        duration_unit: payload.duration_unit,
-        is_verified: false
-      };
-
-    
-
-      this.isSubmitting.set(false);
-      this.closeDialog();
-
-      console.log('Gig added successfully!');
-    }, 1500);
-
-    
-      // REAL API IMPLEMENTATION:
-      
+    // REAL API IMPLEMENTATION
     this.gigServices.addGig(payload).subscribe({
       next: (newGig) => {
-        this.gigs.update(g => [...g, newGig]);
+        // Add to local array
+        this.userRelatedGigs.push(newGig);
+        
+        // Update signal
+        this.gigs.set([...this.userRelatedGigs]);
+        
         this.isSubmitting.set(false);
         this.closeDialog();
         this.showSuccess('Gig added successfully!');
       },
-      error: () => {
+      error: (error) => {
+        console.error('Error adding gig:', error);
         this.isSubmitting.set(false);
         this.showError('Failed to add gig. Please try again.');
       }
     });
-    
   }
 
   hasError(fieldName: string): boolean {
@@ -416,20 +371,13 @@ initGigForm(): void {
     return '';
   }
 
-
-getOrgDetails(event: Event) {
-  const orgId = (event.target as HTMLSelectElement).value;
-  console.log(orgId);
-  const selectedOrg = this.organizations.find(org => org.id == orgId);
-  this.selectedCounty = selectedOrg ? selectedOrg.county : '';
-  this.selectedConstituency = selectedOrg ? selectedOrg.constituency : '';
-  this.selectedWard = selectedOrg ? selectedOrg.ward : '';
-  this.selectedPhoneNumber = selectedOrg ? selectedOrg.phone_number : '';
-
-  
-
-}
-
-
-
+  getOrgDetails(event: Event) {
+    const orgId = (event.target as HTMLSelectElement).value;
+    console.log(orgId);
+    const selectedOrg = this.organizations.find(org => org.id == orgId);
+    this.selectedCounty = selectedOrg ? selectedOrg.county : '';
+    this.selectedConstituency = selectedOrg ? selectedOrg.constituency : '';
+    this.selectedWard = selectedOrg ? selectedOrg.ward : '';
+    this.selectedPhoneNumber = selectedOrg ? selectedOrg.phone_number : '';
+  }
 }
