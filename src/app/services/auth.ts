@@ -29,8 +29,8 @@ login(payload: { username: string; password: string }): Observable<any> {
       if (!isPlatformBrowser(this.platformId)) return;
       if (!res?.access || !res?.refresh) return;
 
-      localStorage.setItem('access_token', res.access);
-      localStorage.setItem('refresh_token', res.refresh);
+      localStorage.setItem('jenga_access_token', res.access);
+      localStorage.setItem('jenga_refresh_token', res.refresh);
     })
   );
 }
@@ -38,7 +38,7 @@ login(payload: { username: string; password: string }): Observable<any> {
 
   getAccessToken(): string | null {
     if (isPlatformBrowser(this.platformId)) {
-      return localStorage.getItem('access_token');
+      return localStorage.getItem('jenga_access_token');
     }
     return null;
   }
@@ -47,7 +47,7 @@ logout(): Observable<any> {
   const accessToken = this.getAccessToken();
   console.log('Access Token during logout:', accessToken);
   const refreshToken = isPlatformBrowser(this.platformId)
-    ? localStorage.getItem('refresh_token')
+    ? localStorage.getItem('jenga_refresh_token')
     : null;
 
 
@@ -63,14 +63,14 @@ logout(): Observable<any> {
     tap({
       next: () => {
         if (isPlatformBrowser(this.platformId)) {
-          localStorage.removeItem('access_token');
-          localStorage.removeItem('refresh_token');
+          localStorage.removeItem('jenga_access_token');
+          localStorage.removeItem('jenga_refresh_token');
         }
       },
       error: () => {
         if (isPlatformBrowser(this.platformId)) {
-          localStorage.removeItem('access_token');
-          localStorage.removeItem('refresh_token');
+          localStorage.removeItem('jenga_access_token');
+          localStorage.removeItem('jenga_refresh_token');
         }
       }
     })

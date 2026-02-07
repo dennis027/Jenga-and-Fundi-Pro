@@ -352,7 +352,7 @@ export class JengaDash implements OnInit, OnDestroy {
   }
 
   logout(): void {
-    localStorage.removeItem('access_token');
+    localStorage.removeItem('jenga_access_token');
     localStorage.clear();
     this.router.navigate(['/login']);
   }

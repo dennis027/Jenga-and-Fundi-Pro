@@ -3,7 +3,7 @@ import { isPlatformBrowser } from '@angular/common';
 
 @Injectable({ providedIn: 'root' })
 export class TokenService {
-  private tokenKey = 'access_token';
+  private tokenKey = 'jenga_access_token';
 
   constructor(@Inject(PLATFORM_ID) private platformId: Object) {}
 
