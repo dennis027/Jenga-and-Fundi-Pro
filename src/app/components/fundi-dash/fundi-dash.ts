@@ -207,7 +207,7 @@ export class FundiDash implements OnInit, OnDestroy {
 
   logout(): void {
     console.log('Logging out...');
-    localStorage.removeItem('access_token');
+    localStorage.removeItem('fundi_access_token');
     localStorage.clear();
     this.router.navigate(['/login']);
   }

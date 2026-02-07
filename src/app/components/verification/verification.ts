@@ -221,7 +221,7 @@ export class Verification implements OnInit, OnDestroy, AfterViewInit {
       return;
     }
 
-    const token = localStorage.getItem('access_token');
+    const token = localStorage.getItem('fundi_access_token');
     if (!token) {
       this.showSnackbar('Access token missing', 'error');
       return;

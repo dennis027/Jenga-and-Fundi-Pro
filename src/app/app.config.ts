@@ -20,7 +20,7 @@ export const appConfig: ApplicationConfig = {
           
           // ✅ Only access localStorage in the browser
           if (isPlatformBrowser(platformId)) {
-            const token = localStorage.getItem('access_token');
+            const token = localStorage.getItem('fundi_access_token');
             if (token) {
               const cloned = req.clone({
                 setHeaders: {
