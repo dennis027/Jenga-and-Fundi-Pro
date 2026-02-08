@@ -124,7 +124,7 @@ else:
             'PORT': config('DB_PORT'),
         }
     }
-
+ 
 
 # DATABASES = {
 #     'default': {
