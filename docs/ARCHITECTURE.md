@@ -69,6 +69,9 @@
    and new volumes are root-owned), then drops to the `app` user with `setpriv`. A
    first-in-chain `HealthCheckMiddleware` answers `/healthz/` before host validation and
    SSL redirects, because platform health checkers use internal Host headers.
+8. **Views split by area.** `app/views/` (auth, phone, payments, verification, gigs, reports,
+   fundi_dashboard, contractor_dashboard, certificate, ratings, ussd) replaces the 4,000-line
+   `views.py`. The package re-exports everything, so imports and URLs didn't change.
 
 ## Changes made to existing code during consolidation
 
@@ -111,9 +114,19 @@ All of these keep existing behaviour and API contracts unless noted.
    containing the code. Any caller could skip phone verification. Codes are now stored
    server-side and checked via `/verify-otp/`. This is an **API change** for clients that
    compared the code locally; see the README for the temporary compatibility flag.
-4. **Verification documents are publicly readable** at `/MEDIA/verifications/...` with no
-   authentication (pre-existing). Consider serving them through an authenticated view.
-5. `SIMPLE_JWT` is defined twice in settings. The second definition silently drops
+4. **Verification documents were publicly readable (fixed).** `/MEDIA/verifications/...` is
+   now served only to signed-in staff or through short-lived signed links (`app/media.py`).
+5. **Credit scores and trust flags could be forged (fixed).** The profile API accepted
+   `credit_score`/`is_verified`, because a duplicate `UserProfileSerializer` without read-only
+   fields shadowed the first one. Any user could verify any gig, complete any gig, and approve any
+   ID (including their own). Unauthenticated, forged M-Pesa success callbacks were stored. Gigs
+   with client phone numbers, all users' personal data, all M-Pesa transactions and platform
+   reports were readable by every signed-in user. All of this was reproduced locally and fixed,
+   and each case has a regression test (`app/tests_trust.py`). A read-only audit of the live Neon data
+   found no inflated scores and no gig verified by anyone but the site's owner.
+6. **ID rejection locked users out (fixed).** ID review wrote `is_verified`, which login uses as
+   the email-confirmed flag. Identity status now lives on `current_verification` (`id_verified`).
+7. `SIMPLE_JWT` is defined twice in settings. The second definition silently drops
    `ROTATE_REFRESH_TOKENS`/`BLACKLIST_AFTER_ROTATION`. Left unchanged to preserve current
    auth behaviour; merge the two dicts if rotation was intended.
 
@@ -123,6 +136,14 @@ All of these keep existing behaviour and API contracts unless noted.
   Python 3.11.
 - In production mode, `manage.py check --deploy` reports only security.W021
   (`SECURE_HSTS_PRELOAD`). It's opt-in on purpose: preload is close to irreversible.
-- `RegisterView` does not yet require a verified phone. If registration should depend on
-  OTP, have `/verify-otp/` issue a short-lived token and check it in `RegisterView`.
+- Phone OTP enforcement exists (`REQUIRE_PHONE_OTP`) but is off until the portals and the mobile
+  app have an OTP step.
+- **Deferred: shared Angular library.** The portals share 26 identical files (~1,900 lines) and ~10
+  near-identical ones (auth service, interceptor, login/register, profile), which differ in token key
+  names and branding. Extracting them means building both apps from a common context. That
+  changes both Dockerfiles, Compose, CI and both live Render services, for no user-facing change,
+  so it's left for a dedicated change.
+- Swahili translation (Angular i18n for both portals) is not done.
+- Some analytics views have no serializer, so `/api/docs/` lists them without typed responses.
+- Certificate links can't be revoked before expiry. A per-user nonce would allow that.
 - `backend/e` is a committed `psql \dt` output; harmless, can be deleted.

@@ -237,19 +237,84 @@ Codes are single-use. Sending is rate-limited to one per `OTP_RESEND_COOLDOWN_SE
 `OTP_MAX_SENDS_PER_HOUR` (5) per phone and `OTP_MAX_SENDS_PER_IP_PER_HOUR` (20) per client IP.
 These return 429 with `Retry-After`.
 
+On success `/verify-otp/` also returns a `phone_token` (valid `OTP_PHONE_TOKEN_MAX_AGE`, 15 min).
+With `REQUIRE_PHONE_OTP=True`, registering with a phone number or changing it in the profile
+requires that token (`phone_token` field). It's off by default because neither web portal has an
+OTP step yet.
+
 > **Client migration:** `/send-otp/` no longer returns the code. Clients that compared it
 > locally (most likely the Flutter mobile app; neither web portal uses OTP) must call
 > `/verify-otp/`. During the transition you can set `OTP_RETURN_CODE_IN_RESPONSE=True`.
 > That is insecure, so turn it off again once the app is updated.
 
-## Tests
+## Platform features
+
+| Feature | Endpoint(s) | Who |
+|---|---|---|
+| **Work certificate** | `GET /api/certificate/link/` returns a signed link; `GET /certificate/<token>/` is the public page with a QR code; `GET /api/certificate/<token>/` is the JSON version | Fundi creates; anyone with the link views |
+| **Gig ratings** (1–5 stars) | `POST /api/gig-history/<id>/rate/` | Contractor who owns the site |
+| **Disputes** | `GET/POST /api/disputes/`, `POST /api/disputes/<id>/resolve/` | Worker / site contractor raise; staff resolve |
+| **USSD menu** (score, recent gigs, ID status) | `POST /ussd/?token=…` (Africa's Talking callback) | Fundis without smartphones |
+| **API reference** | `/api/docs/` (Swagger UI), `/api/schema/` (OpenAPI) | Developers, Flutter app |
+
+The certificate shows only platform-verified facts (contractor-verified gigs, days worked,
+trades, sites, ratings, credit score, identity status). It never shows phone numbers, national
+IDs or client details. Links expire after `CERTIFICATE_MAX_AGE_DAYS` (90). In Fundi Pro, the
+**Share my certificate** button is on the credit score page.
+
+### Trust rules (enforced by the API, covered by tests)
+
+- **Credit score:** changes only through gig verification (+5), gig completion (+5) and
+  identity approval (+20, once). It's clamped to 0–100 and every change is in the score
+  history. Users can't edit it.
+- **Gigs:** only the contractor who owns the gig's site can verify it. Completion is allowed
+  for the gig's worker or that contractor.
+- **Identity:** only staff approve or reject IDs, in Django admin or via the API. ID photos
+  are private: staff see them in admin, and the API returns short-lived signed links.
+- **Data access:** users see their own gigs, sites and payments. In search, other people's
+  gigs hide the client phone number and amount. Platform reports and the user list are
+  staff-only.
+- **M-Pesa callbacks:** must carry `MPESA_CALLBACK_TOKEN`, match a payment the app started,
+  and match its amount. Each is recorded once.
+- **Score audit:** `python manage.py audit_credit_scores [--fix]` lists scores that don't
+  match their history.
+
+### Staff back office
+
+Create a staff account: `docker compose exec backend python manage.py createsuperuser`.
+On Render free there's no shell, so run it from your machine against the production
+`DATABASE_URL`. Then open `/admin/`:
+- **Verification requests:** ID and selfie previews, with approve/reject actions.
+- **Gig disputes:** set the status to resolved or rejected.
+- **Credit score history and M-Pesa transactions:** read-only.
+
+### Optional integrations
+
+| Integration | Enable with | Notes |
+|---|---|---|
+| Object storage for uploads | `AWS_STORAGE_BUCKET_NAME`, `AWS_S3_ENDPOINT_URL`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` | Needed on Render free (no disk). Cloudflare R2 has a free 10 GB tier. The bucket stays private, with signed URLs. |
+| Error monitoring | `SENTRY_DSN` | Sentry free tier; no personal data sent. |
+| USSD | `USSD_CALLBACK_TOKEN` | Set the Africa's Talking USSD callback to `https://<api>/ussd/?token=<value>`. |
+| Live M-Pesa | `MPESA_BASE_URL=https://api.safaricom.co.ke` + production `MPESA_*` credentials | Go live on the Daraja portal first. Set `MPESA_CALLBACK_TOKEN` and `MPESA_ACCOUNT_REFERENCE`. |
+
+## Tests & CI
 
 ```bash
 docker compose run --rm --no-deps -v ./backend:/app -e RUN_MIGRATIONS=0 backend python manage.py test app
 ```
 
-Covers the OTP flow (SMS mocked), the M-Pesa token cache, `/healthz/`, media serving, and a
-regression test confirming source files are not served.
+59 tests cover the trust rules above, plus:
+- OTP and phone tokens, and M-Pesa callbacks and the token cache;
+- private media and the source-file exposure regression;
+- the certificate, ratings, disputes, USSD and admin review;
+- health checks and the API docs.
+
+[`.github/workflows/ci.yml`](.github/workflows/ci.yml) runs on every push and pull request:
+- a missing-migrations check, Django checks, and the tests on Postgres 16;
+- builds of both portals and the backend image.
+
+On `main`, it then deploys all three Render services **if** the repository secret
+`RENDER_API_KEY` is set.
 
 ## Database & migrations
 
