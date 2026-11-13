@@ -1,0 +1,12 @@
+# Secrets / local configuration (see .env.example)
+.env
+.env.*
+!.env.example
+
+# OS / editor noise
+.DS_Store
+Thumbs.db
+.idea/
+*.swp
+
+# Component-specific ignores live in backend/.gitignore and frontend/*/.gitignore
