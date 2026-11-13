@@ -40,8 +40,9 @@
 
 ## Decisions
 
-1. **Monorepo via `git subtree add` (no squash).** All original commits keep their hashes.
-   See [GIT-HISTORY.md](GIT-HISTORY.md).
+1. **Monorepo via `git subtree add` (no squash).** All original commits are kept. Frontend
+   hashes are unchanged. Backend hashes changed when uploaded personal data was purged
+   from history. See [GIT-HISTORY.md](GIT-HISTORY.md).
 2. **Kept two separate Angular apps** instead of merging them into one Angular workspace.
    They share a lot of duplicated code (auth service, guard, interceptor, layout), but they
    use different localStorage token keys and different routes.

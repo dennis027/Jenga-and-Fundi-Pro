@@ -1,20 +1,53 @@
 # Git history
 
 This repository was created by consolidating three repositories with
-`git subtree add` (**without** `--squash`), so every original commit is kept with its
-original hash. Each import is a merge commit whose second parent is the original
-repository's `main`.
+`git subtree add` (**without** `--squash`), so every original commit (message, author,
+dates) is kept. Each import is a merge commit whose second parent is that repository's
+`main`.
 
-| Prefix | Original repository | Commits imported | Note |
+| Prefix | Original repository | Commits | Hashes |
 |---|---|---|---|
-| `backend/` | github.com/dennis027/jenga-backend (`main`) | 47 | |
-| `frontend/fundi-pro/` | github.com/dennis027/new-fundi-pro (`main`) | 48 | includes 3 commits never pushed to origin |
-| `frontend/jenga-pro/` | github.com/dennis027/new-jenga-pro (`main`) | 31 | includes 1 commit never pushed to origin |
+| `backend/` | github.com/dennis027/jenga-backend (`main`) | 47 | **rewritten** by the purge below |
+| `frontend/fundi-pro/` | github.com/dennis027/new-fundi-pro (`main`) | 48, incl. 3 never pushed | unchanged |
+| `frontend/jenga-pro/` | github.com/dennis027/new-jenga-pro (`main`) | 31, incl. 1 never pushed | unchanged |
 
 The original working copies (including `node_modules`, the old `venv`, the gitignored
-`.env` and the stash lists) were moved, untouched, to
-`../fundi-jenga-pro-original-repos/`. Nothing was pushed to or deleted from any remote.
-The remotes' `gh-pages` branches (GitHub Pages builds) were not imported.
+`.env` and the stash lists) were moved, untouched, to `../fundi-jenga-pro-original-repos/`.
+Nothing was pushed to or deleted from any remote. The remotes' `gh-pages` branches
+(GitHub Pages builds) were not imported.
+
+## Personal-data purge (2026-11-14)
+
+The backend repo had committed user uploads: national ID photos (front/back), selfies,
+payment screenshots and OCR scratch images. They were removed from **every commit and tag**
+with [git-filter-repo](https://github.com/newren/git-filter-repo):
+
+```bash
+git filter-repo --force --invert-paths --prune-empty never \
+  --path MEDIA/ --path temp/ --path backend/MEDIA/ --path backend/temp/
+git filter-repo --force --invert-paths --prune-empty never \
+  --path payments/ --path backend/payments/          # older upload location
+```
+
+- `--prune-empty never` keeps every commit, including ones that only added uploads, so no
+  commit message is lost. All 173 commits and 17 tags still exist.
+- The rewritten objects were expired and repacked. The files are not recoverable from this
+  repository, and `.git` shrank from 7.7 MB to 2.8 MB.
+- Backend commits (and everything after them) have **new hashes**. Hash references inside
+  commit messages were updated too. Old → new: [history-commit-map.txt](history-commit-map.txt).
+- A pre-purge backup is at `../fundi-jenga-pro-original-repos/monorepo-before-history-purge.bundle`.
+  It still contains the images, so delete it once you're satisfied.
+
+**Still to do outside this repo.** `github.com/dennis027/jenga-backend` still serves these
+files in its history. To remove them there, push the rewritten backend history over it:
+
+```bash
+git subtree split --prefix=backend -b backend-purged
+git push --force backend-upstream backend-purged:main
+```
+
+Then ask GitHub Support to purge cached views, and check for forks. A force push rewrites
+that repo's `main` for everyone who has cloned it.
 
 ## Browsing history
 
@@ -40,12 +73,17 @@ git diff archive/stash/backend/00^1 archive/stash/backend/00 | git apply --direc
 ## Upstream remotes
 
 `backend-upstream`, `fundi-pro-upstream` and `jenga-pro-upstream` point at the original
-GitHub repos (no `origin` is configured yet). To keep exchanging changes with them:
+GitHub repos (no `origin` is configured yet). The frontends still share history with their
+upstreams:
 
 ```bash
-git subtree pull --prefix=backend backend-upstream main
-git subtree push --prefix=frontend/fundi-pro fundi-pro-upstream main
+git subtree pull --prefix=frontend/fundi-pro fundi-pro-upstream main
+git subtree push --prefix=frontend/jenga-pro jenga-pro-upstream main
 ```
 
-To publish the monorepo, create a new GitHub repository and
+The backend no longer shares hashes with `backend-upstream` unless you force-push the purged
+history there (see above). The simplest path is to treat this monorepo as the backend's new
+home and archive the old repo.
+
+To publish the monorepo, create a new **private** GitHub repository and
 `git remote add origin <url> && git push -u origin main --tags`.
