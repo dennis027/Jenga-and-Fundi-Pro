@@ -9,7 +9,7 @@ dates) is kept. Each import is a merge commit whose second parent is that reposi
 |---|---|---|---|
 | `backend/` | github.com/dennis027/jenga-backend (`main`) | 47 | **rewritten** by the purge below |
 | `frontend/fundi-pro/` | github.com/dennis027/new-fundi-pro (`main`) | 48, incl. 3 never pushed | unchanged |
-| `frontend/jenga-pro/` | github.com/dennis027/new-jenga-pro (`main`) | 31, incl. 1 never pushed | unchanged |
+| `frontend/jenga-pro/` | github.com/dennis027/new-jenga-pro (`main`) | 31, incl. 1 never pushed | partly rewritten (redaction, below) |
 
 The original working copies (including `node_modules`, the old `venv`, the gitignored
 `.env` and the stash lists) were moved, untouched, to `../fundi-jenga-pro-original-repos/`.
@@ -29,11 +29,24 @@ git filter-repo --force --invert-paths --prune-empty never \
   --path payments/ --path backend/payments/          # older upload location
 ```
 
+Before the repository went public, a third pass redacted the original hardcoded Django
+`SECRET_KEY` and two personal phone numbers (a Twilio/SMS test recipient in old backend code,
+and a sample-data number in jenga-pro's `manage-workers.ts`) from every commit:
+
+```bash
+git filter-repo --force --prune-empty never --replace-text redact.txt
+#   regex:django-insecure-\+0q4\+wo03[^'"\s]*==>django-insecure-REDACTED
+#   literal:<phone>==>+254700000000      literal:<phone>==>0700000000
+```
+
+That old key must be treated as compromised either way. Rotate it wherever it is still in use (Render).
+
 - `--prune-empty never` keeps every commit, including ones that only added uploads, so no
   commit message is lost. All 173 commits and 17 tags still exist.
 - The rewritten objects were expired and repacked. The files are not recoverable from this
   repository, and `.git` shrank from 7.7 MB to 2.8 MB.
-- Backend commits (and everything after them) have **new hashes**. Hash references inside
+- Backend commits, part of jenga-pro's history, and everything after them have **new hashes**
+  (101 of 173). fundi-pro's history is unchanged. Hash references inside
   commit messages were updated too. Old → new: [history-commit-map.txt](history-commit-map.txt).
 - A pre-purge backup is at `../fundi-jenga-pro-original-repos/monorepo-before-history-purge.bundle`.
   It still contains the images, so delete it once you're satisfied.
@@ -73,8 +86,8 @@ git diff archive/stash/backend/00^1 archive/stash/backend/00 | git apply --direc
 ## Upstream remotes
 
 `backend-upstream`, `fundi-pro-upstream` and `jenga-pro-upstream` point at the original
-GitHub repos (no `origin` is configured yet). The frontends still share history with their
-upstreams:
+GitHub repos (no `origin` is configured yet). fundi-pro still shares history with its upstream.
+jenga-pro shares it only up to the first redacted commit:
 
 ```bash
 git subtree pull --prefix=frontend/fundi-pro fundi-pro-upstream main

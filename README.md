@@ -22,6 +22,8 @@ fundi-jenga-pro/
 │   ├── fundi-pro/           Angular worker portal   (Dockerfile: dev + runtime targets)
 │   └── jenga-pro/           Angular contractor portal
 ├── docs/
+├── scripts/build-pages.sh   static GitHub Pages build of both portals
+├── .github/workflows/       GitHub Pages deployment
 ├── deploy/Caddyfile         TLS reverse proxy config (production override)
 ├── docker-compose.yml       full stack (production-style, localhost ports)
 ├── docker-compose.dev.yml   live-reload override
@@ -87,6 +89,27 @@ docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build
 - backend runs `manage.py runserver` with `./backend` mounted and `DEBUG=True`
 - frontends run `ng serve` with their source mounted. They use
   `src/environments/environment.ts` (API `http://127.0.0.1:8000/`)
+
+## GitHub Pages (both portals)
+
+`.github/workflows/pages.yml` builds both portals on every push to `main` that touches
+`frontend/` and publishes them as **one** Pages site:
+
+| Page | URL |
+|---|---|
+| Landing page | `https://<owner>.github.io/<repo>/` |
+| Fundi Pro | `https://<owner>.github.io/<repo>/fundi-pro/` |
+| Jenga Pro | `https://<owner>.github.io/<repo>/jenga-pro/` |
+
+- **One-time setup:** repo **Settings → Pages → Build and deployment → Source: GitHub Actions**.
+- Pages only hosts the static frontends. They call the API in
+  `src/environments/environment.prod.ts` (the Render backend). To use another API, set the
+  repository variable `PAGES_API_URL` (Settings → Secrets and variables → Actions → Variables).
+- The API must allow the Pages origin. When the backend runs this repo's code, include
+  `https://<owner>.github.io` in `CORS_ALLOWED_ORIGINS` and `CSRF_TRUSTED_ORIGINS`.
+- Custom domain: set the variable `PAGES_BASE_PATH=/`.
+- Build the same site locally:
+  `BASE_PATH=/<repo> scripts/build-pages.sh` (output in `_site/`).
 
 ## Configuration
 

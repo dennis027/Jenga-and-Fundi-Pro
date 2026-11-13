@@ -10,3 +10,6 @@ Thumbs.db
 *.swp
 
 # Component-specific ignores live in backend/.gitignore and frontend/*/.gitignore
+
+# GitHub Pages build output (scripts/build-pages.sh)
+/_site/

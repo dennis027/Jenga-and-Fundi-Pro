@@ -1,0 +1,72 @@
+# Builds both Angular portals and publishes them as one GitHub Pages site:
+#   https://<owner>.github.io/<repo>/            landing page
+#   https://<owner>.github.io/<repo>/fundi-pro/  worker portal
+#   https://<owner>.github.io/<repo>/jenga-pro/  contractor portal
+#
+# One-time setup: Settings -> Pages -> Build and deployment -> Source: "GitHub Actions".
+# Optional repository variables (Settings -> Secrets and variables -> Actions -> Variables):
+#   PAGES_API_URL    API the portals call (default: environment.prod.ts, the Render API)
+#   PAGES_BASE_PATH  "/" when using a custom domain (default: /<repo>)
+
+name: Deploy frontends to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "frontend/**"
+      - "scripts/build-pages.sh"
+      - ".github/workflows/pages.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/*/package-lock.json
+
+      - name: Build both portals
+        env:
+          NG_CLI_ANALYTICS: "false"
+          API_URL: ${{ vars.PAGES_API_URL }}
+          CUSTOM_BASE: ${{ vars.PAGES_BASE_PATH }}
+          REPO: ${{ github.event.repository.name }}
+          OWNER: ${{ github.repository_owner }}
+        run: |
+          repo=$(echo "$REPO" | tr '[:upper:]' '[:lower:]')
+          owner=$(echo "$OWNER" | tr '[:upper:]' '[:lower:]')
+          if [ -n "$CUSTOM_BASE" ]; then BASE_PATH="$CUSTOM_BASE"
+          elif [ "$repo" = "$owner.github.io" ]; then BASE_PATH=""
+          else BASE_PATH="/$REPO"; fi
+          [ "$BASE_PATH" = "/" ] && BASE_PATH=""
+          echo "Base path: '${BASE_PATH:-/}'"
+          BASE_PATH="$BASE_PATH" sh scripts/build-pages.sh
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
