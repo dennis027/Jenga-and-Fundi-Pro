@@ -30,6 +30,12 @@ from django.core.cache import cache
 from django.db.models import Q
 import secrets
 from . import otp as otp_store
+from django.db import transaction
+from django.utils.crypto import constant_time_compare
+from rest_framework.exceptions import PermissionDenied
+from .permissions import IsContractorOrStaff, owns_organization, visible_gigs
+from .scoring import apply_score_change
+from .serializers import GigSearchResultSerializer
 from django.core.mail import send_mail
 from .models import PasswordResetCode
 from django.middleware.csrf import get_token
@@ -67,6 +73,14 @@ CONSUMER_SECRET = settings.MPESA_CONSUMER_SECRET
 CALLBACK_URL = settings.MPESA_CALLBACK_URL
 
 
+def mpesa_callback_url():
+    """Callback URL sent to Safaricom, carrying the shared secret when configured."""
+    if not settings.MPESA_CALLBACK_TOKEN:
+        return CALLBACK_URL
+    sep = "&" if "?" in CALLBACK_URL else "?"
+    return f"{CALLBACK_URL}{sep}token={settings.MPESA_CALLBACK_TOKEN}"
+
+
 logger = logging.getLogger(__name__)
 
 
@@ -97,7 +111,7 @@ class CheckUsernameExists(APIView):
         return Response({"exists": False, "message": "Username is available"}, status=400)
 
 class UserListAPIView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [permissions.IsAdminUser]  # every user's personal data
 
     def get(self, request):
         users = User.objects.all()
@@ -1023,108 +1037,79 @@ class LogGigView(APIView):
 
 # 2. Confirm/Verify a gig by peer or foreman  
 class VerifyGigView(APIView):
+    """Only the contractor who owns the gig's site (or staff) can verify it."""
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request, gig_id):
-        try:
-            gig = Gig.objects.get(id=gig_id)
-        except Gig.DoesNotExist:
-            return Response({"detail": "Gig not found."}, status=status.HTTP_404_NOT_FOUND)
+        with transaction.atomic():
+            try:
+                gig = Gig.objects.select_for_update().select_related("organization").get(id=gig_id)
+            except Gig.DoesNotExist:
+                return Response({"detail": "Gig not found."}, status=status.HTTP_404_NOT_FOUND)
 
-        # Prevent self-verification
-        if gig.logged_by == request.user:
-            return Response({"detail": "You cannot verify your own gig."}, status=status.HTTP_403_FORBIDDEN)
+            if not owns_organization(request.user, gig.organization):
+                return Response({"detail": "Only the contractor who owns this site can verify its gigs."},
+                                status=status.HTTP_403_FORBIDDEN)
+            if request.user.id in (gig.logged_by_id, gig.worker_id):
+                return Response({"detail": "You cannot verify your own gig."}, status=status.HTTP_403_FORBIDDEN)
+            if gig.is_verified:
+                return Response({"message": "Gig already verified.", "gig_status": "verified",
+                                 "gig": GigSerializer(gig).data})
 
-        # Prevent double verification
-        if gig.is_verified:
-            return Response({
-                "message": "Gig already verified.",
-                "gig_status": "verified",
-                "gig": GigSerializer(gig).data
-            })
-
-        # Mark gig as verified
-        gig.is_verified = True
-        gig.verified_by = request.user
-        gig.save()
-
-        # Update worker's credit score (using User model)
-        worker = gig.logged_by
-        if hasattr(worker, "credit_score"):  # Ensure the field exists
-            worker.credit_score = worker.credit_score + 5  # Increase score
-            worker.save()
-
-            # log history
-            CreditScoreHistory.objects.create(
-            user=worker,
-            change=+5,
-            new_score=worker.credit_score,
-            action="verify_gig"
-    )
+            gig.is_verified = True
+            gig.verified_by = request.user
+            gig.save(update_fields=["is_verified", "verified_by"])
+            new_score = apply_score_change(gig.worker, "verify_gig")
 
         return Response({
             "message": "Gig verified successfully.",
             "gig_status": "verified",
             "gig": GigSerializer(gig).data,
-            "worker_credit_score": worker.credit_score
+            "worker_credit_score": new_score,
         }, status=status.HTTP_200_OK)
 
 
-# verify gigs
 @method_decorator(csrf_exempt, name='dispatch')
 class CompleteGigAPIView(APIView):
+    """The gig's worker, its site's contractor, or staff can complete a verified gig (once)."""
     permission_classes = [IsAuthenticated]
 
     def post(self, request, gig_id):
-        try:
-            gig = Gig.objects.get(id=gig_id)
-        except Gig.DoesNotExist:
-            return Response({"error": "Gig not found"}, status=status.HTTP_404_NOT_FOUND)
+        with transaction.atomic():
+            try:
+                gig = Gig.objects.select_for_update().select_related("organization").get(id=gig_id)
+            except Gig.DoesNotExist:
+                return Response({"error": "Gig not found"}, status=status.HTTP_404_NOT_FOUND)
 
-        if not gig.is_verified:
-            return Response({"error": "Gig must be verified before marking as complete"}, status=status.HTTP_400_BAD_REQUEST)
+            if not (request.user.id == gig.worker_id or owns_organization(request.user, gig.organization)):
+                return Response({"error": "You cannot complete this gig."}, status=status.HTTP_403_FORBIDDEN)
+            if not gig.is_verified:
+                return Response({"error": "Gig must be verified before marking as complete"},
+                                status=status.HTTP_400_BAD_REQUEST)
 
-        # Create history record
-        gig_history = GigHistory.objects.create(
-            worker=gig.worker,
-            job_type=gig.job_type,
-            start_date=gig.start_date,
-            duration_value=gig.duration_value,
-            duration_unit=gig.duration_unit,
-            client_name=gig.client_name,
-            client_phone=gig.client_phone,
-            county=gig.county,
-            constituency=gig.constituency,
-            ward=gig.ward,
-            is_verified=gig.is_verified,
-            organization=gig.organization
-        )
+            gig_history = GigHistory.objects.create(
+                worker=gig.worker,
+                job_type=gig.job_type,
+                start_date=gig.start_date,
+                duration_value=gig.duration_value,
+                duration_unit=gig.duration_unit,
+                client_name=gig.client_name,
+                client_phone=gig.client_phone,
+                county=gig.county,
+                constituency=gig.constituency,
+                ward=gig.ward,
+                is_verified=gig.is_verified,
+                organization=gig.organization,
+            )
+            new_score = apply_score_change(gig.worker, "complete_gig")
+            gig.delete()
 
-        # Update credit score (+10 on completion) directly on User model
-        worker = gig.worker  # this is already a User
-        worker.credit_score = (worker.credit_score or 0) + 5
-        worker.save()
-        CreditScoreHistory.objects.create(
-            user=worker,
-            change=+5,
-            new_score=worker.credit_score,
-            action="verify_gig"
-        )
+        return Response({
+            "message": "Gig moved to history successfully",
+            "history_id": gig_history.id,
+            "new_score": new_score,
+        }, status=status.HTTP_200_OK)
 
-        # Delete gig after moving
-        gig.delete()
-
-        return Response(
-            {
-                "message": "Gig moved to history successfully",
-                "history_id": gig_history.id,
-                "new_score": worker.credit_score,
-            },
-            status=status.HTTP_200_OK
-        )
-
-
-# GIG HIstory
 
 class CreditScoreHistoryView(APIView):
     permission_classes = [IsAuthenticated]
@@ -1140,6 +1125,7 @@ class CreditScoreHistoryView(APIView):
 #SEARCH GIGS
 
 class GigSearchView(APIView):
+    """Search all gigs. Client phone and amounts are hidden on gigs that are not yours."""
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
@@ -1149,8 +1135,7 @@ class GigSearchView(APIView):
         job_type = request.query_params.get('job_type')  # ID of JobType
         client_name = request.query_params.get('client_name')
 
-        gigs = Gig.objects.all()
-
+        gigs = Gig.objects.select_related("organization")
         if county:
             gigs = gigs.filter(county__icontains=county)
         if constituency:
@@ -1162,17 +1147,16 @@ class GigSearchView(APIView):
         if client_name:
             gigs = gigs.filter(client_name__icontains=client_name)
 
-        serializer = GigSerializer(gigs, many=True)
-        return Response(serializer.data, status=status.HTTP_200_OK)
-    
+        mine = set(visible_gigs(request.user, gigs).values_list("id", flat=True))
+        data = [GigSerializer(g).data if g.id in mine else GigSearchResultSerializer(g).data for g in gigs]
+        return Response(data, status=status.HTTP_200_OK)
 
-    
 
 class GigListView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        gigs = Gig.objects.all()
+        gigs = visible_gigs(request.user)
         
         serializer = GigSerializer(gigs, many=True)
         return Response(serializer.data)
@@ -1192,7 +1176,7 @@ class GigsAvailableListCreateView(generics.ListCreateAPIView):
         try:
             organization = Organization.objects.get(id=org_id, owner=self.request.user)
         except Organization.DoesNotExist:
-            raise PermissionError("You do not own this organization or it does not exist.")
+            raise PermissionDenied("You do not own this organization or it does not exist.")
         
         serializer.save(organization=organization)
 
@@ -1234,21 +1218,36 @@ class UserProfileView(APIView):
 
 
 class JobTypeListCreateView(generics.ListCreateAPIView):
+    """Anyone signed in can list job types (optionally ?organization=<id>);
+    only the site's contractor can add one."""
     permission_classes = [IsAuthenticated]
-    queryset = JobType.objects.all()
     serializer_class = JobTypeSerializer
+
+    def get_queryset(self):
+        qs = JobType.objects.all()
+        org = self.request.query_params.get("organization")
+        return qs.filter(organization_id=org) if org else qs
+
+    def perform_create(self, serializer):
+        org = serializer.validated_data.get("organization")
+        if not owns_organization(self.request.user, org):
+            raise PermissionDenied("You can only add job types to your own sites.")
+        serializer.save()
 
 
 class JobTypeDeleteView(APIView):
     permission_classes = [IsAuthenticated]
+
     def delete(self, request, pk):
         try:
-            job_type = JobType.objects.get(pk=pk)
-            job_type.delete()
-            return Response({"message": "Job type deleted."}, status=status.HTTP_204_NO_CONTENT)
+            job_type = JobType.objects.select_related("organization").get(pk=pk)
         except JobType.DoesNotExist:
             return Response({"error": "Job type not found."}, status=status.HTTP_404_NOT_FOUND)
-        
+        if not owns_organization(request.user, job_type.organization):
+            return Response({"error": "You can only delete job types of your own sites."},
+                            status=status.HTTP_403_FORBIDDEN)
+        job_type.delete()
+        return Response({"message": "Job type deleted."}, status=status.HTTP_204_NO_CONTENT)
 
 
 class PaymentUploadView(APIView):
@@ -1283,6 +1282,8 @@ class OrganizationGigsAPIView(APIView):
             organization = Organization.objects.get(id=org_id)
         except Organization.DoesNotExist:
             return Response({'error': 'Organization not found'}, status=status.HTTP_404_NOT_FOUND)
+        if not owns_organization(request.user, organization):
+            return Response({'error': 'You can only view gigs of your own sites.'}, status=status.HTTP_403_FORBIDDEN)
 
         gigs = Gig.objects.filter(organization=organization)
         serializer = GigSerializer(gigs, many=True)
@@ -1368,32 +1369,21 @@ class OrganizationSoftDeleteView(APIView):
 
 
 class WorkerSearchAPIView(APIView):
-    permission_classes = [permissions.IsAuthenticated]  # only logged-in users can search
+    """Contractors (and staff) look up a worker by username, email, phone, national ID or name."""
+    permission_classes = [IsContractorOrStaff]
 
     def get(self, request, *args, **kwargs):
         query = request.query_params.get('q', None)
-
         if not query:
-            return Response(
-                {"error": "Please provide a search query (?q=)"},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+            return Response({"error": "Please provide a search query (?q=)"}, status=status.HTTP_400_BAD_REQUEST)
 
-        try:
-            user = User.objects.get(
-                Q(username__iexact=query) |
-                Q(email__iexact=query) |
-                Q(phone__iexact=query) |
-                Q(full_name__icontains=query) |   # NEW: search by full_name
-                Q(national_id__iexact=query)      # NEW: search by national_id
-            )
-        except User.DoesNotExist:
+        exact = Q(username__iexact=query) | Q(email__iexact=query) | Q(phone__iexact=query) | Q(national_id__iexact=query)
+        user = (User.objects.filter(exact).first()
+                or User.objects.filter(full_name__icontains=query).order_by("id").first())
+        if not user:
             return Response({"error": "User not found."}, status=status.HTTP_404_NOT_FOUND)
+        return Response(UserDetailWithGigsSerializer(user).data, status=status.HTTP_200_OK)
 
-        # Serialize worker details along with gigs
-        data = UserDetailWithGigsSerializer(user).data
-        return Response(data, status=status.HTTP_200_OK)
-    
 
 @csrf_exempt
 def extract_transaction_code(request):
@@ -1557,7 +1547,7 @@ class STKNewPushView(APIView):
             "PartyA": phone,
             "PartyB": BUSINESS_SHORTCODE,
             "PhoneNumber": phone,
-            "CallBackURL": CALLBACK_URL,
+            "CallBackURL": mpesa_callback_url(),
             "AccountReference": "Test",
             "TransactionDesc": "Payment"
         }
@@ -1579,7 +1569,8 @@ class STKNewPushView(APIView):
                     user=request.user,
                     phone_number=phone,
                     checkout_request_id=checkout_request_id,
-                    merchant_request_id=merchant_request_id
+                    merchant_request_id=merchant_request_id,
+                    amount=amount,
                 )
 
                 logger.info(f"✅ User session saved for {request.user.username}")
@@ -1591,63 +1582,74 @@ class STKNewPushView(APIView):
 
 @method_decorator(csrf_exempt, name='dispatch')
 class STKNewCallbackView(APIView):
-    permission_classes = [AllowAny] 
-    
-    def post(self, request):
-        data = request.data
-        logger.info("📥 M-Pesa Callback Received:\n%s", data)
+    """Safaricom STK callback.
 
-        callback = data.get('Body', {}).get('stkCallback', {})
+    Only accepted when the URL carries MPESA_CALLBACK_TOKEN (if configured) and the
+    CheckoutRequestID belongs to a push this app started. Each checkout is recorded
+    once; the paid amount must match the requested amount.
+    """
+    permission_classes = [AllowAny]
+    authentication_classes = []
+
+    def post(self, request):
+        token = settings.MPESA_CALLBACK_TOKEN
+        if token and not constant_time_compare(request.query_params.get("token", ""), token):
+            logger.warning("Rejected M-Pesa callback with a missing/invalid token")
+            return Response({"ResultCode": 1, "ResultDesc": "Rejected"}, status=status.HTTP_403_FORBIDDEN)
+
+        callback = (request.data or {}).get('Body', {}).get('stkCallback', {})
         result_code = callback.get('ResultCode')
         result_desc = callback.get('ResultDesc')
         merchant_request_id = callback.get('MerchantRequestID')
         checkout_request_id = callback.get('CheckoutRequestID')
+        logger.info("M-Pesa callback: checkout=%s result=%s", checkout_request_id, result_code)
 
-        # Find the user who initiated this payment
-        user = None
-        try:
-            payment_session = UserPaymentSession.objects.get(
-                checkout_request_id=checkout_request_id
-            )
-            user = payment_session.user
-            logger.info(f"✅ Found user for payment: {user.username}")
-        except UserPaymentSession.DoesNotExist:
-            logger.warning(f"⚠️ No user session found for checkout_request_id: {checkout_request_id}")
-        except Exception as e:
-            logger.error(f"❌ Error finding user session: {str(e)}")
+        session = UserPaymentSession.objects.filter(checkout_request_id=checkout_request_id).select_related("user").first()
+        if not session:
+            logger.warning("Ignored M-Pesa callback for unknown checkout %s", checkout_request_id)
+            return Response({"ResultCode": 0, "ResultDesc": "Ignored"})
 
-        if result_code == 0:  # Successful
+        existing = MpesaNewTransaction.objects.filter(checkout_request_id=checkout_request_id).first()
+        if existing:
+            return Response({"status": "duplicate", "transaction": existing.mpesa_receipt_number})
+
+        if result_code == 0:
             items = callback.get('CallbackMetadata', {}).get('Item', [])
-            item_map = {item['Name']: item.get('Value') for item in items}
+            item_map = {item.get('Name'): item.get('Value') for item in items}
+            amount = item_map.get('Amount')
+            if session.amount is not None and amount is not None and float(amount) != float(session.amount):
+                logger.error("M-Pesa amount mismatch for %s: requested %s, callback %s",
+                             checkout_request_id, session.amount, amount)
+                return Response({"ResultCode": 1, "ResultDesc": "Amount mismatch"}, status=status.HTTP_400_BAD_REQUEST)
 
-            transaction = MpesaNewTransaction.objects.create(
-                user=user,  # Add the user who submitted the gig
+            txn = MpesaNewTransaction.objects.create(
+                user=session.user,
                 phone_number=item_map.get('PhoneNumber'),
-                amount=item_map.get('Amount'),
+                amount=amount,
                 mpesa_receipt_number=item_map.get('MpesaReceiptNumber'),
                 transaction_date=datetime.strptime(str(item_map.get('TransactionDate')), "%Y%m%d%H%M%S"),
                 merchant_request_id=merchant_request_id,
                 checkout_request_id=checkout_request_id,
                 result_code=result_code,
                 result_desc=result_desc,
-                raw_callback=callback
+                raw_callback=callback,
             )
-            return Response({"status": "success", "transaction": transaction.mpesa_receipt_number})
-        else:
-            # Optionally log failed transactions
-            MpesaNewTransaction.objects.create(
-                user=user,  # Add the user even for failed transactions
-                phone_number="Unknown",
-                amount=0,
-                mpesa_receipt_number="FAILED",
-                transaction_date=timezone.now(),
-                merchant_request_id=merchant_request_id,
-                checkout_request_id=checkout_request_id,
-                result_code=result_code,
-                result_desc=result_desc,  
-                raw_callback=callback
-            )
-            return Response({"status": "failed", "reason": result_desc})
+            return Response({"status": "success", "transaction": txn.mpesa_receipt_number})
+
+        MpesaNewTransaction.objects.create(
+            user=session.user,
+            phone_number=session.phone_number or "Unknown",
+            amount=0,
+            # receipt is unique: derive a per-checkout placeholder for failed payments
+            mpesa_receipt_number=("F-" + (checkout_request_id or "unknown"))[-20:],
+            transaction_date=timezone.now(),
+            merchant_request_id=merchant_request_id,
+            checkout_request_id=checkout_request_id,
+            result_code=result_code,
+            result_desc=result_desc,
+            raw_callback=callback,
+        )
+        return Response({"status": "failed", "reason": result_desc})
 
 
 class MpesaMessagesAPIView(APIView):
@@ -1655,6 +1657,8 @@ class MpesaMessagesAPIView(APIView):
 
     def get(self, request):
         transactions = MpesaNewTransaction.objects.all()
+        if not request.user.is_staff:
+            transactions = transactions.filter(user=request.user)
 
         # Optional filters
         phone_number = request.query_params.get('phone_number')
@@ -1851,31 +1855,31 @@ class VerificationRequestCreateView(generics.CreateAPIView):
 from rest_framework.views import APIView
 
 class VerificationActionView(APIView):
-    # permission_classes = [permissions.IsAdminUser]
-    permission_classes = [permissions.IsAuthenticated]
+    """Staff only. Points are awarded once, on the first approval."""
+    permission_classes = [permissions.IsAdminUser]
 
     def post(self, request, pk):
-        """Approve or Reject verification"""
         try:
-            verification = VerificationRequest.objects.get(pk=pk)
+            verification = VerificationRequest.objects.select_related("user").get(pk=pk)
         except VerificationRequest.DoesNotExist:
             return Response({"error": "Not found"}, status=status.HTTP_404_NOT_FOUND)
 
         action = request.data.get("action")
         reason = request.data.get("reason", "")
+        user = verification.user
 
         if action == "approve":
+            first_approval = verification.status != "approved"
             verification.status = "approved"
-            verification.user.is_verified = True
-            verification.user.increase_score(20)  # e.g. +20 on approval
-            verification.user.save()
-
+            user.is_verified = True
+            user.save(update_fields=["is_verified"])
+            if first_approval:
+                apply_score_change(user, "approve_verification")
         elif action == "reject":
             verification.status = "rejected"
             verification.rejection_reason = reason
-            verification.user.is_verified = False
-            verification.user.save()
-
+            user.is_verified = False
+            user.save(update_fields=["is_verified"])
         else:
             return Response({"error": "Invalid action"}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -1883,7 +1887,6 @@ class VerificationActionView(APIView):
         return Response(VerificationRequestSerializer(verification).data)
 
 
-# 3. View Verifications
 class VerificationRequestListView(generics.ListAPIView):
     serializer_class = VerificationRequestSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -1928,7 +1931,7 @@ class LatestVerificationView(generics.RetrieveAPIView):
 
 # 1. Weekly Worker Report
 class WeeklyWorkerReportView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [permissions.IsAdminUser]  # platform-wide report
 
     def get(self, request):
         qs = (
@@ -1956,7 +1959,7 @@ class WeeklyWorkerReportView(APIView):
 
 # 2. Weekly Gigs Report
 class WeeklyGigReportView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [permissions.IsAdminUser]  # platform-wide report
 
     def get(self, request):
         qs = (
@@ -1984,7 +1987,7 @@ class WeeklyGigReportView(APIView):
 
 # 3. Job Type Distribution Report
 class JobTypeDistributionReportView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [permissions.IsAdminUser]  # platform-wide report
 
     def get(self, request):
         qs = (
@@ -2007,7 +2010,7 @@ class JobTypeDistributionReportView(APIView):
 
 # 4. Organization Performance Report
 class OrgPerformanceReportView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [permissions.IsAdminUser]  # platform-wide report
 
     def get(self, request):
         qs = (
@@ -2033,7 +2036,7 @@ class OrgPerformanceReportView(APIView):
 # 5. Verification Impact Report
 class VerificationImpactReportView(APIView):
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [permissions.IsAdminUser]  # platform-wide report
 
     def get(self, request):
         verified_workers = User.objects.filter(is_verified=True).annotate(gig_count=Count("gigs"))

@@ -234,6 +234,8 @@ MPESA_SHORTCODE = config('MPESA_SHORTCODE')
 MPESA_PASSKEY = config('MPESA_PASSKEY')
 MPESA_BASE_URL = config("MPESA_BASE_URL", default="https://sandbox.safaricom.co.ke").rstrip("/")
 MPESA_CALLBACK_URL = config('MPESA_CALLBACK_URL')
+# Shared secret appended to the callback URL (?token=...); callbacks without it are rejected.
+MPESA_CALLBACK_TOKEN = config("MPESA_CALLBACK_TOKEN", default="")
 
 
 

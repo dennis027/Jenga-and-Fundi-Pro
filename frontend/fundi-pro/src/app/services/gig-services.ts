@@ -33,7 +33,7 @@ export class GigServices {
   }
   
   completeGig(gigId: number): Observable<any> {
-    return this.http.post<any>(this.apiUrl + `gig/${gigId}/complete/`, {}); 
+    return this.http.post<any>(this.apiUrl + `gigs/${gigId}/complete/`, {}); 
   }
 
   creditScoreHistory(): Observable<any> {

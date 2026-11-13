@@ -59,10 +59,6 @@ class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
     
 
 # app/serializers.py
-class UserProfileSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = User
-        fields = ['full_name', 'national_id', 'location', 'phone', 'profile_pic']
 
 class GigSerializer(serializers.ModelSerializer):
     class Meta:
@@ -103,7 +99,9 @@ class GigSerializer(serializers.ModelSerializer):
 class UserProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ['username', 'email', 'phone', 'full_name', 'national_id',   'county', 'constituency', 'ward', 'profile_pic','is_verified','credit_score','current_verification']  
+        fields = ['username', 'email', 'phone', 'full_name', 'national_id',   'county', 'constituency', 'ward', 'profile_pic','is_verified','credit_score','current_verification']
+        # Trust fields are only changed by the platform (scoring / ID verification).
+        read_only_fields = ['username', 'is_verified', 'credit_score', 'current_verification']
 
     def validate_phone(self, value):
         user = self.instance  # the currently authenticated user
@@ -114,7 +112,7 @@ class UserProfileSerializer(serializers.ModelSerializer):
 class JobTypeSerializer(serializers.ModelSerializer):
     class Meta:
         model = JobType
-        fields = ['id', 'name', 'code']
+        fields = ['id', 'name', 'code', 'organization']
         read_only_fields = ['code']
 
 
@@ -332,3 +330,11 @@ class CalendarDaySerializer(serializers.Serializer):
     dayNum = serializers.IntegerField()
     status = serializers.ChoiceField(choices=['verified', 'pending', 'empty'])
     tooltip = serializers.CharField()
+
+
+class GigSearchResultSerializer(serializers.ModelSerializer):
+    """Gig as shown to people who are not its worker or its site's contractor."""
+
+    class Meta:
+        model = Gig
+        exclude = ['client_phone', 'amount_paid', 'logged_by', 'verified_by']

@@ -33,10 +33,10 @@ class User(AbstractUser):
     )
     
 
-    def increase_score(self, points):
-        """Increase score by points, capped at 100""" 
-        self.credit_score = min(100, self.credit_score + points)
-        self.save()
+    def increase_score(self, points, action="adjustment"):
+        """Increase score by points (clamped 0..100, recorded in history)."""
+        from .scoring import apply_score_change
+        return apply_score_change(self, action, points)
 
     def __str__(self):
         return f"{self.username} - Score: {self.credit_score}"
@@ -161,6 +161,8 @@ class CreditScoreHistory(models.Model):
     ACTION_CHOICES = [
         ("verify_gig", "Gig Verified"),
         ("complete_gig", "Gig Completed"),
+        ("approve_verification", "Identity Verified"),
+        ("adjustment", "Manual Adjustment"),
     ]
 
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="score_history")
@@ -288,6 +290,7 @@ class UserPaymentSession(models.Model):
     phone_number = models.CharField(max_length=15)
     checkout_request_id = models.CharField(max_length=100, unique=True)
     merchant_request_id = models.CharField(max_length=100)
+    amount = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)  # requested amount
     created_at = models.DateTimeField(auto_now_add=True)
     
     def __str__(self):
