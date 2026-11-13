@@ -8,7 +8,7 @@ M-Pesa.
 |---|---|---|---|
 | **Backend API** | [backend/](backend/) | Django 4.2, DRF, SimpleJWT, PostgreSQL, Redis | REST API, auth, M-Pesa STK push, SMS OTP, OCR, reports |
 | **Fundi Pro** | [frontend/fundi-pro/](frontend/fundi-pro/) | Angular 20 (SSR / prerender), Material 20 | Worker portal: log gigs, work history, credit score, payments |
-| **Jenga Pro** | [frontend/jenga-pro/](frontend/jenga-pro/) | Angular 20 (SSR / prerender), Material 21 | Contractor portal: verify gigs, manage workers/sites, reports, M-Pesa |
+| **Jenga Pro** | [frontend/jenga-pro/](frontend/jenga-pro/) | Angular 20 (SSR / prerender), Material 20 | Contractor portal: verify gigs, manage workers/sites, reports, M-Pesa |
 
 Architecture, design decisions and known issues: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 Git history and how the repos were merged: [docs/GIT-HISTORY.md](docs/GIT-HISTORY.md).
@@ -22,8 +22,10 @@ fundi-jenga-pro/
 │   ├── fundi-pro/           Angular worker portal   (Dockerfile: dev + runtime targets)
 │   └── jenga-pro/           Angular contractor portal
 ├── docs/
-├── docker-compose.yml       full stack (production-style)
+├── deploy/Caddyfile         TLS reverse proxy config (production override)
+├── docker-compose.yml       full stack (production-style, localhost ports)
 ├── docker-compose.dev.yml   live-reload override
+├── docker-compose.prod.yml  HTTPS override: Caddy on 80/443, nothing else published
 ├── .env.example             every configuration variable, documented
 └── .env                     your local copy (gitignored, never commit)
 ```
@@ -80,10 +82,39 @@ as the *browser* sees it, ending in `/`) and rebuild:
 `docker compose build fundi-pro jenga-pro`. Without Docker, `ng build` uses
 `src/environments/environment.prod.ts` (the Render URL).
 
-**Production checklist:** `DEBUG=False`, a long random `SECRET_KEY`, strong DB and Redis
-passwords, `ALLOWED_HOSTS` / `CORS_ALLOWED_ORIGINS` / `CSRF_TRUSTED_ORIGINS` set to your real
-domains, `PUBLIC_API_URL` set to the public API URL, and a TLS reverse proxy (nginx, Caddy,
-Traefik) in front of ports 8000/4200/4300.
+## Production (HTTPS)
+
+`docker-compose.prod.yml` adds **Caddy** as the only public entry point. Caddy gets and
+renews Let's Encrypt certificates automatically and proxies three hostnames:
+
+| Hostname (`.env`) | Proxied to |
+|---|---|
+| `API_DOMAIN` | `backend:8000` |
+| `FUNDI_DOMAIN` | `fundi-pro:4000` |
+| `JENGA_DOMAIN` | `jenga-pro:4000` |
+
+1. Point the three DNS names at the server and open ports 80 and 443.
+2. In `.env`, set `API_DOMAIN`, `FUNDI_DOMAIN`, `JENGA_DOMAIN`, `ACME_EMAIL`, a long random
+   `SECRET_KEY`, and strong `POSTGRES_PASSWORD` / `REDIS_PASSWORD`.
+3. `docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build`
+
+In this mode the backend and frontends publish no ports. `ALLOWED_HOSTS`, CORS/CSRF origins,
+the frontends' API URL (`https://API_DOMAIN/`), the HTTP→HTTPS redirect, secure cookies,
+HSTS and `X-Forwarded-*` handling are all derived from the domains, so you don't set them by
+hand. `manage.py check --deploy` reports only the opt-in `SECURE_HSTS_PRELOAD`. Raise
+`SECURE_HSTS_SECONDS` to `31536000` once HTTPS is stable.
+
+Local test of the production setup, using Caddy's internal CA and `*.localhost` names:
+
+```bash
+API_DOMAIN=api.localhost FUNDI_DOMAIN=fundi.localhost JENGA_DOMAIN=jenga.localhost \
+ACME_EMAIL=ops@example.com CADDY_GLOBAL_OPTIONS=local_certs PUBLIC_BIND_ADDRESS=127.0.0.1 \
+docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+curl -k https://api.localhost/healthz/
+```
+
+The default and prod modes bake different API URLs into the same frontend image tags, so
+always pass `--build` when switching between them.
 
 ## Redis
 
@@ -103,6 +134,30 @@ docker compose exec redis redis-cli ping                 # PONG (auth via REDISC
 docker compose exec redis redis-cli --scan --pattern 'fjp:*'
 curl -s localhost:8000/healthz/                          # {"status":"ok","checks":{"database":"ok","redis":"ok"}}
 ```
+
+## Phone OTP API
+
+`POST /send-otp/` `{"phone": "+2547..."}` sends a 6-digit code by SMS (Africa's Talking).
+The code is stored **only server-side**: hashed, in Redis, for `OTP_TTL_SECONDS` (5 min).
+`POST /verify-otp/` `{"phone": "...", "otp": "123456"}` returns `{"verified": true}` (200),
+or 400 for an invalid or expired code and 429 after `OTP_MAX_VERIFY_ATTEMPTS` (5) wrong tries.
+Codes are single-use. Sending is rate-limited to one per `OTP_RESEND_COOLDOWN_SECONDS` (60 s),
+`OTP_MAX_SENDS_PER_HOUR` (5) per phone and `OTP_MAX_SENDS_PER_IP_PER_HOUR` (20) per client IP.
+These return 429 with `Retry-After`.
+
+> **Client migration:** `/send-otp/` no longer returns the code. Clients that compared it
+> locally (most likely the Flutter mobile app; neither web portal uses OTP) must call
+> `/verify-otp/`. During the transition you can set `OTP_RETURN_CODE_IN_RESPONSE=True`.
+> That is insecure, so turn it off again once the app is updated.
+
+## Tests
+
+```bash
+docker compose run --rm --no-deps -v ./backend:/app -e RUN_MIGRATIONS=0 backend python manage.py test app
+```
+
+Covers the OTP flow (SMS mocked), the M-Pesa token cache, `/healthz/`, media serving, and a
+regression test confirming source files are not served.
 
 ## Database & migrations
 
@@ -176,5 +231,5 @@ pip install -r requirements.txt && python manage.py migrate && python manage.py 
 
 # frontends
 cd frontend/fundi-pro && npm ci && npm start                                       # :4200
-cd frontend/jenga-pro && npm ci --legacy-peer-deps && npx ng serve --port 4300     # :4300
+cd frontend/jenga-pro && npm ci && npx ng serve --port 4300                         # :4300
 ```
