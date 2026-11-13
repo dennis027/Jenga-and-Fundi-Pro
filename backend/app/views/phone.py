@@ -97,11 +97,6 @@ username = settings.AT_USERNAME
 api_key = settings.AT_API_KEY  
 africastalking.initialize(username, api_key)
 sms = africastalking.SMS
-def _json_body(request):
-    try:
-        return json.loads(request.body or b"{}")
-    except json.JSONDecodeError:
-        return request.POST
 
 
 def _client_ip(request):
@@ -114,17 +109,18 @@ def _client_ip(request):
     return request.META.get("REMOTE_ADDR", "")
 
 
-@method_decorator(csrf_exempt, name='dispatch')
-class SendOTPView(View):
+class SendOTPView(APIView):
     """POST {"phone": "+2547..."} - send a 6-digit code by SMS.
 
     The code is stored server-side (Redis, hashed, OTP_TTL_SECONDS) and checked
     by VerifyOTPView. It is NOT returned in the response unless the temporary
     OTP_RETURN_CODE_IN_RESPONSE compatibility flag is on.
     """
+    permission_classes = [AllowAny]
+    authentication_classes = []  # public endpoint: no session, so no CSRF
 
     def post(self, request):
-        phone_number = otp_store.normalize_phone(_json_body(request).get("phone"))
+        phone_number = otp_store.normalize_phone(request.data.get("phone"))
         if not phone_number:
             return JsonResponse({"status": "error", "message": "Phone number is required"}, status=400)
 
@@ -171,12 +167,17 @@ class SendOTPView(View):
         return JsonResponse(body)
 
 
-@method_decorator(csrf_exempt, name='dispatch')
-class VerifyOTPView(View):
-    """POST {"phone": "+2547...", "otp": "123456"} - check a code from SendOTPView."""
+class VerifyOTPView(APIView):
+    """POST {"phone": "+2547...", "otp": "123456"} - check a code from SendOTPView.
+
+    On success returns a phone_token proving the number was verified (used when
+    REQUIRE_PHONE_OTP is on).
+    """
+    permission_classes = [AllowAny]
+    authentication_classes = []
 
     def post(self, request):
-        data = _json_body(request)
+        data = request.data
         phone_number = otp_store.normalize_phone(data.get("phone"))
         code = data.get("otp") or data.get("code")
         if not phone_number or not code:

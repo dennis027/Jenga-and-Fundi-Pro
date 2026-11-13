@@ -23,7 +23,7 @@ from .phone import (  # noqa: F401
     SendOTPView,
     VerifyOTPView,
     _client_ip,
-    _json_body,
+
     api_key,
     sms,
     username,

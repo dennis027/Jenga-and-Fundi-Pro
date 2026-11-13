@@ -62,6 +62,7 @@ INSTALLED_APPS = [
     'app',
     'rest_framework_simplejwt.token_blacklist',
     'corsheaders',
+    'drf_spectacular',
 ]
 
 
@@ -194,6 +195,7 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 
 REST_FRAMEWORK = {
+    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
     ),
@@ -393,3 +395,17 @@ africastalking.initialize(AT_USERNAME, AT_API_KEY)
 #     sender_id=None,                      # use default or your registered sender ID
 #     enqueue=False
 # )
+
+# OpenAPI schema (/api/schema/) and interactive docs (/api/docs/).
+SPECTACULAR_SETTINGS = {
+    "TITLE": "Fundi / Jenga Pro API",
+    "DESCRIPTION": "REST API behind the Fundi Pro (workers) and Jenga Pro (contractors) apps. "
+                   "Authenticate with a JWT from POST /api/login/ (Authorization: Bearer <access>).",
+    "VERSION": "1.0.0",
+    "SERVE_PERMISSIONS": ["rest_framework.permissions.AllowAny"],
+    "SERVE_AUTHENTICATION": [],
+    "COMPONENT_SPLIT_REQUEST": True,
+    "SWAGGER_UI_SETTINGS": {"persistAuthorization": True},
+    # Views without serializers are listed untyped; do not log a notice per request.
+    "DISABLE_ERRORS_AND_WARNINGS": True,
+}

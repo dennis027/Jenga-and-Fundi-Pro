@@ -130,3 +130,13 @@ class ClientIPTests(TestCase):
     @override_settings(CLIENT_IP_HEADER="HTTP_TRUE_CLIENT_IP", USE_X_FORWARDED_FOR=True)
     def test_edge_header_wins(self):
         self.assertEqual(self.ip(HTTP_TRUE_CLIENT_IP="4.4.4.4", HTTP_X_FORWARDED_FOR="5.5.5.5"), "4.4.4.4")
+
+
+class ApiDocsTests(TestCase):
+    def test_schema_and_docs_are_served(self):
+        r = self.client.get("/api/schema/", HTTP_ACCEPT="application/vnd.oai.openapi+json")
+        self.assertEqual(r.status_code, 200)
+        paths = json.loads(r.content)["paths"]
+        for p in ("/api/login/", "/api/gigs/verify/{gig_id}/", "/verify-otp/"):
+            self.assertIn(p, paths)
+        self.assertEqual(self.client.get("/api/docs/").status_code, 200)
