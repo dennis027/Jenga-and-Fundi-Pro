@@ -1,0 +1,142 @@
+# Fundi / Jenga Pro - full application stack
+#
+#   cp .env.example .env   # then fill in secrets
+#   docker compose up -d --build
+#
+# Production-style by default (gunicorn, prebuilt Angular SSR bundles).
+# For live-reload development add the dev override:
+#   docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build
+#
+# Networks:
+#   data - internal-only network (no internet egress, no published ports):
+#          postgres, redis and the backend.
+#   web  - normal bridge network: the backend (needs egress for M-Pesa, SMTP,
+#          Africa's Talking) and both frontends.
+# Only the backend API and the two frontends publish ports, bound to
+# ${BIND_ADDRESS} (127.0.0.1 by default). Postgres and Redis are never exposed.
+
+name: fundi-jenga-pro
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-fundi_jenga}
+      POSTGRES_USER: ${POSTGRES_USER:-fundi_jenga}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set in .env}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DB\""]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    networks: [data]
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD must be set in .env}
+      REDISCLI_AUTH: ${REDIS_PASSWORD}
+    # AOF persistence + bounded memory with LRU eviction (Redis is used as a
+    # cache; sessions are cached_db so Postgres remains the source of truth).
+    command: >
+      sh -c 'exec redis-server
+      --requirepass "$$REDIS_PASSWORD"
+      --appendonly yes
+      --maxmemory ${REDIS_MAXMEMORY:-256mb}
+      --maxmemory-policy allkeys-lru'
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli ping | grep -q PONG"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks: [data]
+
+  backend:
+    build:
+      context: ./backend
+    image: fundi-jenga-pro/backend:latest
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DB_HOST: db
+      DB_PORT: "5432"
+      DB_NAME: ${POSTGRES_DB:-fundi_jenga}
+      DB_USER: ${POSTGRES_USER:-fundi_jenga}
+      DB_PASSWORD: ${POSTGRES_PASSWORD}
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
+      MEDIA_ROOT: /data/media
+    volumes:
+      - media:/data/media
+    ports:
+      - "${BIND_ADDRESS:-127.0.0.1}:${BACKEND_PORT:-8000}:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/healthz/', timeout=5)"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    networks: [data, web]
+
+  fundi-pro:
+    build:
+      context: ./frontend/fundi-pro
+      target: runtime
+      args:
+        API_URL: ${PUBLIC_API_URL:-http://localhost:8000/}
+    image: fundi-jenga-pro/fundi-pro:latest
+    restart: unless-stopped
+    ports:
+      - "${BIND_ADDRESS:-127.0.0.1}:${FUNDI_PRO_PORT:-4200}:4000"
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:4000/login || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    networks: [web]
+
+  jenga-pro:
+    build:
+      context: ./frontend/jenga-pro
+      target: runtime
+      args:
+        API_URL: ${PUBLIC_API_URL:-http://localhost:8000/}
+    image: fundi-jenga-pro/jenga-pro:latest
+    restart: unless-stopped
+    ports:
+      - "${BIND_ADDRESS:-127.0.0.1}:${JENGA_PRO_PORT:-4300}:4000"
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:4000/login || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    networks: [web]
+
+networks:
+  data:
+    internal: true
+  web: {}
+
+volumes:
+  postgres-data:
+  redis-data:
+  media:

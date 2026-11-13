@@ -1,0 +1,13 @@
+.git
+.env
+.env.*
+venv/
+**/__pycache__/
+*.py[cod]
+db.sqlite3
+MEDIA/
+temp/
+staticfiles/
+e
+Dockerfile
+.dockerignore

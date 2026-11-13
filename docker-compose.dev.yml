@@ -1,0 +1,44 @@
+# Development override - live reload for all three components.
+#
+#   docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build
+#
+# - backend:   Django runserver with ./backend bind-mounted, DEBUG on
+# - frontends: `ng serve` with source bind-mounted; they use
+#              src/environments/environment.ts (API at http://127.0.0.1:8000/)
+
+services:
+  backend:
+    command: ["python", "manage.py", "runserver", "0.0.0.0:8000"]
+    environment:
+      DEBUG: "True"
+    volumes:
+      - ./backend:/app
+      - media:/data/media
+
+  fundi-pro:
+    build:
+      target: dev
+    image: fundi-jenga-pro/fundi-pro:dev
+    ports: !override
+      - "${BIND_ADDRESS:-127.0.0.1}:${FUNDI_PRO_PORT:-4200}:4200"
+    volumes:
+      - ./frontend/fundi-pro:/app
+      - /app/node_modules
+      - /app/.angular
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:4200/login || exit 1"]
+      start_period: 120s
+
+  jenga-pro:
+    build:
+      target: dev
+    image: fundi-jenga-pro/jenga-pro:dev
+    ports: !override
+      - "${BIND_ADDRESS:-127.0.0.1}:${JENGA_PRO_PORT:-4300}:4200"
+    volumes:
+      - ./frontend/jenga-pro:/app
+      - /app/node_modules
+      - /app/.angular
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:4200/login || exit 1"]
+      start_period: 120s
