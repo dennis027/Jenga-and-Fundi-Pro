@@ -58,6 +58,26 @@ Ports are set in `.env` (`BACKEND_PORT`, `FUNDI_PRO_PORT`, `JENGA_PRO_PORT`) and
 `BIND_ADDRESS` (default `127.0.0.1`, this machine only). Postgres and Redis are not
 published at all; they're only reachable on the internal `data` network.
 
+### Test accounts
+
+Seed one ready-to-use account per portal (email already verified):
+
+```bash
+docker compose exec backend python manage.py seed_test_users
+```
+
+| Portal | URL | Username | Password | Role (`account_type`) |
+|---|---|---|---|---|
+| Jenga Pro | http://localhost:4300 | `jenga-pro` | `JengaPro2026!` | Contractor / supervisor (`02`) |
+| Fundi Pro | http://localhost:4200 | `fundi-pro` | `FundiPro2026!` | Fundi / worker (`01`) |
+
+You can also log in with the email (`jenga-pro@example.com`, `fundi-pro@example.com`).
+Each portal only accepts its own role, so use the matching account. Re-running the command
+resets the passwords. Run it again after `docker compose down -v`, which wipes the database.
+
+> These credentials are public. The command refuses to run in HTTPS production mode
+> (`docker-compose.prod.yml`) unless you pass `--force`. Never seed them on a real deployment.
+
 ### Development mode (live reload)
 
 ```bash
