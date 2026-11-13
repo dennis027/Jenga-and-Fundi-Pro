@@ -1,7 +1,7 @@
 # Render Blueprint: the whole platform as Docker containers.
 #   Render dashboard -> New -> Blueprint -> pick this repo -> Apply.
 #
-#   fundi-jenga-api    Django API (backend/Dockerfile) + persistent disk for uploads
+#   fundi-jenga-api    Django API (backend/Dockerfile)
 #   fundi-jenga-redis  Render Key Value (Redis): cache, sessions, OTP codes, M-Pesa token
 #   fundi-pro-portal   Fundi Pro worker portal (frontend/fundi-pro/Dockerfile, Angular SSR)
 #   jenga-pro-portal   Jenga Pro contractor portal (frontend/jenga-pro/Dockerfile)
@@ -19,8 +19,11 @@ services:
     name: fundi-jenga-api
     runtime: docker
     region: virginia
-    # Paid instance: no sleeping, and persistent disks need a paid plan.
-    plan: 0.5c-512mb
+    # Free instance: sleeps after ~15 min idle and has NO persistent disk, so
+    # uploaded files are lost on restart/redeploy. For persistent uploads switch
+    # to plan: 0.5c-512mb and add:
+    #   disk: {name: media, mountPath: /data/media, sizeGB: 1}
+    plan: free
     dockerfilePath: ./backend/Dockerfile
     dockerContext: ./backend
     healthCheckPath: /healthz/
@@ -29,10 +32,6 @@ services:
       paths:
         - backend/**
         - render.yaml
-    disk:
-      name: media
-      mountPath: /data/media
-      sizeGB: 1
     envVars:
       # --- secrets: Render prompts for these once, when the Blueprint is created
       - key: DATABASE_URL          # Neon connection string (pooled endpoint)

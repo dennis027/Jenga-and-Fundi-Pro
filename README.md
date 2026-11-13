@@ -98,7 +98,7 @@ container, built from the same Dockerfiles as the local stack:
 
 | Render service | Type | Plan | Public URL |
 |---|---|---|---|
-| `fundi-jenga-api` | Docker web service + 1 GB disk (`/data/media`) | `0.5c-512mb` (paid, never sleeps) | `https://fundi-jenga-api.onrender.com` |
+| `fundi-jenga-api` | Docker web service | free | `https://fundi-jenga-api.onrender.com` |
 | `fundi-jenga-redis` | Key Value (Redis) | free, 25 MB, private network only | (internal) |
 | `fundi-pro-portal` | Docker web service (Angular SSR) | free | `https://fundi-pro-portal.onrender.com` |
 | `jenga-pro-portal` | Docker web service (Angular SSR) | free | `https://jenga-pro-portal.onrender.com` |
@@ -131,7 +131,11 @@ the `onrender.com` host in `ALLOWED_HOSTS`, `PORT`, HTTPS redirect, secure cooki
 - If Render adds a suffix to any service name (name already taken), update `API_URL`,
   `CORS_ALLOWED_ORIGINS`, `CSRF_TRUSTED_ORIGINS` and `MPESA_CALLBACK_URL` in `render.yaml`.
 
-Free web services sleep after ~15 minutes idle; the first request then takes up to a minute.
+Everything runs on Render's **free** tier. Free web services sleep after ~15 minutes idle;
+the first request then takes up to a minute. Free services also have **no persistent disk**,
+so uploaded files (profile photos, ID images, payment screenshots) are lost whenever the API
+restarts, redeploys or wakes up. Database data on Neon is unaffected. For persistent uploads,
+change the API to `plan: 0.5c-512mb` and add the `disk` block shown in `render.yaml`.
 The free Key Value instance has no persistence, which is fine here: it only holds cache,
 sessions (backed by Postgres) and short-lived OTP codes. A restart just forces new OTPs.
 
