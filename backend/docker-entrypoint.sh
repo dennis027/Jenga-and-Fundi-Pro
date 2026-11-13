@@ -14,6 +14,9 @@ fi
 if [ "${RUN_MIGRATIONS:-1}" = "1" ]; then
   echo "Applying database migrations..."
   python manage.py migrate --noinput
+  if [ "${USE_DB_CACHE:-False}" = "True" ] && [ -z "${REDIS_URL:-}" ]; then
+    python manage.py createcachetable
+  fi
 fi
 
 exec "$@"

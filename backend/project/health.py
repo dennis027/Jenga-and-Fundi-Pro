@@ -25,6 +25,13 @@ def healthz(request):
         healthy = healthy and checks["redis"] == "ok"
     else:
         checks["redis"] = "not configured"
+        if "DatabaseCache" in settings.CACHES["default"]["BACKEND"]:
+            try:
+                cache.set("healthz", "ok", 10)
+                checks["cache"] = "database" if cache.get("healthz") == "ok" else "error"
+            except Exception as exc:
+                checks["cache"] = f"error: {exc.__class__.__name__}"
+            healthy = healthy and checks["cache"] == "database"
 
     return JsonResponse(
         {"status": "ok" if healthy else "error", "checks": checks},

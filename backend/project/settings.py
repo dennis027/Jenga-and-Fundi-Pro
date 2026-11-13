@@ -280,6 +280,17 @@ if REDIS_URL:
     }
     # Write-through: sessions are read from Redis, Postgres stays the source of truth.
     SESSION_ENGINE = "django.contrib.sessions.backends.cached_db"
+elif config("USE_DB_CACHE", default=False, cast=bool):
+    # No Redis available: share the cache (OTP codes, M-Pesa token) between
+    # processes through Postgres instead of per-process memory.
+    CACHES = {
+        "default": {
+            "BACKEND": "django.core.cache.backends.db.DatabaseCache",
+            "LOCATION": "django_cache",
+            "KEY_PREFIX": "fjp",
+            "TIMEOUT": 300,
+        }
+    }
 
 
 # Phone OTP (app/otp.py). Codes live only in the cache (Redis), hashed.
