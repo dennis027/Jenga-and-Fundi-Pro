@@ -118,3 +118,6 @@ from .gigs import (  # noqa: F401
     VerifyGigView,
     WorkerSearchAPIView,
 )
+from .certificate import CertificateJSONView, CertificateLinkView, certificate_page  # noqa: F401
+from .ratings import DisputeListCreateView, RateGigView, ResolveDisputeView  # noqa: F401
+from .ussd import ussd_callback  # noqa: F401

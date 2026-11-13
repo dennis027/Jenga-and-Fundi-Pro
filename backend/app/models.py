@@ -1,3 +1,4 @@
+from django.core.validators import MaxValueValidator, MinValueValidator
 
 from django.contrib.auth.models import AbstractUser
 from django.db import models
@@ -295,3 +296,37 @@ class UserPaymentSession(models.Model):
     
     def __str__(self):
         return f"{self.user.username} - {self.checkout_request_id}"
+
+
+class GigRating(models.Model):
+    """A contractor's rating of a completed gig at one of their sites."""
+    history = models.OneToOneField(GigHistory, on_delete=models.CASCADE, related_name="rating")
+    rated_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="ratings_given")
+    stars = models.PositiveSmallIntegerField(validators=[MinValueValidator(1), MaxValueValidator(5)])
+    comment = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.history_id}: {self.stars}*"
+
+
+class GigDispute(models.Model):
+    """A worker or contractor contests a gig, a completed gig or its rating; staff resolve it."""
+    STATUS = [("open", "Open"), ("resolved", "Resolved"), ("rejected", "Rejected")]
+
+    gig = models.ForeignKey(Gig, on_delete=models.SET_NULL, null=True, blank=True, related_name="disputes")
+    history = models.ForeignKey(GigHistory, on_delete=models.SET_NULL, null=True, blank=True, related_name="disputes")
+    raised_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="disputes_raised")
+    reason = models.TextField()
+    status = models.CharField(max_length=10, choices=STATUS, default="open")
+    resolution = models.TextField(blank=True)
+    resolved_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
+                                    related_name="disputes_resolved")
+    created_at = models.DateTimeField(auto_now_add=True)
+    resolved_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"Dispute {self.id} ({self.status})"

@@ -36,6 +36,11 @@ export class GigServices {
     return this.http.post<any>(this.apiUrl + `gigs/${gigId}/complete/`, {}); 
   }
 
+  /** Shareable link to the signed-in fundi's verified work certificate. */
+  getCertificateLink(): Observable<{ url: string; json_url: string; expires_at: string }> {
+    return this.http.get<{ url: string; json_url: string; expires_at: string }>(this.apiUrl + 'certificate/link/');
+  }
+
   creditScoreHistory(): Observable<any> {
     return this.http.get<any>(this.apiUrl + 'credit-history/'); 
   }

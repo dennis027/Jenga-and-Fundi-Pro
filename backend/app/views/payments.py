@@ -261,7 +261,7 @@ class STKNewPushView(APIView):
             "PartyB": BUSINESS_SHORTCODE,
             "PhoneNumber": phone,
             "CallBackURL": mpesa_callback_url(),
-            "AccountReference": "Test",
+            "AccountReference": settings.MPESA_ACCOUNT_REFERENCE,
             "TransactionDesc": "Payment"
         }
 

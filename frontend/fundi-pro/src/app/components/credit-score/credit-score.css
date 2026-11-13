@@ -786,3 +786,21 @@
     transform: none !important;
   }
 }
+
+/* Verified work certificate */
+.certificate-card {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px;
+  margin: 0 auto 20px; max-width: 1000px; padding: 18px 20px;
+  background: #fff; border: 1px solid #e3e7ec; border-radius: 14px;
+}
+.certificate-text { flex: 1 1 280px; }
+.certificate-text h2 { margin: 0 0 4px; font-size: 1.05rem; }
+.certificate-text p { margin: 0; color: #5b6876; font-size: 0.9rem; }
+.certificate-btn {
+  display: inline-flex; align-items: center; gap: 8px; padding: 10px 16px;
+  border: 0; border-radius: 10px; background: #c2410c; color: #fff; font-weight: 600; cursor: pointer;
+}
+.certificate-btn[disabled] { opacity: 0.7; cursor: wait; }
+.certificate-btn .material-icons { font-size: 18px; }
+.certificate-msg { flex-basis: 100%; margin: 0; font-size: 0.9rem; color: #1d7f46; }
+.certificate-link { flex-basis: 100%; font-size: 0.85rem; word-break: break-all; color: #2563eb; }

@@ -353,6 +353,13 @@ OTP_RETURN_CODE_IN_RESPONSE = config("OTP_RETURN_CODE_IN_RESPONSE", default=Fals
 REQUIRE_PHONE_OTP = config("REQUIRE_PHONE_OTP", default=False, cast=bool)
 OTP_PHONE_TOKEN_MAX_AGE = config("OTP_PHONE_TOKEN_MAX_AGE", default=900, cast=int)
 
+# Shareable work certificate links stay valid this long.
+CERTIFICATE_MAX_AGE_DAYS = config("CERTIFICATE_MAX_AGE_DAYS", default=90, cast=int)
+# Africa's Talking USSD callback (?token=...). Endpoint disabled while empty.
+USSD_CALLBACK_TOKEN = config("USSD_CALLBACK_TOKEN", default="")
+# Shown on the customer's M-Pesa prompt / statement (max 12 chars).
+MPESA_ACCOUNT_REFERENCE = config("MPESA_ACCOUNT_REFERENCE", default="FundiJenga")[:12]
+
 
 # HTTPS / reverse proxy. Enable when running behind TLS (docker-compose.prod.yml).
 USE_X_FORWARDED_FOR = config("USE_X_FORWARDED_FOR", default=False, cast=bool)

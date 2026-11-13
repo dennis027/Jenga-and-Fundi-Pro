@@ -151,6 +151,19 @@ urlpatterns = [
     path('api/fundi/analytics/comparative/', FundiComparativeAnalyticsView.as_view(), name='fundi-analytics-comparative'),
     path('api/fundi/analytics/summary/', FundiSummaryDashboardView.as_view(), name='fundi-analytics-summary'),
 
+
+    # verified work certificate (shareable)
+    path('api/certificate/link/', views.CertificateLinkView.as_view(), name='certificate-link'),
+    path('api/certificate/<str:token>/', views.CertificateJSONView.as_view(), name='certificate-json'),
+    path('certificate/<str:token>/', views.certificate_page, name='certificate-page'),
+
+    # ratings and disputes
+    path('api/gig-history/<int:history_id>/rate/', views.RateGigView.as_view(), name='rate-gig'),
+    path('api/disputes/', views.DisputeListCreateView.as_view(), name='disputes'),
+    path('api/disputes/<int:pk>/resolve/', views.ResolveDisputeView.as_view(), name='resolve-dispute'),
+
+    # USSD (Africa's Talking)
+    path('ussd/', views.ussd_callback, name='ussd'),
 ]
 
 if settings.SERVE_MEDIA:

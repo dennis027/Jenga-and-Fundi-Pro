@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>Work Certificate · {{ c.name }}</title>
+  <style>
+    :root { --bg:#f4f6f8; --card:#fff; --ink:#18212b; --muted:#5b6876; --line:#e3e7ec; --ok:#1d7f46; --accent:#c2410c; }
+    @media (prefers-color-scheme: dark) { :root { --bg:#10151b; --card:#19212a; --ink:#e7edf3; --muted:#9aa7b4; --line:#2a3440; --ok:#4ccf86; --accent:#fb923c; } }
+    * { box-sizing:border-box } body { margin:0; background:var(--bg); color:var(--ink); font:16px/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif; }
+    main { max-width:760px; margin:0 auto; padding:24px 16px 48px; }
+    .card { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:24px; }
+    .top { display:flex; gap:20px; justify-content:space-between; flex-wrap:wrap; align-items:flex-start; }
+    .eyebrow { color:var(--accent); font-weight:600; letter-spacing:.06em; text-transform:uppercase; font-size:.8rem; margin:0 }
+    h1 { margin:.2rem 0 .4rem; font-size:1.8rem; }
+    .badge { display:inline-flex; gap:6px; align-items:center; padding:3px 10px; border-radius:99px; font-size:.85rem; border:1px solid var(--line); color:var(--muted) }
+    .badge.ok { color:var(--ok); border-color:currentColor; }
+    .qr { width:132px; height:132px; flex:none; background:#fff; padding:6px; border-radius:8px } .qr svg { width:100%; height:100% }
+    .stats { display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); gap:12px; margin:22px 0; }
+    .stat { border:1px solid var(--line); border-radius:10px; padding:12px; } .stat b { display:block; font-size:1.6rem; } .stat span { color:var(--muted); font-size:.85rem }
+    h2 { font-size:1rem; margin:20px 0 8px; } ul { margin:0; padding-left:18px; } .muted { color:var(--muted); font-size:.85rem }
+    footer { margin-top:20px; } a { color:inherit }
+  </style>
+</head>
+<body>
+<main>
+  <div class="card">
+    <div class="top">
+      <div>
+        <p class="eyebrow">Verified work certificate</p>
+        <h1>{{ c.name }}</h1>
+        {% if c.identity_verified %}<span class="badge ok">&#10003; Identity verified</span>{% else %}<span class="badge">Identity not verified</span>{% endif %}
+        <span class="badge">Member since {{ c.member_since|date:"M Y" }}</span>
+      </div>
+      <div class="qr" aria-label="QR code linking to this certificate">{{ qr_svg }}</div>
+    </div>
+
+    <div class="stats">
+      <div class="stat"><b>{{ c.credit_score }}<small>/100</small></b><span>Credit score</span></div>
+      <div class="stat"><b>{{ c.verified_gigs }}</b><span>Contractor-verified gigs</span></div>
+      <div class="stat"><b>{{ c.days_worked }}</b><span>Days of verified work</span></div>
+      <div class="stat"><b>{% if c.average_rating %}{{ c.average_rating }}&#9733;{% else %}&ndash;{% endif %}</b><span>{{ c.ratings_count }} contractor rating{{ c.ratings_count|pluralize }}</span></div>
+    </div>
+
+    <h2>Trades</h2>
+    {% if c.trades %}<ul>{% for t in c.trades %}<li>{{ t.name }} &middot; {{ t.gigs }} gig{{ t.gigs|pluralize }}</li>{% endfor %}</ul>{% else %}<p class="muted">No verified gigs yet.</p>{% endif %}
+
+    <h2>Experience</h2>
+    <p>{{ c.sites }} site{{ c.sites|pluralize }}{% if c.counties %} in {{ c.counties|join:", " }}{% endif %}{% if c.first_verified_work %}, verified work since {{ c.first_verified_work|date:"j M Y" }}{% endif %}.</p>
+
+    <footer class="muted">
+      Only work confirmed by the contractor who ran the site is counted. Checked {{ checked_at|date:"j M Y, H:i" }} UTC.
+      This link expires; ask the worker for a new one if needed. <a href="{{ json_url }}">Machine-readable version</a>.
+    </footer>
+  </div>
+</main>
+</body>
+</html>

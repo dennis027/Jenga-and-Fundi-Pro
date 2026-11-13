@@ -1,4 +1,5 @@
 """Identity verification requests (national ID + selfie) and staff review."""
+from .. import identity
 from django.shortcuts import redirect,render
 import requests
 from rest_framework.views import APIView
@@ -110,25 +111,13 @@ class VerificationActionView(APIView):
         reason = request.data.get("reason", "")
         user = verification.user
 
-        # is_verified is the *email* flag used by login; identity status lives on
-        # VerificationRequest / user.current_verification (exposed as id_verified).
+        # Same rules as the Django admin actions (app/identity.py).
         if action == "approve":
-            first_approval = verification.status != "approved"
-            verification.status = "approved"
-            user.current_verification = verification
-            user.save(update_fields=["current_verification"])
-            if first_approval:
-                apply_score_change(user, "approve_verification")
+            identity.approve(verification)
         elif action == "reject":
-            verification.status = "rejected"
-            verification.rejection_reason = reason
-            if user.current_verification_id == verification.id:
-                user.current_verification = None
-                user.save(update_fields=["current_verification"])
+            identity.reject(verification, reason)
         else:
             return Response({"error": "Invalid action"}, status=status.HTTP_400_BAD_REQUEST)
-
-        verification.save()
         return Response(VerificationRequestSerializer(verification).data)
 
 

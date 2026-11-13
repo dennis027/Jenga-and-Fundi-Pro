@@ -1,5 +1,23 @@
 <br><br>
 <div class="credit-score-page">
+
+  <!-- Verified work certificate -->
+  <section class="certificate-card" aria-labelledby="cert-title">
+    <div class="certificate-text">
+      <h2 id="cert-title">Verified work certificate</h2>
+      <p>A link showing your contractor-verified gigs, score and ratings. Share it with a lender or a new employer.</p>
+    </div>
+    <button class="certificate-btn" type="button" (click)="shareCertificate()" [disabled]="certificateBusy()">
+      <i class="material-icons">share</i>
+      {{ certificateBusy() ? 'Creating link...' : 'Share my certificate' }}
+    </button>
+    @if (certificateMessage()) {
+      <p class="certificate-msg" role="status">{{ certificateMessage() }}</p>
+    }
+    @if (certificateUrl()) {
+      <a class="certificate-link" [href]="certificateUrl()" target="_blank" rel="noopener">{{ certificateUrl() }}</a>
+    }
+  </section>
   
   <!-- Loading State -->
   @if (isLoading()) {

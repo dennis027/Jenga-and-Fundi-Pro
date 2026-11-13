@@ -30,6 +30,11 @@ export class CreditScore implements OnInit, OnDestroy {
   // Make Math available in template
   Math = Math;
 
+  // Verified work certificate
+  certificateUrl = signal<string | null>(null);
+  certificateBusy = signal(false);
+  certificateMessage = signal<string | null>(null);
+
   ngOnInit() {
     this.appBar.setTitle('Gig Completion Rate');
     this.appBar.setBack(true);
@@ -54,6 +59,32 @@ export class CreditScore implements OnInit, OnDestroy {
     const w = Math.min(window.innerWidth - 80, 800);
     this.chartWidth.set(w);
   };
+
+  shareCertificate() {
+    this.certificateBusy.set(true);
+    this.certificateMessage.set(null);
+    this.gigServices.getCertificateLink().subscribe({
+      next: async (res) => {
+        this.certificateUrl.set(res.url);
+        this.certificateBusy.set(false);
+        const nav = navigator as Navigator & { share?: (d: ShareData) => Promise<void> };
+        try {
+          if (nav.share) {
+            await nav.share({ title: 'My verified work certificate', url: res.url });
+            return;
+          }
+          await navigator.clipboard.writeText(res.url);
+          this.certificateMessage.set('Link copied. Share it with a lender or employer.');
+        } catch {
+          this.certificateMessage.set('Copy the link below to share it.');
+        }
+      },
+      error: () => {
+        this.certificateBusy.set(false);
+        this.certificateMessage.set('Could not create the link. Please try again.');
+      },
+    });
+  }
 
   getCreditScore() {
     this.isLoading.set(true);
