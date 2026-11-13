@@ -1,0 +1,35 @@
+
+
+<!-- APP LAYOUT -->
+<div class="app-layout">
+
+  <!-- SIDEBAR / DRAWER -->
+  <aside class="sidebar" [class.open]="sidebarOpen">
+    <div class="sidebar-header">Fundi Pro</div>
+
+  <nav class="nav-menu">
+    <a 
+      *ngFor="let link of links; let i = index" 
+      [routerLink]="link.route"
+      routerLinkActive="active"
+      [routerLinkActiveOptions]="{ exact: i === 0 }"
+      (click)="onNavLinkClick()">  
+      <i [class]="link.icon"></i>
+      <span>{{ link.name }}</span> 
+    </a>
+  </nav>
+
+    <button class="logout-btn" (click)="logOut()">
+      <i class="fas fa-sign-out-alt"></i>
+      Logout
+    </button>
+  </aside>
+
+  <!-- MAIN CONTENT -->
+  <main class="content">
+    <app-mobile-app-bar></app-mobile-app-bar>
+    <router-outlet></router-outlet>
+  </main>
+
+</div>
+ 
