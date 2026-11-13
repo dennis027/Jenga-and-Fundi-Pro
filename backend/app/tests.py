@@ -104,10 +104,7 @@ class HealthAndMediaTests(TestCase):
             os.makedirs(os.path.join(root, "MEDIA", "profiles"))
             with open(os.path.join(root, "MEDIA", "profiles", "a.txt"), "w") as fh:
                 fh.write("img")
-            # urls.py reads MEDIA_ROOT at import time; patch the pattern's kwargs.
-            from app import urls
-            pattern = next(p for p in urls.urlpatterns if "MEDIA" in str(p.pattern))
-            with mock.patch.dict(pattern.default_args, {"document_root": os.path.join(root, "MEDIA")}):
+            with self.settings(MEDIA_ROOT=root):
                 r = self.client.get("/MEDIA/profiles/a.txt")
                 self.assertEqual(r.status_code, 200)
                 self.assertEqual(b"".join(r.streaming_content), b"img")

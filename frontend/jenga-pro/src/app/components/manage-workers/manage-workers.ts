@@ -34,7 +34,8 @@ interface WorkerData {
   county: string;
   constituency: string;
   ward: string;
-  is_verified: boolean;
+  is_verified: boolean;   // email confirmed
+  id_verified?: boolean;  // identity documents approved by staff
   credit_score: number;
   gigs: Gig[];
   logged_gigs: Gig[];

@@ -249,7 +249,47 @@ DEFAULT_FROM_EMAIL = config("DEFAULT_FROM_EMAIL")
 
 
 STATIC_ROOT = os.path.join(BASE_DIR, "staticfiles")
-STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
+STORAGES = {
+    "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+    "staticfiles": {"BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage"},
+}
+
+# Optional S3-compatible object storage for uploads (Cloudflare R2, AWS S3,
+# Backblaze B2...). Needed on hosts without a persistent disk (Render free).
+# The bucket stays private; every file URL is a signed link (AWS_QUERYSTRING_EXPIRE s).
+if config("AWS_STORAGE_BUCKET_NAME", default=""):
+    STORAGES["default"] = {
+        "BACKEND": "storages.backends.s3.S3Storage",
+        "OPTIONS": {
+            "bucket_name": config("AWS_STORAGE_BUCKET_NAME"),
+            "endpoint_url": config("AWS_S3_ENDPOINT_URL", default=None),  # e.g. https://<account>.r2.cloudflarestorage.com
+            "region_name": config("AWS_S3_REGION_NAME", default="auto"),
+            "access_key": config("AWS_ACCESS_KEY_ID", default=None),
+            "secret_key": config("AWS_SECRET_ACCESS_KEY", default=None),
+            "querystring_auth": True,
+            "querystring_expire": config("AWS_QUERYSTRING_EXPIRE", default=3600, cast=int),
+            "default_acl": None,
+            "file_overwrite": False,
+            "signature_version": "s3v4",
+        },
+    }
+
+
+# Error monitoring (optional): set SENTRY_DSN to report unhandled errors to Sentry.
+SENTRY_DSN = config("SENTRY_DSN", default="")
+if SENTRY_DSN:
+    import sentry_sdk
+
+    sentry_sdk.init(
+        dsn=SENTRY_DSN,
+        environment=config("SENTRY_ENVIRONMENT", default="production"),
+        traces_sample_rate=config("SENTRY_TRACES_SAMPLE_RATE", default=0.0, cast=float),
+        send_default_pii=False,
+    )
+
+
+# Send emails in a background thread so requests do not wait on SMTP.
+EMAIL_ASYNC = config("EMAIL_ASYNC", default=True, cast=bool)
 
 
 FRONTEND_APP_URL = config("FRONTEND_APP_URL", default="http://127.0.0.1:8000")
@@ -266,6 +306,8 @@ CSRF_TRUSTED_ORIGINS = config(
 MEDIA_URL = "/"
 MEDIA_ROOT = config("MEDIA_ROOT", default=str(BASE_DIR))
 SERVE_MEDIA = config("SERVE_MEDIA", default=DEBUG, cast=bool)
+# Lifetime of signed links to private uploads (ID documents).
+PRIVATE_MEDIA_URL_MAX_AGE = config("PRIVATE_MEDIA_URL_MAX_AGE", default=600, cast=int)
 
 
 # Redis: cache (M-Pesa OAuth token, etc.) and cache-backed sessions.
@@ -304,6 +346,10 @@ OTP_MAX_VERIFY_ATTEMPTS = config("OTP_MAX_VERIFY_ATTEMPTS", default=5, cast=int)
 # TEMPORARY compatibility for clients that still compare the code locally
 # (e.g. an older mobile build). Insecure - keep False once clients use /verify-otp/.
 OTP_RETURN_CODE_IN_RESPONSE = config("OTP_RETURN_CODE_IN_RESPONSE", default=False, cast=bool)
+# Require a phone_token from /verify-otp/ when registering with, or changing to, a phone number.
+# Enable once every client (web portals, mobile app) has an OTP step.
+REQUIRE_PHONE_OTP = config("REQUIRE_PHONE_OTP", default=False, cast=bool)
+OTP_PHONE_TOKEN_MAX_AGE = config("OTP_PHONE_TOKEN_MAX_AGE", default=900, cast=int)
 
 
 # HTTPS / reverse proxy. Enable when running behind TLS (docker-compose.prod.yml).

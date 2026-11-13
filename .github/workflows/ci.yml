@@ -1,0 +1,121 @@
+# Tests and builds on every push / pull request; deploys main to Render when green.
+#
+# Automatic Render deploys: add a repository secret RENDER_API_KEY
+# (Render: Account Settings -> API Keys). Without it the deploy job is skipped.
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: ci
+          POSTGRES_USER: ci
+          POSTGRES_PASSWORD: ci
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U ci" --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      DEBUG: "True"
+      SECRET_KEY: ci-only
+      DB_NAME: ci
+      DB_USER: ci
+      DB_PASSWORD: ci
+      DB_HOST: localhost
+      DB_PORT: "5432"
+      MPESA_CONSUMER_KEY: x
+      MPESA_CONSUMER_SECRET: x
+      MPESA_SHORTCODE: "174379"
+      MPESA_PASSKEY: x
+      MPESA_CALLBACK_URL: https://example.com/api/stk-new-callback/
+      EMAIL_BACKEND: django.core.mail.backends.locmem.EmailBackend
+      EMAIL_HOST: localhost
+      EMAIL_PORT: "25"
+      EMAIL_USE_TLS: "False"
+      EMAIL_HOST_USER: x
+      EMAIL_HOST_PASSWORD: x
+      DEFAULT_FROM_EMAIL: ci@example.com
+      AT_USERNAME: sandbox
+      AT_API_KEY: x
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+      - run: pip install -r requirements.txt
+      - name: No missing migrations
+        run: python manage.py makemigrations --check --dry-run
+      - name: Django checks
+        run: python manage.py check
+      - name: Tests
+        run: python manage.py test app -v 2
+
+  frontend:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        app: [fundi-pro, jenga-pro]
+    defaults:
+      run:
+        working-directory: frontend/${{ matrix.app }}
+    env:
+      NG_CLI_ANALYTICS: "false"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/${{ matrix.app }}/package-lock.json
+      - run: npm ci --no-audit --no-fund
+      - run: npx ng build --configuration production
+
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build backend image
+        run: docker build -t fundi-jenga-pro/backend:ci backend
+
+  deploy:
+    needs: [backend, frontend, docker]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    env:
+      RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+      # fundi-jenga-api, fundi-pro-portal, jenga-pro-portal
+      RENDER_SERVICES: srv-dbrotv4ipgvc739ookt0 srv-dbrou015efls73djh8o0 srv-dbrou0kipgvc739ooq6g
+    steps:
+      - name: Trigger Render deploys
+        if: env.RENDER_API_KEY != ''
+        run: |
+          for id in $RENDER_SERVICES; do
+            code=$(curl -s -o resp.json -w '%{http_code}' -X POST \
+              -H "Authorization: Bearer $RENDER_API_KEY" -H "Content-Type: application/json" \
+              -d "{\"clearCache\":\"do_not_clear\",\"commitId\":\"$GITHUB_SHA\"}" \
+              "https://api.render.com/v1/services/$id/deploys")
+            echo "$id -> HTTP $code $(head -c 200 resp.json)"
+            [ "$code" = "201" ] || [ "$code" = "200" ] || exit 1
+          done
+      - name: Skipped (no RENDER_API_KEY secret)
+        if: env.RENDER_API_KEY == ''
+        run: echo "Add a RENDER_API_KEY repository secret to deploy automatically."

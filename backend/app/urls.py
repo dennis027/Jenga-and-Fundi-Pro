@@ -1,7 +1,7 @@
 import os
 
 from django.urls import path, re_path
-from django.views.static import serve
+from .media import media_view
 from rest_framework_simplejwt.views import (
     TokenRefreshView,
 )
@@ -158,8 +158,6 @@ if settings.SERVE_MEDIA:
     # "MEDIA/"). The previous `static(settings.MEDIA_URL, ...)` with MEDIA_URL
     # "/" was a catch-all that exposed every file in the working directory
     # (source code, settings, .env) whenever DEBUG was on.
-    urlpatterns += [
-        re_path(r'^MEDIA/(?P<path>.*)$', serve,
-                {'document_root': os.path.join(settings.MEDIA_ROOT, 'MEDIA')}),
-    ]
+    # ID documents under MEDIA/verifications/ need staff or a signed URL (app/media.py).
+    urlpatterns += [re_path(r'^MEDIA/(?P<path>.*)$', media_view)]
   

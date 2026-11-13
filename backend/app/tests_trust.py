@@ -119,14 +119,15 @@ class IdentityVerificationTests(TrustBase):
         for u in (self.fundi, self.contractor):
             self.assertEqual(self.api(u).post(self.url(), {"action": "approve"}, format="json").status_code, 403)
         self.fundi.refresh_from_db()
-        self.assertFalse(self.fundi.is_verified)
+        self.assertIsNone(self.fundi.current_verification_id)
 
     def test_staff_approval_awards_points_once(self):
         c = self.api(self.staff)
         c.post(self.url(), {"action": "approve"}, format="json")
         c.post(self.url(), {"action": "approve"}, format="json")
         self.fundi.refresh_from_db()
-        self.assertTrue(self.fundi.is_verified)
+        self.assertEqual(self.fundi.current_verification_id, self.vr.id)  # identity verified
+        self.assertFalse(self.fundi.is_verified)  # email flag is not touched by ID review
         self.assertEqual(self.fundi.credit_score, 20)
 
 

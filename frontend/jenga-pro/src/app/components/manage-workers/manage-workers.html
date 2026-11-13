@@ -95,12 +95,12 @@
           <h3>{{ workerData.full_name }}</h3>
           <p class="username">@{{ workerData.username }}</p>
           <div class="badges">
-            <span class="worker-badge" [class.verified]="workerData.is_verified">
-              <svg *ngIf="workerData.is_verified" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <span class="worker-badge" [class.verified]="workerData.id_verified">
+              <svg *ngIf="workerData.id_verified" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
                 <polyline points="22 4 12 14.01 9 11.01"></polyline>
               </svg>
-              {{ workerData.is_verified ? 'Verified' : 'Unverified' }}
+              {{ workerData.id_verified ? 'Verified' : 'Unverified' }}
             </span>
             <span class="credit-badge">
               <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">

@@ -73,3 +73,22 @@ def verify(phone, code):
         cache.delete_many([_key("code", phone), _key("attempts", phone)])
         return "ok"
     return "invalid"
+
+
+# --- proof that a phone number passed OTP, for registration / phone changes -----
+from django.core import signing  # noqa: E402
+
+_PHONE_SALT = "app.otp.phone-token"
+
+
+def issue_phone_token(phone):
+    """Signed token returned by /verify-otp/; proves `phone` was verified recently."""
+    return signing.dumps(normalize_phone(phone), salt=_PHONE_SALT)
+
+
+def phone_token_valid(token, phone):
+    try:
+        return signing.loads(token or "", salt=_PHONE_SALT,
+                             max_age=settings.OTP_PHONE_TOKEN_MAX_AGE) == normalize_phone(phone)
+    except signing.BadSignature:
+        return False

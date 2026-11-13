@@ -200,7 +200,7 @@ export class Profile implements OnInit {
 
   getCurrentImageUrl(): string {
     if (this.selectedImagePreview()) return this.selectedImagePreview()!;
-    if (this.profilePicUrl()) return `${this.imgUrl}${this.profilePicUrl()}`;
+    if (this.profilePicUrl()) { const p = this.profilePicUrl()!; return /^https?:\/\//.test(p) ? p : `${this.imgUrl}${p}`; }
     return '';
   }
 

@@ -191,7 +191,8 @@ export class JengaDash implements OnInit, OnDestroy {
         
         // Handle profile image
         if (results.userProfile.profile_pic) {
-          this.imgFile.set(`${environment.apiUrl}${results.userProfile.profile_pic}`);
+          const pic = results.userProfile.profile_pic;
+          this.imgFile.set(/^https?:\/\//.test(pic) ? pic : `${environment.apiUrl}${pic}`);
         }
 
         // Set dashboard stats

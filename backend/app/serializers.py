@@ -18,6 +18,10 @@ class RegisterSerializer(serializers.ModelSerializer):
         ]
         extra_kwargs = {'password': {'write_only': True}}
 
+    def validate_phone(self, value):
+        _require_phone_otp(self, value)
+        return value
+
     def validate_email(self, value):
         # Allow unverified users to pass; view handles EMAIL_NOT_VERIFIED
         return value
@@ -60,6 +64,24 @@ class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
 
 # app/serializers.py
 
+
+def _require_phone_otp(serializer, phone, current=None):
+    """With REQUIRE_PHONE_OTP, a new phone number needs a valid phone_token from /verify-otp/."""
+    from django.conf import settings
+    from . import otp
+    if not settings.REQUIRE_PHONE_OTP or not phone:
+        return
+    if current and otp.normalize_phone(current) == otp.normalize_phone(phone):
+        return
+    if not otp.phone_token_valid(serializer.initial_data.get("phone_token"), phone):
+        raise serializers.ValidationError("Verify this phone number with the SMS code first (phone_token missing or expired).")
+
+
+def _id_verified(user):
+    v = getattr(user, "current_verification", None)
+    return bool(v and v.status == "approved")
+
+
 class GigSerializer(serializers.ModelSerializer):
     class Meta:
         model = Gig
@@ -97,9 +119,14 @@ class GigSerializer(serializers.ModelSerializer):
 
 
 class UserProfileSerializer(serializers.ModelSerializer):
+    id_verified = serializers.SerializerMethodField(help_text="Identity documents approved by staff.")
+
+    def get_id_verified(self, obj):
+        return _id_verified(obj)
+
     class Meta:
         model = User
-        fields = ['username', 'email', 'phone', 'full_name', 'national_id',   'county', 'constituency', 'ward', 'profile_pic','is_verified','credit_score','current_verification']
+        fields = ['username', 'email', 'phone', 'full_name', 'national_id',   'county', 'constituency', 'ward', 'profile_pic','is_verified','credit_score','current_verification', 'id_verified']
         # Trust fields are only changed by the platform (scoring / ID verification).
         read_only_fields = ['username', 'is_verified', 'credit_score', 'current_verification']
 
@@ -107,6 +134,7 @@ class UserProfileSerializer(serializers.ModelSerializer):
         user = self.instance  # the currently authenticated user
         if User.objects.filter(phone__iexact=value).exclude(pk=user.pk).exists():
             raise serializers.ValidationError("Phone number is already in use.")
+        _require_phone_otp(self, value, current=user.phone if user else None)
         return value
         
 class JobTypeSerializer(serializers.ModelSerializer):
@@ -147,13 +175,18 @@ class UserDetailWithGigsSerializer(serializers.ModelSerializer):
     gigs = GigSerializer(many=True, read_only=True)  # worker gigs
     logged_gigs = GigSerializer(many=True, read_only=True)  # gigs logged by this user
 
+    id_verified = serializers.SerializerMethodField(help_text="Identity documents approved by staff.")
+
+    def get_id_verified(self, obj):
+        return _id_verified(obj)
+
     class Meta:
         model = User
         fields = [
             "id", "username", "full_name", "email", "phone",
             "county", "constituency", "ward",
             "is_verified", "credit_score",
-            "gigs", "logged_gigs"
+            "id_verified", "gigs", "logged_gigs"
         ]
 
     def get_gigs(self, obj):
@@ -173,10 +206,15 @@ class MpesaNewTransactionSerializer(serializers.ModelSerializer):
 
 
 class UserSerializer(serializers.ModelSerializer):
+    id_verified = serializers.SerializerMethodField(help_text="Identity documents approved by staff.")
+
+    def get_id_verified(self, obj):
+        return _id_verified(obj)
+
     class Meta:
         model = User
         fields = [
-            'id', 'username', 'full_name', 'email', 'phone', 'account_type', 'county', 'constituency', 'ward', 'national_id', 'profile_pic', 'is_verified',
+            'id', 'username', 'full_name', 'email', 'phone', 'account_type', 'county', 'constituency', 'ward', 'national_id', 'profile_pic', 'is_verified', 'id_verified',
         ]
 
 class VerificationRequestSerializer(serializers.ModelSerializer):
@@ -188,6 +226,15 @@ class VerificationRequestSerializer(serializers.ModelSerializer):
             "rejection_reason", "created_at", "updated_at"
         ]
         read_only_fields = ["user", "status", "created_at", "updated_at", "rejection_reason"]
+
+    def to_representation(self, instance):
+        # ID documents are private: hand out short-lived signed links only.
+        from .media import signed_media_url
+        data = super().to_representation(instance)
+        request = self.context.get("request")
+        for field in ("id_front", "id_back", "selfie"):
+            data[field] = signed_media_url(getattr(instance, field), request)
+        return data
 
 
 class GigsAvailableSerializer(serializers.ModelSerializer):

@@ -37,6 +37,7 @@ from .permissions import IsContractorOrStaff, owns_organization, visible_gigs
 from .scoring import apply_score_change
 from .serializers import GigSearchResultSerializer
 from django.core.mail import send_mail
+from .mail import send_mail_async
 from .models import PasswordResetCode
 from django.middleware.csrf import get_token
 from django.http import JsonResponse
@@ -177,7 +178,7 @@ class RegisterView(APIView):
         })
 
         try:
-            send_mail(subject, '', settings.DEFAULT_FROM_EMAIL, [user.email], html_message=html_content)
+            send_mail_async(subject, '', settings.DEFAULT_FROM_EMAIL, [user.email], html_message=html_content)
         except Exception as e:
             return Response({"error": f"Failed to send activation email: {str(e)}"},
                             status=status.HTTP_500_INTERNAL_SERVER_ERROR)
@@ -247,7 +248,7 @@ class ResendVerificationEmailView(APIView):
             'activation_link': activation_link
         })
 
-        send_mail(
+        send_mail_async(
             subject="Activate Your Account",
             message="",
             from_email=settings.DEFAULT_FROM_EMAIL,
@@ -735,7 +736,7 @@ class RequestPasswordResetView(APIView):
         """
 
         try:
-            send_mail(
+            send_mail_async(
                 subject=subject,
                 message=plain_message,
                 from_email=getattr(settings, 'DEFAULT_FROM_EMAIL', None),
@@ -931,7 +932,7 @@ class ConfirmResetPasswordView(APIView):
         """
 
         try:
-            send_mail(
+            send_mail_async(
                 subject=subject,
                 message=plain_message,
                 from_email=settings.DEFAULT_FROM_EMAIL,
@@ -1389,14 +1390,11 @@ class WorkerSearchAPIView(APIView):
 def extract_transaction_code(request):
     if request.method == 'POST' and request.FILES.get('image'):
         uploaded_image = request.FILES['image']
-        file_path = default_storage.save('temp/' + uploaded_image.name, uploaded_image)
-
-        image = Image.open(default_storage.path(file_path))
+        # Read straight from the upload: works with any storage backend and never
+        # writes the payment screenshot to disk.
+        image = Image.open(uploaded_image)
         text = pytesseract.image_to_string(image)
-        
-        # Clean up temp file
-        default_storage.delete(file_path)
-        
+
         # Clean and normalize text
         clean_text = text.strip().replace('\n', ' ').replace('\r', ' ')
         clean_text = ' '.join(clean_text.split())  # Remove extra whitespace
@@ -1829,7 +1827,9 @@ class VerifyOTPView(View):
 
         result = otp_store.verify(phone_number, code)
         if result == "ok":
-            return JsonResponse({"status": "success", "verified": True})
+            return JsonResponse({"status": "success", "verified": True,
+                                 "phone_token": otp_store.issue_phone_token(phone_number),
+                                 "phone_token_expires_in": settings.OTP_PHONE_TOKEN_MAX_AGE})
         if result == "locked":
             return JsonResponse({"status": "error", "verified": False,
                                  "message": "Too many attempts. Request a new code."}, status=429)
@@ -1868,18 +1868,21 @@ class VerificationActionView(APIView):
         reason = request.data.get("reason", "")
         user = verification.user
 
+        # is_verified is the *email* flag used by login; identity status lives on
+        # VerificationRequest / user.current_verification (exposed as id_verified).
         if action == "approve":
             first_approval = verification.status != "approved"
             verification.status = "approved"
-            user.is_verified = True
-            user.save(update_fields=["is_verified"])
+            user.current_verification = verification
+            user.save(update_fields=["current_verification"])
             if first_approval:
                 apply_score_change(user, "approve_verification")
         elif action == "reject":
             verification.status = "rejected"
             verification.rejection_reason = reason
-            user.is_verified = False
-            user.save(update_fields=["is_verified"])
+            if user.current_verification_id == verification.id:
+                user.current_verification = None
+                user.save(update_fields=["current_verification"])
         else:
             return Response({"error": "Invalid action"}, status=status.HTTP_400_BAD_REQUEST)
 
