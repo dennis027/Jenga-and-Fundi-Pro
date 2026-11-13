@@ -1,11 +1,13 @@
-from django.urls import path
+import os
+
+from django.urls import path, re_path
+from django.views.static import serve
 from rest_framework_simplejwt.views import (
     TokenRefreshView,
 )
 from .views import ContractorComparativeAnalyticsView, ContractorGigTrendsView, ContractorJobTypeAnalyticsView, ContractorLocationAnalyticsView, ContractorOrganizationPerformanceView, ContractorRevenueAnalyticsView, ContractorSummaryDashboardView, ContractorVerificationMetricsView, ContractorWorkerPerformanceView, ContractorWorkerRetentionView, CreditScoreHistoryView, FundiComparativeAnalyticsView, FundiCreditScoreAnalyticsView, FundiEarningsAnalyticsView, FundiJobTypeAnalyticsView, FundiLocationAnalyticsView, FundiOrganizationPerformanceView, FundiRecentWorkLogsView, FundiSummaryDashboardView, FundiVerificationMetricsView, FundiWorkConsistencyView, FundiWorkTrendsView, GigCompletionRateView, GigCountAnalysisView, GigRevenueAnalysisView, GigTrendsView, GigsAvailableListCreateView, LatestVerificationView, RegisterView, LoginView, LogoutView, CookieLoginView , ProfileUpdateView, LogGigView, TopEarningGigsView, UserOrganizationGigListView, VerificationActionView, VerificationRequestCreateView, VerificationRequestListView, VerifyGigView,GigListView,UserProfileView,JobTypeListCreateView,JobTypeDeleteView,PaymentUploadView,LoggedByUserGigListView,UserGigHistoryView,CheckEmailExists,CheckUsernameExists,CheckPhoneExists, STKNewPushView, STKNewCallbackView,OrganizationListCreateView,OrganizationDetailUpdateView, OrganizationSoftDeleteView,WorkerSearchAPIView,VerifyResetCodeView,ConfirmResetPasswordView,RequestPasswordResetView,MpesaMessagesAPIView,UserMpesaMessagesAPIView,GigSearchView,UserListAPIView,ActivateAccountAPIView,ResendVerificationEmailView,SendOTPView,CompleteGigAPIView,WeeklyWorkerReportView,WeeklyGigReportView,JobTypeDistributionReportView,Fundi30DayCalendarView,OrgPerformanceReportView,UserOrganizationListCreateView,FundiAllGigsView,FundiDashboardStatsView, VerificationImpactReportView,FundiCreditScoreHistoryView,FundiOrganizationsWorkedView, OrganizationGigsAPIView,activation_success_view ,activation_failed_view ,extract_transaction_code  ,ContractorDashboardStatsView,ContractorRecentGigsView,ContractorWeeklyChartView,ContractorTopSitesView,ContractorTopWorkersView,Contractor7DayCalendarView,ContractorOrganizationsView,ContractorGigsByOrganizationView,ContractorUnverifiedGigsView
 from . import views
 from django.conf import settings
-from django.conf.urls.static import static
 
 urlpatterns = [
     path('api/register/', RegisterView.as_view(), name='register'),
@@ -148,5 +150,15 @@ urlpatterns = [
     path('api/fundi/analytics/comparative/', FundiComparativeAnalyticsView.as_view(), name='fundi-analytics-comparative'),
     path('api/fundi/analytics/summary/', FundiSummaryDashboardView.as_view(), name='fundi-analytics-summary'),
 
-] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+]
+
+if settings.SERVE_MEDIA:
+    # Serve only uploaded files under /MEDIA/ (every upload_to path starts with
+    # "MEDIA/"). The previous `static(settings.MEDIA_URL, ...)` with MEDIA_URL
+    # "/" was a catch-all that exposed every file in the working directory
+    # (source code, settings, .env) whenever DEBUG was on.
+    urlpatterns += [
+        re_path(r'^MEDIA/(?P<path>.*)$', serve,
+                {'document_root': os.path.join(settings.MEDIA_ROOT, 'MEDIA')}),
+    ]
   

@@ -26,6 +26,7 @@ import re
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
 from django.conf import settings
+from django.core.cache import cache
 from django.db.models import Q
 import random  
 from django.core.mail import send_mail
@@ -1501,12 +1502,35 @@ def generate_password():
     password = base64.b64encode(data.encode()).decode()
     return password, timestamp
 
+MPESA_TOKEN_CACHE_KEY = "mpesa:access_token"
+
 def get_access_token():
+    """Return a Daraja OAuth token, cached in Redis until shortly before expiry.
+
+    Falls back to a direct request if the cache is unavailable.
+    """
+    try:
+        token = cache.get(MPESA_TOKEN_CACHE_KEY)
+    except Exception:
+        logger.warning("Cache unavailable; requesting M-Pesa token directly", exc_info=True)
+        token = None
+    if token:
+        return token
+
     response = requests.get(
-        "https://sandbox.safaricom.co.ke/oauth/v1/generate?grant_type=client_credentials",
-        auth=(CONSUMER_KEY, CONSUMER_SECRET)
+        f"{settings.MPESA_BASE_URL}/oauth/v1/generate?grant_type=client_credentials",
+        auth=(CONSUMER_KEY, CONSUMER_SECRET),
+        timeout=30,
     )
-    return response.json().get('access_token')
+    data = response.json()
+    token = data.get('access_token')
+    if token:
+        ttl = max(int(data.get('expires_in', 3599)) - 60, 60)
+        try:
+            cache.set(MPESA_TOKEN_CACHE_KEY, token, ttl)
+        except Exception:
+            logger.warning("Could not cache M-Pesa token", exc_info=True)
+    return token
 
 class STKNewPushView(APIView):
     permission_classes = [IsAuthenticated]  # Add authentication requirement
@@ -1538,7 +1562,7 @@ class STKNewPushView(APIView):
         }
 
         response = requests.post(
-            "https://sandbox.safaricom.co.ke/mpesa/stkpush/v1/processrequest",
+            f"{settings.MPESA_BASE_URL}/mpesa/stkpush/v1/processrequest",
             json=payload, headers=headers
         )
         

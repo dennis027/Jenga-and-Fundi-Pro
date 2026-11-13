@@ -11,17 +11,14 @@ https://docs.djangoproject.com/en/4.2/ref/settings/
 """
 
 from pathlib import Path
-from decouple import config 
+from decouple import config, Csv
 from datetime import timedelta
+from django.core.exceptions import ImproperlyConfigured
 import africastalking
 import environ
 
 import os
 import dj_database_url
-
-DEBUG = os.getenv("DEBUG", "False") == "True"
-SECRET_KEY = os.getenv("SECRET_KEY", "your-secret-key")
-ALLOWED_HOSTS = ["your-service-name.onrender.com", "localhost"]
 
 
 env = environ.Env()
@@ -32,16 +29,20 @@ environ.Env.read_env()
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 
-# Quick-start development settings - unsuitable for production
-# See https://docs.djangoproject.com/en/4.2/howto/deployment/checklist/
-
-# SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-REDACTED'
+# All environment-specific values come from environment variables (or a .env
+# file for local non-Docker runs). See ../.env.example for the full list.
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = config("DEBUG", default=False, cast=bool)
 
-ALLOWED_HOSTS = ['*']  
+# SECURITY WARNING: keep the secret key used in production secret!
+SECRET_KEY = config("SECRET_KEY", default="")
+if not SECRET_KEY:
+    if not DEBUG:
+        raise ImproperlyConfigured("SECRET_KEY must be set when DEBUG is False.")
+    SECRET_KEY = "django-insecure-local-development-only"
+
+ALLOWED_HOSTS = config("ALLOWED_HOSTS", default="localhost,127.0.0.1", cast=Csv())
 
 
 # Application definition
@@ -69,7 +70,6 @@ SIMPLE_JWT = {
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
-    'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -206,16 +206,15 @@ SIMPLE_JWT = {
     'TOKEN_OBTAIN_SERIALIZER': 'app.serializers.MyTokenObtainPairSerializer',  # 👈
 }
 
-CORS_ALLOWED_ORIGINS = [
-    "http://localhost:8000",       # Django itself (optional)
-    "http://localhost:4200",       # Angular or web frontend (optional)
-    "http://localhost:8080",       # Flutter Web dev server
-    "http://127.0.0.1:8080",       # Flutter Web (alternate)
-]
-
-CORS_ALLOW_ALL_ORIGINS = True  # Use with caution in production
-
-# CORS_ALLOW_CREDENTIALS = True
+# Browser origins allowed to call the API: fundi-pro (4200), jenga-pro (4300)
+# and the Flutter web dev server (8080) by default.
+CORS_ALLOWED_ORIGINS = config(
+    "CORS_ALLOWED_ORIGINS",
+    default="http://localhost:4200,http://localhost:4300,http://localhost:8080,http://127.0.0.1:8080",
+    cast=Csv(),
+)
+CORS_ALLOW_ALL_ORIGINS = config("CORS_ALLOW_ALL_ORIGINS", default=False, cast=bool)
+CORS_ALLOW_CREDENTIALS = True
 
 
 
@@ -225,7 +224,7 @@ MPESA_CONSUMER_KEY = config('MPESA_CONSUMER_KEY')
 MPESA_CONSUMER_SECRET = config('MPESA_CONSUMER_SECRET')
 MPESA_SHORTCODE = config('MPESA_SHORTCODE')
 MPESA_PASSKEY = config('MPESA_PASSKEY')
-MPESA_BASE_URL = "https://sandbox.safaricom.co.ke" 
+MPESA_BASE_URL = config("MPESA_BASE_URL", default="https://sandbox.safaricom.co.ke").rstrip("/")
 MPESA_CALLBACK_URL = config('MPESA_CALLBACK_URL')
 
 
@@ -243,15 +242,48 @@ STATIC_ROOT = os.path.join(BASE_DIR, "staticfiles")
 STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 
 
-CORS_ALLOW_ALL_ORIGINS = True  # or explicitly list your Flutter dev URL
-CORS_ALLOW_CREDENTIALS = True
+FRONTEND_APP_URL = config("FRONTEND_APP_URL", default="http://127.0.0.1:8000")
+
+CSRF_TRUSTED_ORIGINS = config(
+    "CSRF_TRUSTED_ORIGINS", default="http://localhost:4200,http://localhost:4300", cast=Csv()
+)
 
 
-FRONTEND_APP_URL='http://127.0.0.1:8000'
+# Uploaded files. ImageField upload_to paths already start with "MEDIA/", so
+# files live at <MEDIA_ROOT>/MEDIA/... and are served at /MEDIA/... (unchanged
+# URLs). MEDIA_ROOT defaults to the project dir (previous behaviour); Docker
+# sets it to a persistent volume.
+MEDIA_URL = "/"
+MEDIA_ROOT = config("MEDIA_ROOT", default=str(BASE_DIR))
+SERVE_MEDIA = config("SERVE_MEDIA", default=DEBUG, cast=bool)
 
-CSRF_TRUSTED_ORIGINS = [
-     "http://localhost:4200",   
-]
+
+# Redis: cache (M-Pesa OAuth token, etc.) and cache-backed sessions.
+# Without REDIS_URL Django's local-memory cache is used (local non-Docker dev).
+REDIS_URL = config("REDIS_URL", default="")
+if REDIS_URL:
+    CACHES = {
+        "default": {
+            "BACKEND": "django.core.cache.backends.redis.RedisCache",
+            "LOCATION": REDIS_URL,
+            "KEY_PREFIX": "fjp",
+            "TIMEOUT": 300,
+        }
+    }
+    # Write-through: sessions are read from Redis, Postgres stays the source of truth.
+    SESSION_ENGINE = "django.contrib.sessions.backends.cached_db"
+
+
+LOG_LEVEL = config("LOG_LEVEL", default="INFO")
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "handlers": {"console": {"class": "logging.StreamHandler"}},
+    "root": {"handlers": ["console"], "level": LOG_LEVEL},
+    "loggers": {
+        "django": {"handlers": ["console"], "level": LOG_LEVEL, "propagate": False},
+    },
+}
 
 
 
