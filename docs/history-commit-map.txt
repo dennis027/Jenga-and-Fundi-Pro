@@ -1,5 +1,5 @@
-# Commit hashes rewritten by the 2026-11-14 history purge/redaction (see GIT-HISTORY.md).
-# Anything not listed kept its original hash.
+# Commits from the three original GitHub repos whose hashes changed in this
+# monorepo (history purge/redaction, see GIT-HISTORY.md). Unlisted = unchanged.
 # old_hash new_hash subject
 fa5fc09dd4b1c44040f4d0b9ba483fc50c3b3ebb 427853a3e4c75254fb0bbc5dbc2bbf729b29a881  update the Gig API to show requirements by users
 508a3c488d8313ef6df67f0a6a5262720a4d2c33 c9755be1d2bdbc97ead3ab7e462e1040e49c94eb APIS for fundipro and jengapro dashboards
@@ -9,22 +9,23 @@ a3108385872bf020f36ef75d5526ea5a7cb19476 b97382f43f78cc522f2e844bc50cae2d8a6843e
 d3201bf230d1d5f2318a39ea1dda2c71bb612be4 7fdba983472ae9c5ae0a77f54c1e499d7b64184b Payment details API
 5abf86508a17068f6580c01f792e02c6c7d2bdb6 f081fe30ca48116af31bcc23361444fa70fc2ff6 README File for the backend
 ae9473eac5e0ab5b7266c543bd679c73402d4fbb 534b16f1d3f9facbb7e484974f87dc5e6f7ca060 Some apis belong to the contrctor
-adecb182dd8ae7849d9af72d3442a311710835e9 59875a8106b01e0c2d5ed9f46ca4246406eb4db7 WIP on main: 1ac35a0 updates oo my mpesa service
-ca4d43aab4f6db4cb216f0d24c1db85be4a47fea 734188d56e4d796b4cee9756f36415e9bb0391e1 WIP on main: 20b9a07 change location in profile to county constituency
-381ac82e032b4c03a4b28be6e805e38dee40d740 566d6f6e6f11867d764432e397ec8df4d206e8d1 WIP on main: 500a04c updated working mpesa API with STK Push and histo
-253ab7e8418f806786dd4799e4e873daaf4a23d4 8fcff804e5b5641847f1fa2a2988ffac3b226e77 WIP on main: 500a04c updated working mpesa API with STK Push and histo
-ea381611bd90b4bcbd23bdf3c7ff3106d652ae64 6dcd2c8c4b1831fa067bf1f87ba0365ae0701b2b WIP on main: 500a04c updated working mpesa API with STK Push and histo
-f55a9e909ea0b4697b90f0bad999c3b2ec0adb39 5e0735fa8e627bb7e57cb53d0bea4233f1dfad2b WIP on main: 500a04c updated working mpesa API with STK Push and histo
-4cda1fddcfb7507d358a58c9401415283ce0ec94 ec48b862e3980174ad5d6aca77fbda6a7c7f42d8 WIP on main: 500a04c updated working mpesa API with STK Push and histo
-61d5a212d309eb0078122cf3d6220dc78f924af3 091dc3f80f22f7d96fda1a3dcb5d6418b3c42cef WIP on main: 500a04c updated working mpesa API with STK Push and histo
-743336d8f69b623a2df3aef9e20a184006a9951f 01ff9748f804d5f2748cedb40d6b28b074d8640c WIP on main: 5389d91 changes in my model
-4305328eb5b23136d1e27183b2b27969b592096b 2233320f52be2f73c710aa256d036596ea4eba0f WIP on main: 5389d91 changes in my model
-9f88fdbee00074f65a0af8cd7e40c7c5b244cc14 75424de1e82ee6e280a19d779096946bd47f3f54 WIP on main: 5389d91 changes in my model
-8388e77e581180df170183435c47a096a128efae 0c8dc36628680fb17b837badba49243d6ae347fd WIP on main: b941392 updates on api for adding gigs
-94e83f0136be74ff9ca2450c5e9e9566a0868849 d100b89a5d0cd1b790d21bd8189b5e44bef52fb9 WIP on main: d9d9778 requirements file
-01cfc1e1d46409d29e811ae7e45915277859b4d3 a1637110538f3eeaa813fb4572bc6ef7257ea1df WIP on main: d9d9778 requirements file
-23e575b74c781eb21f431604f63d66dff7599e78 5d4a110492bcaf31950276ebb51f11281952db0c WIP on main: d9d9778 requirements file
-19ecdd3891efca9bcd87aac6a35ab45adf6ad015 107aaeae5744f65814c9227943875dd6cef34e4b WIP on main: ebb9003 add organization in my application
+adecb182dd8ae7849d9af72d3442a311710835e9 8badbc3974450b15ca39a65fccf8041cf1d58a2f WIP on main: 1ac35a0 updates oo my mpesa service
+ca4d43aab4f6db4cb216f0d24c1db85be4a47fea bd484392d70776b9bcc1c1e6ae4cbbd11c591147 WIP on main: 20b9a07 change location in profile to county constituency
+381ac82e032b4c03a4b28be6e805e38dee40d740 17ed534ecc7a22d55df6452b590711dc8a00e312 WIP on main: 500a04c updated working mpesa API with STK Push and histo
+253ab7e8418f806786dd4799e4e873daaf4a23d4 7d5cdee19b214fe4614c4bdf3b50ea50bb8211f5 WIP on main: 500a04c updated working mpesa API with STK Push and histo
+ea381611bd90b4bcbd23bdf3c7ff3106d652ae64 b915b367b9d881cb2bdaf95e25945d87d6a2f820 WIP on main: 500a04c updated working mpesa API with STK Push and histo
+f55a9e909ea0b4697b90f0bad999c3b2ec0adb39 88e16c983daab751f0871136e0b0a71a714980c2 WIP on main: 500a04c updated working mpesa API with STK Push and histo
+4cda1fddcfb7507d358a58c9401415283ce0ec94 94c22d6148bceb49b0887d5d676623aacd94a112 WIP on main: 500a04c updated working mpesa API with STK Push and histo
+61d5a212d309eb0078122cf3d6220dc78f924af3 05dfd733c6cefdcfcc7a0b16ffec18cbecbbda0f WIP on main: 500a04c updated working mpesa API with STK Push and histo
+743336d8f69b623a2df3aef9e20a184006a9951f fd08fbf1309efb2ed93d726b9a1250a787503990 WIP on main: 5389d91 changes in my model
+4305328eb5b23136d1e27183b2b27969b592096b cbe3c8fcd0fa90ac8cf1457000e0ab0eb1b1f2ca WIP on main: 5389d91 changes in my model
+9f88fdbee00074f65a0af8cd7e40c7c5b244cc14 ed688ba0984426d4555331b8bf1e506cf3a58251 WIP on main: 5389d91 changes in my model
+8388e77e581180df170183435c47a096a128efae 5403f47b231ea521a39c7db099d9da3e4bd6bf17 WIP on main: b941392 updates on api for adding gigs
+94e83f0136be74ff9ca2450c5e9e9566a0868849 2aaf0b48d04191dd1ba50d0cfc270ee4cd7c4f8c WIP on main: d9d9778 requirements file
+01cfc1e1d46409d29e811ae7e45915277859b4d3 e50fbdbeb2447a9705105e2c420e9edb8ff7b06d WIP on main: d9d9778 requirements file
+23e575b74c781eb21f431604f63d66dff7599e78 4e8f21a31c87e8561236813d6f1a6320293d1efd WIP on main: d9d9778 requirements file
+19ecdd3891efca9bcd87aac6a35ab45adf6ad015 7e5a248d7b5d1434ac740ee40bd140dc1b125d5d WIP on main: ebb9003 add organization in my application
+97bacaff9b6759290dbee11e4054179376ec9741 f42569c3a91a8536ee700cce1b273003115e0985 WIP on master: dc2e28f updated my email for good reverification User e
 a89652bdb83b8cf96d1c120eded69b7342121983 65fb3b94406c89fe41ab537f3e59cf3ec06e82d0 activation email setup
 ebb90039d044807189dc9d0de47dc66733c1241c 9e035058139de1e87c878027bec336326cb64969 add organization in my application
 bb6cff9e37808484bca2882eb0e91e78c0b4041e b6d6740345bb156658f1312a3e2f28182f5a1e7b anylytic service
@@ -32,25 +33,13 @@ bb6cff9e37808484bca2882eb0e91e78c0b4041e b6d6740345bb156658f1312a3e2f28182f5a1e7
 20b9a079eac54fc40eceded4cd6ca1ff807853c2 42693dd80c28d701c50b23c1df01b4aaa2bf6072 change location in profile to county constituency and ward
 5389d91b5059a9e83a3838378014e0aff0fc87a2 1ab4d7a7cfdb23e687d06299215dc9a122a1d983 changes in my model
 001308aea711bcb7bafdf548f35232b3d44f3c95 f15ca61f0a4b90acf4e865bb85c7402cf95bbb1d changing accounts type on creating account
-328c71e2507e292f10407e8279ca6ca2fe3a9676 c525eb6b6fe9fbaa28b9bec8d2507c38bee90855 chore(backend): stop tracking uploads, OCR temp files and collected st
-744a55d00acdee03a79dae491b82f106d95568d9 0559e2fd896432b72a95f8de9faf4c26b5c3f073 chore: import backend (jenga-backend) history into backend/
-cd8184ae2576aad39f006a605c86201d4293793f 62717e975c62edffa4c2d76a21928fa6230d1b73 chore: import fundi-pro (worker portal) history into frontend/fundi-pr
-3f4d8e15fdd4024d5fb63b60a57df9294ea2eab4 3469bfc81d5165b10ec68f341aae4b2f3e8e9699 chore: import jenga-pro (contractor portal) history into frontend/jeng
 d121a6866b882eaac80258adfb4bdf76efa128ce 853f8b31785e0cf933a3e152e2a3ad9b3674e967 credit score
-d4389ee976b8a84160be2c80de005cb28dd8a679 fcdc3372bf354cad7241e339c9a00f39b7e1298e docs: production HTTPS, OTP API, tests and updated findings
-795eae0c46e3db5704e4d498a81817e98c86b060 9915a963452b9c3df42792b4acb5c9134835e04a docs: unified README, architecture, decisions and git-history notes
 2f356f11f990c4ce71d4ceb0eaaac036e607c31f c57c03e7c30858006fefafb0546593dee486917e endpoints for searching users details
-fbf700e4ea0f93fbddf231ea8f351ef99826bed1 add4a59ba492e83336c8609a96f954e7dd16b349 feat(backend): env-driven settings, Redis cache, health check, media f
-546f169261e3747ebf8d0e41317982f5500eb53f 5d2494e7eab4e1dbe56b6928597e159847fc9059 feat(deploy): HTTPS production override with Caddy
-07b1614f5ed01829db6bd7ee5d0efaddebe3428d 09d9e940df4ef55fb9cf83ab030cabc19878c32b feat(docker): containerise backend, both frontends, Postgres and Redis
 183d8d5465b2dc9ede0cbddcd338f34688253076 d5125e1f054833eaec2a2005452a39834e5e4dd9 few changes on settings
 3a1dbe18a869ac6698cdea0179ab619b78002df1 9109df101bedf745821aff6eb8c14577f2090317 few model and view fix
 501392697151992b87a36bbc5bbc54ee47117a7d 953361316f6ae2b713b37d15e622d65f4e4755dc few touches on the apis
 4f90c6f7e1e434bfc1a1ab4c283f866b0d384f87 574b4ddd380c1a8382474963b7d3de2ccce5484f filter gigs with respect to organizations
 20f277f42ca81444182921616115f80d5d91dd81 a5cbdb9bd5dc0ba4d94db2051243cc12e6531a8e first commit
-2f3b87075d0b849cfbd0b0afdefca6914e6a7c83 32f08153ccda9cab2a741f8c3dc594797f798bef fix(backend): server-side OTP verification; HTTPS settings; tests
-f8900d349cfea9bc9804ba988977ea4334a8c04c a23cc278e565cc3d0461f65a3fbc68615b6e6018 fix(frontend): track Angular environment files
-c6ea1b5d2ea164c9453961d565b10671b004afb2 124da5e21f2cea3d12c8c60119c312246e7b2c06 fix(jenga-pro): align Angular Material/CDK to v20
 8091e09bb7cd1e1c155884939d4042f1cf2517ba 68c96eb08790f760b40ae00b9ef42cb0656a9e35 index on main: 1ac35a0 updates oo my mpesa service
 af57c66b6db2731057655503e9ca51ebecaa3c50 d5207c3073c3d99c1ad51dce08c44941b963bd10 index on main: 20b9a07 change location in profile to county constituen
 d0984817582692480a7980cbf90715a0858c804e 3a58e5199d8ef0d2ff055fb2c78428ef761921cb index on main: 500a04c updated working mpesa API with STK Push and his
