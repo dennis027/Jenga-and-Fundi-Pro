@@ -1,0 +1,73 @@
+# Production override: HTTPS via Caddy, nothing else published.
+#
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+#
+# Requires API_DOMAIN, FUNDI_DOMAIN, JENGA_DOMAIN and ACME_EMAIL in .env. All
+# host/origin/HTTPS settings below are derived from them and override .env.
+
+x-prod-frontend-build: &frontend-api-url
+  API_URL: https://${API_DOMAIN:?API_DOMAIN must be set in .env}/
+
+services:
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    environment:
+      API_DOMAIN: ${API_DOMAIN}
+      FUNDI_DOMAIN: ${FUNDI_DOMAIN:?FUNDI_DOMAIN must be set in .env}
+      JENGA_DOMAIN: ${JENGA_DOMAIN:?JENGA_DOMAIN must be set in .env}
+      ACME_EMAIL: ${ACME_EMAIL:?ACME_EMAIL must be set in .env}
+      CADDY_GLOBAL_OPTIONS: ${CADDY_GLOBAL_OPTIONS:-}
+    ports:
+      - "${PUBLIC_BIND_ADDRESS:-0.0.0.0}:80:80"
+      - "${PUBLIC_BIND_ADDRESS:-0.0.0.0}:443:443"
+      - "${PUBLIC_BIND_ADDRESS:-0.0.0.0}:443:443/udp"
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      backend:
+        condition: service_healthy
+      fundi-pro:
+        condition: service_healthy
+      jenga-pro:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:2019/config/ || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+    networks: [web]
+
+  backend:
+    ports: !reset []
+    environment:
+      DEBUG: "False"
+      ALLOWED_HOSTS: ${API_DOMAIN},localhost,127.0.0.1
+      CORS_ALLOW_ALL_ORIGINS: "False"
+      CORS_ALLOWED_ORIGINS: https://${FUNDI_DOMAIN},https://${JENGA_DOMAIN}
+      CSRF_TRUSTED_ORIGINS: https://${FUNDI_DOMAIN},https://${JENGA_DOMAIN},https://${API_DOMAIN}
+      FRONTEND_APP_URL: https://${FUNDI_DOMAIN}
+      USE_X_FORWARDED_PROTO: "True"
+      USE_X_FORWARDED_FOR: "True"
+      SECURE_SSL_REDIRECT: "True"
+      SESSION_COOKIE_SECURE: "True"
+      CSRF_COOKIE_SECURE: "True"
+      # Start low; raise to 31536000 once HTTPS is confirmed stable.
+      SECURE_HSTS_SECONDS: ${SECURE_HSTS_SECONDS:-3600}
+      SECURE_HSTS_INCLUDE_SUBDOMAINS: ${SECURE_HSTS_INCLUDE_SUBDOMAINS:-True}
+
+  fundi-pro:
+    ports: !reset []
+    build:
+      args: *frontend-api-url
+
+  jenga-pro:
+    ports: !reset []
+    build:
+      args: *frontend-api-url
+
+volumes:
+  caddy-data:
+  caddy-config:

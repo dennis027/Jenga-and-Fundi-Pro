@@ -1,0 +1,33 @@
+# TLS reverse proxy for docker-compose.prod.yml.
+# Caddy obtains and renews Let's Encrypt certificates automatically for the
+# three domains (they must resolve to this host, ports 80/443 open).
+# Set CADDY_GLOBAL_OPTIONS=local_certs to use Caddy's internal CA instead
+# (local testing with *.localhost names).
+{
+	email {$ACME_EMAIL}
+	{$CADDY_GLOBAL_OPTIONS}
+}
+
+(common) {
+	encode zstd gzip
+	header -Server
+	log
+}
+
+{$API_DOMAIN} {
+	import common
+	request_body {
+		max_size 20MB
+	}
+	reverse_proxy backend:8000
+}
+
+{$FUNDI_DOMAIN} {
+	import common
+	reverse_proxy fundi-pro:4000
+}
+
+{$JENGA_DOMAIN} {
+	import common
+	reverse_proxy jenga-pro:4000
+}
