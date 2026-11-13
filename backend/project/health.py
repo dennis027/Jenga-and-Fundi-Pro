@@ -30,3 +30,19 @@ def healthz(request):
         {"status": "ok" if healthy else "error", "checks": checks},
         status=200 if healthy else 503,
     )
+
+
+class HealthCheckMiddleware:
+    """Answer /healthz/ before host validation and SSL redirects.
+
+    Platform health checkers (Render, Docker) may call the container with a
+    Host header that is not in ALLOWED_HOSTS. Must be first in MIDDLEWARE.
+    """
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        if request.path_info == "/healthz/":
+            return healthz(request)
+        return self.get_response(request)

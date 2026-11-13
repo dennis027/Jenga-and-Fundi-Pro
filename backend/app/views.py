@@ -1746,11 +1746,12 @@ def _json_body(request):
 
 
 def _client_ip(request):
+    if settings.CLIENT_IP_HEADER and request.META.get(settings.CLIENT_IP_HEADER):
+        return request.META[settings.CLIENT_IP_HEADER].strip()
     if settings.USE_X_FORWARDED_FOR:
-        forwarded = request.META.get("HTTP_X_FORWARDED_FOR", "")
+        forwarded = [p.strip() for p in request.META.get("HTTP_X_FORWARDED_FOR", "").split(",") if p.strip()]
         if forwarded:
-            # The trusted reverse proxy appends the real client address last.
-            return forwarded.split(",")[-1].strip()
+            return forwarded[0] if settings.XFF_CLIENT_POSITION == "first" else forwarded[-1]
     return request.META.get("REMOTE_ADDR", "")
 
 

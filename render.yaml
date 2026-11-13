@@ -1,0 +1,155 @@
+# Render Blueprint: the whole platform as Docker containers.
+#   Render dashboard -> New -> Blueprint -> pick this repo -> Apply.
+#
+#   fundi-jenga-api    Django API (backend/Dockerfile) + persistent disk for uploads
+#   fundi-jenga-redis  Render Key Value (Redis): cache, sessions, OTP codes, M-Pesa token
+#   fundi-pro-portal   Fundi Pro worker portal (frontend/fundi-pro/Dockerfile, Angular SSR)
+#   jenga-pro-portal   Jenga Pro contractor portal (frontend/jenga-pro/Dockerfile)
+#
+# The database stays on Neon (us-east-1); no Render Postgres is created. Paste the
+# Neon URL as DATABASE_URL when Render prompts for the `sync: false` values.
+# All services are in "virginia" (US East) to sit next to Neon.
+#
+# Public URLs below assume the service names were free. If Render added a suffix
+# to a name, update API_URL / CORS_ALLOWED_ORIGINS / CSRF_TRUSTED_ORIGINS to match.
+
+services:
+  # ---------------------------------------------------------------- backend
+  - type: web
+    name: fundi-jenga-api
+    runtime: docker
+    region: virginia
+    # Paid instance: no sleeping, and persistent disks need a paid plan.
+    plan: 0.5c-512mb
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    healthCheckPath: /healthz/
+    autoDeployTrigger: commit
+    buildFilter:
+      paths:
+        - backend/**
+        - render.yaml
+    disk:
+      name: media
+      mountPath: /data/media
+      sizeGB: 1
+    envVars:
+      # --- secrets: Render prompts for these once, when the Blueprint is created
+      - key: DATABASE_URL          # Neon connection string (pooled endpoint)
+        sync: false
+      - key: MPESA_CONSUMER_KEY
+        sync: false
+      - key: MPESA_CONSUMER_SECRET
+        sync: false
+      - key: MPESA_PASSKEY
+        sync: false
+      - key: MPESA_SHORTCODE
+        sync: false
+      - key: EMAIL_HOST_USER
+        sync: false
+      - key: EMAIL_HOST_PASSWORD
+        sync: false
+      - key: DEFAULT_FROM_EMAIL
+        sync: false
+      - key: AT_USERNAME
+        sync: false
+      - key: AT_API_KEY
+        sync: false
+      # --- generated / wired automatically
+      - key: SECRET_KEY            # new random key (replaces the old leaked one)
+        generateValue: true
+      - key: REDIS_URL
+        fromService:
+          type: keyvalue
+          name: fundi-jenga-redis
+          property: connectionString
+      # --- plain configuration
+      - key: DEBUG
+        value: "False"
+      - key: ALLOWED_HOSTS         # the onrender.com host is added automatically
+        value: localhost,127.0.0.1
+      - key: CORS_ALLOWED_ORIGINS
+        value: https://fundi-pro-portal.onrender.com,https://jenga-pro-portal.onrender.com,https://dennis027.github.io
+      - key: CSRF_TRUSTED_ORIGINS
+        value: https://fundi-pro-portal.onrender.com,https://jenga-pro-portal.onrender.com,https://dennis027.github.io,https://fundi-jenga-api.onrender.com
+      - key: FRONTEND_APP_URL
+        value: https://fundi-pro-portal.onrender.com
+      - key: MPESA_BASE_URL
+        value: https://sandbox.safaricom.co.ke
+      - key: MPESA_CALLBACK_URL
+        value: https://fundi-jenga-api.onrender.com/api/stk-new-callback/
+      - key: EMAIL_BACKEND
+        value: django.core.mail.backends.smtp.EmailBackend
+      - key: EMAIL_HOST
+        value: smtp.gmail.com
+      - key: EMAIL_PORT
+        value: "587"
+      - key: EMAIL_USE_TLS
+        value: "True"
+      - key: MEDIA_ROOT
+        value: /data/media
+      - key: SERVE_MEDIA
+        value: "True"
+      - key: GUNICORN_WORKERS
+        value: "2"
+      - key: LOG_LEVEL
+        value: INFO
+      # Render terminates TLS and appends the client IP first in X-Forwarded-For.
+      - key: USE_X_FORWARDED_PROTO
+        value: "True"
+      - key: USE_X_FORWARDED_FOR
+        value: "True"
+      - key: XFF_CLIENT_POSITION
+        value: first
+      - key: SECURE_SSL_REDIRECT
+        value: "True"
+      - key: SESSION_COOKIE_SECURE
+        value: "True"
+      - key: CSRF_COOKIE_SECURE
+        value: "True"
+      - key: SECURE_HSTS_SECONDS
+        value: "3600"
+      - key: SECURE_HSTS_INCLUDE_SUBDOMAINS
+        value: "True"
+
+  # ---------------------------------------------------------------- redis
+  - type: keyvalue
+    name: fundi-jenga-redis
+    region: virginia
+    plan: free                     # 25 MB, no persistence (cache-only use is fine)
+    maxmemoryPolicy: allkeys-lru
+    ipAllowList: []                # private network only, no external access
+
+  # ---------------------------------------------------------------- frontends
+  # API_URL is passed to the Docker build as a build arg (baked into the bundle).
+  - type: web
+    name: fundi-pro-portal
+    runtime: docker
+    region: virginia
+    plan: free
+    dockerfilePath: ./frontend/fundi-pro/Dockerfile
+    dockerContext: ./frontend/fundi-pro
+    healthCheckPath: /login
+    autoDeployTrigger: commit
+    buildFilter:
+      paths:
+        - frontend/fundi-pro/**
+    envVars:
+      - key: API_URL
+        value: https://fundi-jenga-api.onrender.com/
+
+  - type: web
+    name: jenga-pro-portal
+    runtime: docker
+    region: virginia
+    plan: free
+    dockerfilePath: ./frontend/jenga-pro/Dockerfile
+    dockerContext: ./frontend/jenga-pro
+    healthCheckPath: /login
+    autoDeployTrigger: commit
+    buildFilter:
+      paths:
+        - frontend/jenga-pro/**
+    envVars:
+      - key: API_URL
+        value: https://fundi-jenga-api.onrender.com/

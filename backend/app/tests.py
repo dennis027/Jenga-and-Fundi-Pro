@@ -111,3 +111,25 @@ class HealthAndMediaTests(TestCase):
                 r = self.client.get("/MEDIA/profiles/a.txt")
                 self.assertEqual(r.status_code, 200)
                 self.assertEqual(b"".join(r.streaming_content), b"img")
+
+
+class ClientIPTests(TestCase):
+    def ip(self, **meta):
+        from django.test import RequestFactory
+        from app.views import _client_ip
+        return _client_ip(RequestFactory().post("/", **meta))
+
+    def test_remote_addr_by_default(self):
+        self.assertEqual(self.ip(REMOTE_ADDR="10.0.0.9", HTTP_X_FORWARDED_FOR="1.1.1.1"), "10.0.0.9")
+
+    @override_settings(USE_X_FORWARDED_FOR=True, XFF_CLIENT_POSITION="last")
+    def test_xff_last_for_own_proxy(self):
+        self.assertEqual(self.ip(HTTP_X_FORWARDED_FOR="6.6.6.6, 2.2.2.2"), "2.2.2.2")
+
+    @override_settings(USE_X_FORWARDED_FOR=True, XFF_CLIENT_POSITION="first")
+    def test_xff_first_for_render(self):
+        self.assertEqual(self.ip(HTTP_X_FORWARDED_FOR="3.3.3.3, 10.1.1.1"), "3.3.3.3")
+
+    @override_settings(CLIENT_IP_HEADER="HTTP_TRUE_CLIENT_IP", USE_X_FORWARDED_FOR=True)
+    def test_edge_header_wins(self):
+        self.assertEqual(self.ip(HTTP_TRUE_CLIENT_IP="4.4.4.4", HTTP_X_FORWARDED_FOR="5.5.5.5"), "4.4.4.4")

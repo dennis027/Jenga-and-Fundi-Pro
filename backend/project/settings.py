@@ -43,6 +43,9 @@ if not SECRET_KEY:
     SECRET_KEY = "django-insecure-local-development-only"
 
 ALLOWED_HOSTS = config("ALLOWED_HOSTS", default="localhost,127.0.0.1", cast=Csv())
+# Render injects the service's public host name.
+if os.getenv("RENDER_EXTERNAL_HOSTNAME"):
+    ALLOWED_HOSTS.append(os.environ["RENDER_EXTERNAL_HOSTNAME"])
 
 
 # Application definition
@@ -68,6 +71,7 @@ SIMPLE_JWT = {
 }
 
 MIDDLEWARE = [
+    "project.health.HealthCheckMiddleware",  # must stay first
     "django.middleware.security.SecurityMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
     'django.contrib.sessions.middleware.SessionMiddleware',
@@ -112,6 +116,10 @@ if os.getenv("RENDER", "false").lower() == "true":
             default=os.getenv("DATABASE_URL")
         )
     }
+    # Transaction-mode poolers (Neon "-pooler" endpoints, PgBouncer) do not
+    # support server-side cursors.
+    if "-pooler" in os.getenv("DATABASE_URL", "") or config("DB_DISABLE_SERVER_SIDE_CURSORS", default=False, cast=bool):
+        DATABASES["default"]["DISABLE_SERVER_SIDE_CURSORS"] = True
 else:
     # Local development environment
     DATABASES = {
@@ -287,6 +295,11 @@ OTP_RETURN_CODE_IN_RESPONSE = config("OTP_RETURN_CODE_IN_RESPONSE", default=Fals
 
 # HTTPS / reverse proxy. Enable when running behind TLS (docker-compose.prod.yml).
 USE_X_FORWARDED_FOR = config("USE_X_FORWARDED_FOR", default=False, cast=bool)
+# Which X-Forwarded-For entry is the client: "last" when our own proxy (Caddy)
+# appends it, "first" on platforms like Render that only append to the header.
+XFF_CLIENT_POSITION = config("XFF_CLIENT_POSITION", default="last")
+# Optional header set by the platform edge, checked first (e.g. HTTP_TRUE_CLIENT_IP).
+CLIENT_IP_HEADER = config("CLIENT_IP_HEADER", default="")
 if config("USE_X_FORWARDED_PROTO", default=False, cast=bool):
     SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 SECURE_SSL_REDIRECT = config("SECURE_SSL_REDIRECT", default=False, cast=bool)

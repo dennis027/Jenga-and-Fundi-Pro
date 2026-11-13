@@ -28,12 +28,14 @@ RUN SECRET_KEY=build-only DB_NAME=x DB_USER=x DB_PASSWORD=x DB_HOST=x DB_PORT=54
     EMAIL_HOST_USER=x EMAIL_HOST_PASSWORD=x DEFAULT_FROM_EMAIL=x@example.com AT_USERNAME=sandbox AT_API_KEY=x \
     python manage.py collectstatic --noinput
 
+# The entrypoint starts as root only to fix ownership of the media mount
+# (Render disks and fresh volumes are root-owned), then drops to "app".
 RUN useradd --create-home --uid 1000 app \
  && mkdir -p /data/media \
  && chown -R app:app /data /app
-USER app
 
 EXPOSE 8000
 
 ENTRYPOINT ["/app/docker-entrypoint.sh"]
-CMD ["gunicorn", "project.wsgi:application", "--bind", "0.0.0.0:8000", "--workers", "3", "--timeout", "120", "--access-logfile", "-"]
+# PORT is set by platforms such as Render (10000); 8000 locally.
+CMD ["sh", "-c", "exec gunicorn project.wsgi:application --bind 0.0.0.0:${PORT:-8000} --workers ${GUNICORN_WORKERS:-3} --timeout 120 --access-logfile -"]

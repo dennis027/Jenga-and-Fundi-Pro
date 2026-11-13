@@ -63,6 +63,12 @@
 6. **Uploads** go to the `media` volume (`MEDIA_ROOT=/data/media`). Upload paths and URLs
    (`/MEDIA/...`) are unchanged. Django serves them when `SERVE_MEDIA=True`. At scale, serve
    them from the reverse proxy or object storage instead.
+7. **Render: Docker everywhere, database on Neon.** `render.yaml` deploys the same Dockerfiles
+   as Compose. The existing Neon database is kept (no data migration, no Render Postgres).
+   The backend entrypoint starts as root only to `chown` the media mount (Render disks
+   and new volumes are root-owned), then drops to the `app` user with `setpriv`. A
+   first-in-chain `HealthCheckMiddleware` answers `/healthz/` before host validation and
+   SSL redirects, because platform health checkers use internal Host headers.
 
 ## Changes made to existing code during consolidation
 
