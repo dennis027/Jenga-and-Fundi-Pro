@@ -23,6 +23,7 @@ urlpatterns = [
     path('api/activate/<uidb64>/<token>/', ActivateAccountAPIView.as_view(), name='activate'),
     path('api/resend-verification/', ResendVerificationEmailView.as_view(), name='resend-verification'),
     path("send-otp/", SendOTPView.as_view(), name="send-otp"),
+    path("verify-otp/", views.VerifyOTPView.as_view(), name="verify-otp"),
     path('activation-success/', activation_success_view, name='activation-success'),
     path('activation-failed/', activation_failed_view, name='activation-failed'),
 

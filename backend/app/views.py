@@ -28,7 +28,8 @@ from django.utils.decorators import method_decorator
 from django.conf import settings
 from django.core.cache import cache
 from django.db.models import Q
-import random  
+import secrets
+from . import otp as otp_store
 from django.core.mail import send_mail
 from .models import PasswordResetCode
 from django.middleware.csrf import get_token
@@ -351,7 +352,7 @@ class RequestPasswordResetView(APIView):
             return Response({"message": "If this email exists, a reset code has been sent."})
 
         # Generate a 6-digit code
-        code = str(random.randint(100000, 999999))
+        code = f"{secrets.randbelow(1_000_000):06d}"
         PasswordResetCode.objects.create(user=user, code=code)
 
         # Send beautiful email with the code
@@ -1737,89 +1738,100 @@ username = settings.AT_USERNAME
 api_key = settings.AT_API_KEY  
 africastalking.initialize(username, api_key)
 sms = africastalking.SMS
+def _json_body(request):
+    try:
+        return json.loads(request.body or b"{}")
+    except json.JSONDecodeError:
+        return request.POST
+
+
+def _client_ip(request):
+    if settings.USE_X_FORWARDED_FOR:
+        forwarded = request.META.get("HTTP_X_FORWARDED_FOR", "")
+        if forwarded:
+            # The trusted reverse proxy appends the real client address last.
+            return forwarded.split(",")[-1].strip()
+    return request.META.get("REMOTE_ADDR", "")
+
+
 @method_decorator(csrf_exempt, name='dispatch')
 class SendOTPView(View):
-    def post(self, request):
-        try:
-            # Parse JSON data from request body
-            data = json.loads(request.body)
-            phone_number = data.get("phone")
-        except json.JSONDecodeError:
-            # Fallback to form data if JSON parsing fails
-            phone_number = request.POST.get("phone")
+    """POST {"phone": "+2547..."} - send a 6-digit code by SMS.
 
+    The code is stored server-side (Redis, hashed, OTP_TTL_SECONDS) and checked
+    by VerifyOTPView. It is NOT returned in the response unless the temporary
+    OTP_RETURN_CODE_IN_RESPONSE compatibility flag is on.
+    """
+
+    def post(self, request):
+        phone_number = otp_store.normalize_phone(_json_body(request).get("phone"))
         if not phone_number:
             return JsonResponse({"status": "error", "message": "Phone number is required"}, status=400)
 
-        # Generate a 6-digit OTP
-        otp = str(random.randint(100000, 999999))
+        allowed, retry_after = otp_store.check_send_allowed(phone_number, _client_ip(request))
+        if not allowed:
+            response = JsonResponse(
+                {"status": "error", "message": "Too many OTP requests. Please try again later.",
+                 "retry_after": retry_after},
+                status=429,
+            )
+            response["Retry-After"] = str(retry_after)
+            return response
+
+        otp = otp_store.issue(phone_number)
         message = f"Your Jenga Pro verification code is {otp}"
 
         try:
-            # Send SMS to the real phone number
-            response = sms.send(
-                message,
-                [phone_number],
-                # Try without sender_id first, or use an approved one
-                # sender_id="JENGAPRO"  # Comment this out temporarily
-            )
-            
-            # Log the full response for debugging
-            logger.info(f"Africa's Talking Response: {response}")
-            print(f"Full AT Response: {response}")  # For immediate debugging
-            
-            # Parse the response to get more details
-            sms_data = response.get('SMSMessageData', {})
-            recipients = sms_data.get('Recipients', [])
-            
-            if recipients:
-                recipient = recipients[0]
-                status_code = recipient.get('statusCode')
-                status = recipient.get('status')
-                message_id = recipient.get('messageId')
-                cost = recipient.get('cost')
-                
-                # Log recipient details
-                logger.info(f"Status Code: {status_code}, Status: {status}, MessageID: {message_id}, Cost: {cost}")
-                
-                return JsonResponse({
-                    "status": "success",
-                    "otp": otp,
-                    "at_response": response,
-                    "recipient_status": status,
-                    "status_code": status_code,
-                    "message_id": message_id,
-                    "cost": cost,
-                    "debug_info": {
-                        "phone_number": phone_number,
-                        "message_length": len(message),
-                        "username": username,
-                        "has_sender_id": False  # Set to True if using sender_id
-                    }
-                })
-            else:
-                return JsonResponse({
-                    "status": "error", 
-                    "message": "No recipient data in response",
-                    "at_response": response
-                }, status=500)
-                
-        except Exception as e:
-            logger.error(f"SMS sending failed: {str(e)}")
-            return JsonResponse({
-                "status": "error", 
-                "message": str(e),
-                "debug_info": {
-                    "phone_number": phone_number,
-                    "username": username,
-                    "message": message
-                }
-            }, status=500)
-        
+            response = sms.send(message, [phone_number])
+        except Exception:
+            otp_store.discard(phone_number)
+            logger.exception("SMS sending failed")
+            return JsonResponse({"status": "error", "message": "Failed to send OTP. Please try again."}, status=502)
+
+        recipients = response.get('SMSMessageData', {}).get('Recipients', [])
+        if not recipients:
+            otp_store.discard(phone_number)
+            logger.error("Africa's Talking returned no recipients: %s", response.get('SMSMessageData', {}).get('Message'))
+            return JsonResponse({"status": "error", "message": "Failed to send OTP. Please try again."}, status=502)
+
+        recipient = recipients[0]
+        logger.info("OTP SMS: status=%s code=%s message_id=%s",
+                    recipient.get('status'), recipient.get('statusCode'), recipient.get('messageId'))
+
+        body = {
+            "status": "success",
+            "message": "OTP sent",
+            "expires_in": settings.OTP_TTL_SECONDS,
+            "recipient_status": recipient.get('status'),
+            "status_code": recipient.get('statusCode'),
+            "message_id": recipient.get('messageId'),
+        }
+        if settings.OTP_RETURN_CODE_IN_RESPONSE:
+            body["otp"] = otp  # legacy clients only - see docs/ARCHITECTURE.md
+        return JsonResponse(body)
 
 
+@method_decorator(csrf_exempt, name='dispatch')
+class VerifyOTPView(View):
+    """POST {"phone": "+2547...", "otp": "123456"} - check a code from SendOTPView."""
 
+    def post(self, request):
+        data = _json_body(request)
+        phone_number = otp_store.normalize_phone(data.get("phone"))
+        code = data.get("otp") or data.get("code")
+        if not phone_number or not code:
+            return JsonResponse({"status": "error", "message": "phone and otp are required"}, status=400)
 
+        result = otp_store.verify(phone_number, code)
+        if result == "ok":
+            return JsonResponse({"status": "success", "verified": True})
+        if result == "locked":
+            return JsonResponse({"status": "error", "verified": False,
+                                 "message": "Too many attempts. Request a new code."}, status=429)
+        if result == "expired":
+            return JsonResponse({"status": "error", "verified": False,
+                                 "message": "Code expired or not found. Request a new code."}, status=400)
+        return JsonResponse({"status": "error", "verified": False, "message": "Invalid code."}, status=400)
 
 
 # 1. Submit Verification (User uploads ID front, back, selfie)

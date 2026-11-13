@@ -274,6 +274,29 @@ if REDIS_URL:
     SESSION_ENGINE = "django.contrib.sessions.backends.cached_db"
 
 
+# Phone OTP (app/otp.py). Codes live only in the cache (Redis), hashed.
+OTP_TTL_SECONDS = config("OTP_TTL_SECONDS", default=300, cast=int)
+OTP_RESEND_COOLDOWN_SECONDS = config("OTP_RESEND_COOLDOWN_SECONDS", default=60, cast=int)
+OTP_MAX_SENDS_PER_HOUR = config("OTP_MAX_SENDS_PER_HOUR", default=5, cast=int)
+OTP_MAX_SENDS_PER_IP_PER_HOUR = config("OTP_MAX_SENDS_PER_IP_PER_HOUR", default=20, cast=int)
+OTP_MAX_VERIFY_ATTEMPTS = config("OTP_MAX_VERIFY_ATTEMPTS", default=5, cast=int)
+# TEMPORARY compatibility for clients that still compare the code locally
+# (e.g. an older mobile build). Insecure - keep False once clients use /verify-otp/.
+OTP_RETURN_CODE_IN_RESPONSE = config("OTP_RETURN_CODE_IN_RESPONSE", default=False, cast=bool)
+
+
+# HTTPS / reverse proxy. Enable when running behind TLS (docker-compose.prod.yml).
+USE_X_FORWARDED_FOR = config("USE_X_FORWARDED_FOR", default=False, cast=bool)
+if config("USE_X_FORWARDED_PROTO", default=False, cast=bool):
+    SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+SECURE_SSL_REDIRECT = config("SECURE_SSL_REDIRECT", default=False, cast=bool)
+SECURE_REDIRECT_EXEMPT = [r"^healthz/$"]  # container health check uses plain HTTP
+SESSION_COOKIE_SECURE = config("SESSION_COOKIE_SECURE", default=False, cast=bool)
+CSRF_COOKIE_SECURE = config("CSRF_COOKIE_SECURE", default=False, cast=bool)
+SECURE_HSTS_SECONDS = config("SECURE_HSTS_SECONDS", default=0, cast=int)
+SECURE_HSTS_INCLUDE_SUBDOMAINS = config("SECURE_HSTS_INCLUDE_SUBDOMAINS", default=False, cast=bool)
+SECURE_HSTS_PRELOAD = config("SECURE_HSTS_PRELOAD", default=False, cast=bool)
+
 LOG_LEVEL = config("LOG_LEVEL", default="INFO")
 LOGGING = {
     "version": 1,
