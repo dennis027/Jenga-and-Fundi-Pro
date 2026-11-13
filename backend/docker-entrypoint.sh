@@ -6,6 +6,9 @@ if [ "$(id -u)" = "0" ]; then
   MEDIA_DIR="${MEDIA_ROOT:-/data/media}"
   mkdir -p "$MEDIA_DIR"
   chown app:app "$MEDIA_DIR" 2>/dev/null || true
+  # HOME must follow the user: libpq looks for ~/.postgresql/ client certs on SSL
+  # connections (Neon) and fails if HOME still points at the unreadable /root.
+  export HOME=/home/app USER=app
   exec setpriv --reuid=app --regid=app --init-groups "$0" "$@"
 fi
 
