@@ -7,10 +7,7 @@ FROM node:22-alpine AS deps
 ENV NG_CLI_ANALYTICS=false
 WORKDIR /app
 COPY package.json package-lock.json ./
-# --legacy-peer-deps: package.json pins @angular/material ^21 on Angular 20, a
-# peer conflict the existing lockfile was already resolved with. Remove once
-# @angular/material is aligned to ^20 (see docs/ARCHITECTURE.md).
-RUN npm ci --no-audit --no-fund --legacy-peer-deps
+RUN npm ci --no-audit --no-fund
 
 FROM deps AS dev
 COPY . .
