@@ -107,7 +107,7 @@ class PhoneTokenTests(TestCase):
     def test_changing_phone_needs_token(self):
         r = self.api.put("/api/profile/", {"phone": "+254722000000"}, format="multipart")
         self.assertEqual(r.status_code, 400)
-        with mock.patch("app.views.sms.send", return_value=self.AT_OK) as send:
+        with mock.patch("app.views.phone.sms.send", return_value=self.AT_OK) as send:
             self.client.post("/send-otp/", json.dumps({"phone": "+254722000000"}), content_type="application/json")
             code = send.call_args.args[0].rsplit(" ", 1)[-1]
         token = self.client.post("/verify-otp/", json.dumps({"phone": "+254722000000", "otp": code}),

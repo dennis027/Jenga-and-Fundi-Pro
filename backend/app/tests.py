@@ -24,7 +24,7 @@ class OTPTests(TestCase):
     def post(self, url, data, **extra):
         return self.client.post(url, json.dumps(data), content_type="application/json", **extra)
 
-    @mock.patch("app.views.sms.send", return_value=AT_OK)
+    @mock.patch("app.views.phone.sms.send", return_value=AT_OK)
     def test_code_is_not_returned_and_verifies_once(self, send):
         r = self.post("/send-otp/", {"phone": PHONE})
         self.assertEqual(r.status_code, 200)
@@ -40,7 +40,7 @@ class OTPTests(TestCase):
         # single use
         self.assertEqual(self.post("/verify-otp/", {"phone": PHONE, "otp": code}).status_code, 400)
 
-    @mock.patch("app.views.sms.send", return_value=AT_OK)
+    @mock.patch("app.views.phone.sms.send", return_value=AT_OK)
     def test_wrong_code_then_lockout(self, send):
         self.post("/send-otp/", {"phone": PHONE})
         code = _sent_code(send)
@@ -49,7 +49,7 @@ class OTPTests(TestCase):
             self.assertEqual(self.post("/verify-otp/", {"phone": PHONE, "otp": wrong}).status_code, 400)
         self.assertEqual(self.post("/verify-otp/", {"phone": PHONE, "otp": code}).status_code, 429)
 
-    @mock.patch("app.views.sms.send", return_value=AT_OK)
+    @mock.patch("app.views.phone.sms.send", return_value=AT_OK)
     def test_resend_cooldown(self, send):
         self.assertEqual(self.post("/send-otp/", {"phone": PHONE}).status_code, 200)
         r = self.post("/send-otp/", {"phone": PHONE})
@@ -57,7 +57,7 @@ class OTPTests(TestCase):
         self.assertIn("Retry-After", r)
         self.assertEqual(send.call_count, 1)
 
-    @mock.patch("app.views.sms.send", side_effect=RuntimeError("gateway down"))
+    @mock.patch("app.views.phone.sms.send", side_effect=RuntimeError("gateway down"))
     def test_send_failure_does_not_leak_code(self, send):
         r = self.post("/send-otp/", {"phone": PHONE})
         self.assertEqual(r.status_code, 502)
@@ -67,7 +67,7 @@ class OTPTests(TestCase):
         self.assertEqual(self.post("/send-otp/", {"phone": PHONE}).status_code, 200)
 
     @override_settings(OTP_RETURN_CODE_IN_RESPONSE=True)
-    @mock.patch("app.views.sms.send", return_value=AT_OK)
+    @mock.patch("app.views.phone.sms.send", return_value=AT_OK)
     def test_legacy_flag_returns_code(self, send):
         self.assertEqual(self.post("/send-otp/", {"phone": PHONE}).json()["otp"], _sent_code(send))
 
@@ -80,7 +80,7 @@ class MpesaTokenCacheTests(TestCase):
     def setUp(self):
         cache.clear()
 
-    @mock.patch("app.views.requests.get")
+    @mock.patch("app.views.payments.requests.get")
     def test_token_fetched_once_then_cached(self, get):
         from app.views import get_access_token
         get.return_value.json.return_value = {"access_token": "tok", "expires_in": "3599"}
