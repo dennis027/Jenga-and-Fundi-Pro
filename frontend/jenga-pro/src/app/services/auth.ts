@@ -1,0 +1,87 @@
+import { Injectable, Inject, PLATFORM_ID } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
+import { Observable, tap } from 'rxjs';
+import { isPlatformBrowser } from '@angular/common';
+import { HttpHeaders } from '@angular/common/http';
+import { environment } from '../../environments/environment';
+import { HttpContextToken, HttpContext } from '@angular/common/http';
+export const BYPASS_AUTH = new HttpContextToken(() => false);
+@Injectable({
+  providedIn: 'root'
+})
+export class AuthService {
+  
+  private apiUrl = environment.apiUrl+'api/login/';
+  private logoutUrl = environment.apiUrl+'api/logout/';
+
+  constructor(private http: HttpClient, @Inject(PLATFORM_ID) private platformId: Object) {}
+
+
+register(payload: { username: string; email: string; password: string, confirm_password: string, account_type: string }): Observable<any> {
+  return this.http.post<any>(environment.apiUrl + 'api/register/', payload);
+}
+
+login(payload: { username: string; password: string }): Observable<any> {
+  return this.http.post<any>(this.apiUrl, payload, {
+    context: new HttpContext().set(BYPASS_AUTH, true)
+  }).pipe(
+    tap(res => {
+      if (!isPlatformBrowser(this.platformId)) return;
+      if (!res?.access || !res?.refresh) return;
+
+      localStorage.setItem('jenga_access_token', res.access);
+      localStorage.setItem('jenga_refresh_token', res.refresh);
+    })
+  );
+}
+
+
+  getAccessToken(): string | null {
+    if (isPlatformBrowser(this.platformId)) {
+      return localStorage.getItem('jenga_access_token');
+    }
+    return null;
+  }
+
+logout(): Observable<any> {
+  const accessToken = this.getAccessToken();
+  console.log('Access Token during logout:', accessToken);
+  const refreshToken = isPlatformBrowser(this.platformId)
+    ? localStorage.getItem('jenga_refresh_token')
+    : null;
+
+
+  let headers = new HttpHeaders();
+  if (accessToken) {
+    headers = headers.set('Authorization', `Bearer ${accessToken}`);
+  }
+
+  // 🟡 Django expects the refresh token in the body
+  const body = { refresh: refreshToken };
+
+  return this.http.post<any>(this.logoutUrl, body, { headers }).pipe(
+    tap({
+      next: () => {
+        if (isPlatformBrowser(this.platformId)) {
+          localStorage.removeItem('jenga_access_token');
+          localStorage.removeItem('jenga_refresh_token');
+        }
+      },
+      error: () => {
+        if (isPlatformBrowser(this.platformId)) {
+          localStorage.removeItem('jenga_access_token');
+          localStorage.removeItem('jenga_refresh_token');
+        }
+      }
+    })
+  );
+}
+
+
+resendActivationEmail(email: any): Observable<any> {
+  return this.http.post<any>(environment.apiUrl + 'api/resend-verification/', { email }, {
+    context: new HttpContext().set(BYPASS_AUTH, true)
+  });
+}
+
+}
