@@ -321,3 +321,4 @@ pip install -r requirements.txt && python manage.py migrate && python manage.py 
 cd frontend/fundi-pro && npm ci && npm start                                       # :4200
 cd frontend/jenga-pro && npm ci && npx ng serve --port 4300                         # :4300
 ```
+# Jenga-and-Fundi-Pro
