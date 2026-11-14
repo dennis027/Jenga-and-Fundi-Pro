@@ -122,3 +122,5 @@ from .certificate import CertificateJSONView, CertificateLinkView, certificate_p
 from .ratings import CompletedGigsView, DisputeListCreateView, RateGigView, ResolveDisputeView  # noqa: F401
 from .ussd import ussd_callback  # noqa: F401
 from .gigs import GigsAvailableDeleteView  # noqa: F401
+from .hiring import (ApplyView, CheckInView, DecideApplicationView, MyApplicationsView,  # noqa: F401
+                     MyCheckInsTodayView, OnSiteTodayView, PostApplicationsView)

@@ -21,10 +21,23 @@
     .stat { border:1px solid var(--line); border-radius:10px; padding:12px; } .stat b { display:block; font-size:1.6rem; } .stat span { color:var(--muted); font-size:.85rem }
     h2 { font-size:1rem; margin:20px 0 8px; } ul { margin:0; padding-left:18px; } .muted { color:var(--muted); font-size:.85rem }
     footer { margin-top:20px; } a { color:inherit }
+    .actions { display:flex; justify-content:flex-end; margin-bottom:12px; }
+    .print-btn { display:inline-flex; align-items:center; gap:8px; padding:9px 16px; border-radius:10px; border:1px solid var(--line);
+      background:var(--card); color:var(--ink); font:inherit; font-weight:500; cursor:pointer; }
+    .print-btn:hover { border-color:var(--accent); }
+    @media print {
+      :root { --bg:#fff; --card:#fff; --ink:#111; --muted:#555; --line:#ccc; }
+      body { background:#fff; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+      main { max-width:none; padding:0; }
+      .card { border:0; padding:0; }
+      .actions { display:none; }
+      @page { size:A4; margin:16mm; }
+    }
   </style>
 </head>
 <body>
 <main>
+  <div class="actions"><button class="print-btn" type="button" onclick="window.print()">&#128424; Print / Save as PDF</button></div>
   <div class="card">
     <div class="top">
       <div>

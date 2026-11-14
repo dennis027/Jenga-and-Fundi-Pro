@@ -132,6 +132,14 @@ class Command(BaseCommand):
             GigsAvailable.objects.create(organization=org, title=title, description=desc, county=org.county,
                                          constituency=org.constituency, ward=org.ward)
 
+        from app.models import JobApplication, SiteCheckIn
+        posts = list(GigsAvailable.objects.filter(organization__in=orgs).order_by("id"))
+        JobApplication.objects.create(post=posts[0], worker=fundis[1], message="I can start Monday, 12 years in block work.")
+        JobApplication.objects.create(post=posts[0], worker=fundis[3], message="Available for 3 weeks.")
+        JobApplication.objects.create(post=posts[2], worker=fundis[2], message="I did the tiling at Ruaka phase 1.")
+        for g in Gig.objects.filter(organization__in=orgs, is_verified=True).exclude(worker__username="fundi-pro"):
+            SiteCheckIn.objects.get_or_create(gig=g, date=today, defaults={"worker": g.worker})
+
         hist = GigHistory.objects.filter(worker=fundis[2]).first()
         if hist:
             GigDispute.objects.create(history=hist, raised_by=fundis[2], reason="The days worked were 10, not 8.")

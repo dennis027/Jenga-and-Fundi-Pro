@@ -149,3 +149,42 @@ class JobPostTests(FeatureBase):
                          "county": "a", "constituency": "b", "ward": "c"}).status_code, 403)
         self.assertEqual(self.api(self.rival).delete(f"/api/gigs-available/{pid}/").status_code, 403)
         self.assertEqual(self.api(self.boss).delete(f"/api/gigs-available/{pid}/").status_code, 204)
+
+
+class HiringTests(FeatureBase):
+    def setUp(self):
+        super().setUp()
+        from app.models import GigsAvailable
+        self.post = GigsAvailable.objects.create(organization=self.org, title="Masons", county="Nairobi", constituency="W", ward="P")
+
+    def test_apply_review_decide(self):
+        self.assertEqual(self.api(self.boss).post(f"/api/gigs-available/{self.post.id}/apply/").status_code, 403)
+        r = self.api(self.fundi).post(f"/api/gigs-available/{self.post.id}/apply/", {"message": "I'm free Monday"})
+        self.assertEqual(r.status_code, 201)
+        self.assertEqual(self.api(self.fundi).post(f"/api/gigs-available/{self.post.id}/apply/").status_code, 200)  # idempotent
+        posts = self.api(self.fundi).get("/api/gigs-available/").json()
+        self.assertEqual(posts[0]["my_application"]["status"], "pending")
+        self.assertEqual(self.api(self.boss).get("/api/gigs-available/", {"mine": 1}).json()[0]["applications_count"], 1)
+        self.assertEqual(self.api(self.rival).get(f"/api/gigs-available/{self.post.id}/applications/").status_code, 404)
+        apps = self.api(self.boss).get(f"/api/gigs-available/{self.post.id}/applications/").json()
+        self.assertEqual(apps[0]["worker"]["name"], "Wanjiku Mason")
+        self.assertEqual(self.api(self.rival).post(f"/api/applications/{apps[0]['id']}/decide/", {"status": "accepted"}).status_code, 404)
+        self.assertEqual(self.api(self.boss).post(f"/api/applications/{apps[0]['id']}/decide/", {"status": "accepted"}).json()["status"], "accepted")
+        self.assertEqual(self.api(self.fundi).get("/api/my-applications/").json()[0]["status"], "accepted")
+
+
+class CheckInTests(FeatureBase):
+    def test_check_in_rules_and_on_site_list(self):
+        from app.models import Gig
+        gig = Gig.objects.create(worker=self.fundi, logged_by=self.fundi, organization=self.org, job_type=self.job,
+                                 duration_value=3, duration_unit="days", county="Nairobi", constituency="W", ward="P")
+        url = f"/api/gigs/{gig.id}/check-in/"
+        self.assertEqual(self.api(self.fundi).post(url).status_code, 400)  # not verified yet
+        gig.is_verified = True; gig.save()
+        self.assertEqual(self.api(self.rival).post(url).status_code, 404)
+        self.assertEqual(self.api(self.fundi).post(url).status_code, 201)
+        self.assertEqual(self.api(self.fundi).post(url).status_code, 200)  # once a day
+        self.assertEqual(self.api(self.fundi).get("/api/my-check-ins/today/").json(), [gig.id])
+        rows = self.api(self.boss).get("/api/contractor/on-site-today/").json()
+        self.assertEqual((len(rows), rows[0]["worker_name"]), (1, "Wanjiku Mason"))
+        self.assertEqual(self.api(self.rival).get("/api/contractor/on-site-today/").json(), [])

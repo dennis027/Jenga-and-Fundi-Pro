@@ -330,3 +330,31 @@ class GigDispute(models.Model):
 
     def __str__(self):
         return f"Dispute {self.id} ({self.status})"
+
+
+class JobApplication(models.Model):
+    """A fundi's interest in a contractor's job post."""
+    STATUS = [("pending", "Pending"), ("accepted", "Accepted"), ("declined", "Declined")]
+
+    post = models.ForeignKey(GigsAvailable, on_delete=models.CASCADE, related_name="applications")
+    worker = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="job_applications")
+    message = models.CharField(max_length=300, blank=True)
+    status = models.CharField(max_length=10, choices=STATUS, default="pending")
+    created_at = models.DateTimeField(auto_now_add=True)
+    decided_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        unique_together = ("post", "worker")
+        ordering = ["-created_at"]
+
+
+class SiteCheckIn(models.Model):
+    """A fundi confirming they are on site for a gig on a given day (once per day)."""
+    gig = models.ForeignKey(Gig, on_delete=models.CASCADE, related_name="check_ins")
+    worker = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="check_ins")
+    date = models.DateField()
+    checked_in_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ("gig", "date")
+        ordering = ["-checked_in_at"]

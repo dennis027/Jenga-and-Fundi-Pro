@@ -60,6 +60,13 @@ urlpatterns = [
     path('api/user-work-history/', UserGigHistoryView.as_view(), name='my-work-history'),
     path('api/gigs-available/', GigsAvailableListCreateView.as_view(), name='gig-list-create'),
     path('api/gigs-available/<int:pk>/', views.GigsAvailableDeleteView.as_view(), name='gig-post-delete'),
+    path('api/gigs-available/<int:pk>/apply/', views.ApplyView.as_view(), name='job-apply'),
+    path('api/gigs-available/<int:pk>/applications/', views.PostApplicationsView.as_view(), name='job-applications'),
+    path('api/applications/<int:pk>/decide/', views.DecideApplicationView.as_view(), name='application-decide'),
+    path('api/my-applications/', views.MyApplicationsView.as_view(), name='my-applications'),
+    path('api/gigs/<int:gig_id>/check-in/', views.CheckInView.as_view(), name='gig-check-in'),
+    path('api/my-check-ins/today/', views.MyCheckInsTodayView.as_view(), name='my-check-ins-today'),
+    path('api/contractor/on-site-today/', views.OnSiteTodayView.as_view(), name='on-site-today'),
     path('api/credit-history/', CreditScoreHistoryView.as_view(), name='credit-history'),
   
 

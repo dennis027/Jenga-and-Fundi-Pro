@@ -277,8 +277,21 @@ class GigsAvailableSerializer(serializers.ModelSerializer):
     class Meta:
         model = GigsAvailable
         fields = ['id', 'title', 'description', 'county', 'constituency', 'ward', 'created_at', 'organization',
-                  'organization_name', 'organization_phone', 'worker']
+                  'organization_name', 'organization_phone', 'worker', 'applications_count', 'my_application']
         read_only_fields = ['id', 'created_at', 'organization', 'worker']
+
+    applications_count = serializers.SerializerMethodField()
+    my_application = serializers.SerializerMethodField()
+
+    def get_applications_count(self, obj):
+        return obj.applications.filter(status="pending").count()
+
+    def get_my_application(self, obj):
+        req = self.context.get("request")
+        if not req or not req.user.is_authenticated:
+            return None
+        a = obj.applications.filter(worker=req.user).first()
+        return {"id": a.id, "status": a.status} if a else None
 
 
 # ########################################
