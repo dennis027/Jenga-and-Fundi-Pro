@@ -2,7 +2,7 @@ import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { Component, ElementRef, OnInit, PLATFORM_ID, ViewChild, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, RouterModule } from '@angular/router';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { catchError, forkJoin, of } from 'rxjs';
 import { environment } from '../../../environments/environment';
@@ -15,7 +15,7 @@ const API = environment.apiUrl + 'api/';
 @Component({
   selector: 'app-job-posts',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, RouterModule],
   templateUrl: './job-posts.html',
   styleUrl: './job-posts.css',
 })
@@ -28,6 +28,11 @@ export class JobPosts implements OnInit {
   ctx = inject(SiteContextService);
   daysAgo = daysAgo;
   @ViewChild('postDialog') dialog?: ElementRef<HTMLDialogElement>;
+  @ViewChild('appsDialog') appsDialog?: ElementRef<HTMLDialogElement>;
+  viewing = signal<any | null>(null);
+  applicants = signal<any[]>([]);
+  appsLoading = signal(false);
+  initials = (n: string) => (n || '?').split(/\s+/).map((p) => p[0]).slice(0, 2).join('').toUpperCase();
 
   loading = signal(true);
   posts = signal<any[]>([]);
@@ -69,6 +74,27 @@ export class JobPosts implements OnInit {
       next: (p) => { this.saving.set(false); this.close(); this.posts.update((l) => [{ ...p, organization_name: site.name }, ...l]);
         this.snack.open('Job posted. Fundis can see it under Find work.', 'OK', { duration: 3500, panelClass: 'success-snackbar' }); },
       error: () => { this.saving.set(false); this.snack.open('Could not post the job.', 'OK', { duration: 4000, panelClass: 'error-snackbar' }); },
+    });
+  }
+
+  openApplicants(p: any) {
+    this.viewing.set(p); this.applicants.set([]); this.appsLoading.set(true);
+    this.appsDialog?.nativeElement.showModal();
+    this.http.get<any[]>(API + `gigs-available/${p.id}/applications/`).subscribe({
+      next: (a) => { this.applicants.set(a); this.appsLoading.set(false); }, error: () => this.appsLoading.set(false),
+    });
+  }
+  closeApplicants() { this.appsDialog?.nativeElement.close(); }
+
+  decide(a: any, status: 'accepted' | 'declined') {
+    this.http.post<any>(API + `applications/${a.id}/decide/`, { status }).subscribe({
+      next: (r) => {
+        this.applicants.update((l) => l.map((x) => (x.id === a.id ? r : x)));
+        const pending = this.applicants().filter((x) => x.status === 'pending').length;
+        this.posts.update((l) => l.map((p) => (p.id === this.viewing()?.id ? { ...p, applications_count: pending } : p)));
+        this.snack.open(status === 'accepted' ? `${a.worker.name} accepted. Call them to agree the start.` : 'Declined.', 'OK', { duration: 3000, panelClass: status === 'accepted' ? 'success-snackbar' : '' });
+      },
+      error: () => this.snack.open('Could not save your decision.', 'OK', { duration: 4000, panelClass: 'error-snackbar' }),
     });
   }
 

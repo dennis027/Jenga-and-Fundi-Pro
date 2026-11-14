@@ -52,6 +52,43 @@
     }
   </section>
 
+  @if (!loading() && stepsDone() < steps().length) {
+    <section class="panel">
+      <div class="panel-head">
+        <div><h2>Getting started</h2><p>{{ stepsDone() }} of {{ steps().length }} done</p></div>
+        <div class="progress mini-progress"><span [style.width.%]="stepsDone() / steps().length * 100"></span></div>
+      </div>
+      <div class="checklist">
+        @for (s of steps(); track s.label) {
+          <a class="check-item" [class.done]="s.done" [routerLink]="s.route" [queryParams]="s.q">
+            <span class="tick"><span class="icon">{{ s.done ? 'check' : 'radio_button_unchecked' }}</span></span>
+            <span class="grow"><strong>{{ s.label }}</strong><small>{{ s.hint }}</small></span>
+          </a>
+        }
+      </div>
+    </section>
+  }
+
+  <!-- on site today -->
+  <section class="panel">
+    <div class="panel-head">
+      <div><h2>On site today</h2><p>Fundis who checked in{{ site.id() !== null ? ' at ' + site.label() : '' }} · {{ today | date: 'd MMM' }}</p></div>
+      <span class="badge" [class.ok]="visibleOnSite().length">{{ visibleOnSite().length }} checked in</span>
+    </div>
+    <div class="rows">
+      @for (c of visibleOnSite(); track c.worker_username + c.site) {
+        <div class="row">
+          <span class="avatar">{{ initials(c.worker_name) }}</span>
+          <div class="grow"><div class="title">{{ c.worker_name }} <span class="muted">· {{ c.trade }}</span></div>
+            <div class="sub">{{ c.site }} · since {{ c.checked_in_at | date: 'HH:mm' }}</div></div>
+          @if (c.phone) { <a class="icon-btn" [href]="'tel:' + c.phone" [attr.aria-label]="'Call ' + c.worker_name"><span class="icon">call</span></a> }
+        </div>
+      } @empty {
+        <div class="empty"><span class="icon">location_off</span><p>Nobody has checked in yet today. Fundis check in from their app once their gig is verified.</p></div>
+      }
+    </div>
+  </section>
+
   <!-- stats -->
   <section class="stat-grid">
     <div class="stat"><span class="tile blue"><span class="icon">work</span></span>

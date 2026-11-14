@@ -37,6 +37,20 @@ export class JengaDash implements OnInit {
   sites = signal<Site[]>([]);
   paidThisMonth = signal(0);
   verifying = signal<number | null>(null);
+  onSite = signal<any[]>([]);
+  posts = signal<any[]>([]);
+  me = signal<any>(null);
+  visibleOnSite = computed(() => this.onSite().filter((c) => this.site.id() === null || c.organization === this.site.id()));
+  steps = computed(() => {
+    const m = this.me() || {};
+    return [
+      { done: !!(m.full_name && m.phone), label: 'Complete your profile', hint: 'Name and phone, so fundis can reach you', route: '/main-menu/profile', q: {} },
+      { done: this.sites().length > 0, label: 'Add your first site', hint: 'Where your fundis work', route: '/main-menu/add-sites', q: { new: 1 } },
+      { done: this.posts().length > 0, label: 'Post a job', hint: 'Find fundis with verified records', route: '/main-menu/job-posts', q: { new: 1 } },
+      { done: (this.stats()?.total_gigs ?? 0) > this.pending().length, label: 'Verify a gig', hint: 'Confirm work done at your site', route: '/main-menu/verify-gigs', q: {} },
+    ];
+  });
+  stepsDone = computed(() => this.steps().filter((s) => s.done).length);
 
   today = new Date();
   greeting = (() => { const h = new Date().getHours(); return h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening'; })();
@@ -63,7 +77,10 @@ export class JengaDash implements OnInit {
       workers: safe(this.http.get<Worker[]>(API + 'contractor/dashboard/top-workers/'), []),
       sites: safe(this.http.get<Site[]>(API + 'user-organizations/'), []),
       payments: safe(this.http.get<any[]>(API + 'single-messages/'), []),
+      onSite: safe(this.http.get<any[]>(API + 'contractor/on-site-today/'), []),
+      posts: safe(this.http.get<any[]>(API + 'gigs-available/', { params: { mine: 1 } }), []),
     }).subscribe((r: any) => {
+      this.me.set(r.user); this.onSite.set(r.onSite); this.posts.set(r.posts);
       this.name.set((r.user?.full_name || r.user?.username || '').split(' ')[0]);
       this.stats.set(r.stats);
       this.pending.set(r.pending);

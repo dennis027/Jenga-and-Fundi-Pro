@@ -30,6 +30,14 @@
       <div class="rows">@for (i of [1, 2]; track i) { <div class="row"><div class="skeleton" style="height:38px;width:100%"></div></div> }</div>
     } @else {
       <div class="rows">
+        @for (a of accepted(); track a.id) {
+          <div class="row">
+            <span class="row-icon ok"><span class="icon fill">celebration</span></span>
+            <div class="grow"><div class="title">{{ a.site }} accepted you for “{{ a.post_title }}”</div>
+              <div class="sub">Call them to agree the start date, then log the gig when you begin</div></div>
+            @if (a.site_phone) { <a class="btn outline sm" [href]="'tel:' + a.site_phone"><span class="icon">call</span> Call</a> }
+          </div>
+        }
         @for (g of ready(); track g.id) {
           <div class="row">
             <span class="row-icon ok"><span class="icon">task_alt</span></span>
@@ -37,6 +45,11 @@
               <div class="title">{{ g.job_type_name }} at {{ g.organization_name }} was verified</div>
               <div class="sub">{{ duration(g.duration_value, g.duration_unit) }} from {{ g.start_date | date: 'd MMM' }} · mark it complete when the work is done</div>
             </div>
+            @if (checkedIn()[g.id]) {
+              <span class="badge ok"><span class="icon">location_on</span> On site{{ checkedTime(g.id) ? ' since ' + (checkedTime(g.id) | date: 'HH:mm') : ' today' }}</span>
+            } @else {
+              <button class="btn outline sm" type="button" (click)="checkIn(g)" [disabled]="checking() === g.id"><span class="icon">location_on</span> I'm on site today</button>
+            }
             <button class="btn primary sm" type="button" (click)="complete(g)" [disabled]="completing() === g.id">
               <span class="icon">done</span> {{ completing() === g.id ? 'Saving…' : 'Mark complete (+5)' }}
             </button>
@@ -66,6 +79,24 @@
       </div>
     }
   </section>
+
+  @if (!loading() && stepsDone() < steps().length) {
+    <section class="panel">
+      <div class="panel-head">
+        <div><h2>Getting started</h2><p>{{ stepsDone() }} of {{ steps().length }} done. Each step makes your record stronger.</p></div>
+        <div class="progress mini-progress"><span [style.width.%]="stepsDone() / steps().length * 100"></span></div>
+      </div>
+      <div class="checklist">
+        @for (s of steps(); track s.label) {
+          <a class="check-item" [class.done]="s.done" [routerLink]="s.route">
+            <span class="tick"><span class="icon">{{ s.done ? 'check' : 'radio_button_unchecked' }}</span></span>
+            <span class="grow"><strong>{{ s.label }}</strong><small>{{ s.hint }}</small></span>
+            @if (!s.done) { <span class="icon chev">chevron_right</span> }
+          </a>
+        }
+      </div>
+    </section>
+  }
 
   <section class="stat-grid">
     <div class="stat"><span class="tile green"><span class="icon">task_alt</span></span><div><div class="label">Completed gigs</div><div class="value">{{ history().length }}</div></div></div>

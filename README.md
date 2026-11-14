@@ -102,6 +102,9 @@ run in production mode.
 | **Workers:** everyone who worked at your sites, plus lookup of any fundi's verified record | **Log a gig:** pick site, then that site's trades · **Find work:** contractors' job posts |
 | **Sites**, **Job types**, **Job posts** (advertise open work) | **Credit score:** history, how to earn points, share the work certificate |
 | **M-Pesa payments:** STK prompt to your phone, history, CSV | **ID verification** (camera capture) · **Payments received** (M-Pesa proof with OCR) |
+| **Job posts:** applicants with their verified record; *Accept* / *Decline* | **Find work:** *I'm interested* on job posts, acceptance alerts with the site's number |
+| **On site today:** who checked in at your sites | **I'm on site today:** daily check-in on active verified gigs |
+| **Getting started** checklist for new contractors | **Getting started** checklist; printable work certificate (*Print / Save as PDF*) |
 
 Both share one design system (`frontend/design-system/`): a grouped sidebar, a top bar with
 **Ctrl K** search, notifications and the user menu, light and dark themes, and a phone layout.
@@ -278,6 +281,8 @@ OTP step yet.
 
 | Feature | Endpoint(s) | Who |
 |---|---|---|
+| **Hiring** | `POST /api/gigs-available/<id>/apply/`, `GET /api/my-applications/`, `GET /api/gigs-available/<id>/applications/`, `POST /api/applications/<id>/decide/` | Fundi applies; post's contractor decides |
+| **Site check-in** | `POST /api/gigs/<id>/check-in/` (once a day, verified gigs), `GET /api/my-check-ins/today/`, `GET /api/contractor/on-site-today/` | Fundi checks in; contractor sees who is on site |
 | **Work certificate** | `GET /api/certificate/link/` returns a signed link; `GET /certificate/<token>/` is the public page with a QR code; `GET /api/certificate/<token>/` is the JSON version | Fundi creates; anyone with the link views |
 | **Gig ratings** (1–5 stars) | `POST /api/gig-history/<id>/rate/` | Contractor who owns the site |
 | **Disputes** | `GET/POST /api/disputes/`, `POST /api/disputes/<id>/resolve/` | Worker / site contractor raise; staff resolve |

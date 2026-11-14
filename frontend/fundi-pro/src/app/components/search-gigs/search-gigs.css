@@ -12,3 +12,5 @@
 .desc { color: var(--text-2); font-size: .92rem; }
 .post-foot { display: flex; gap: 8px; justify-content: flex-end; margin-top: auto; }
 @media (max-width: 500px) { .posts { grid-template-columns: 1fr; padding: 14px; } .county { width: 100%; } }
+.accepted { align-items: center; }
+.accepted span:nth-child(2) { flex: 1; }

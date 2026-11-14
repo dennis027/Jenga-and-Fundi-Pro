@@ -27,12 +27,17 @@ export class ShellDataService implements ShellData {
     return forkJoin({
       pending: this.http.get<any[]>(API + 'contractor/dashboard/unverified-gigs/').pipe(catchError(() => of([]))),
       disputes: this.http.get<any[]>(API + 'disputes/').pipe(catchError(() => of([]))),
-    }).pipe(map(({ pending, disputes }) => {
+      posts: this.http.get<any[]>(API + 'gigs-available/', { params: { mine: 1 } }).pipe(catchError(() => of([]))),
+    }).pipe(map(({ pending, disputes, posts }) => {
       const out: ShellNotification[] = pending.slice(0, 5).map((g) => ({
         icon: 'fact_check', tone: 'warn' as const, title: `${g.workerName} logged ${g.jobType}`,
         sub: `${g.siteName} · ${g.duration} · waiting for you`, route: '/main-menu/verify-gigs',
       }));
       if (pending.length > 5) out.push({ icon: 'more_horiz', tone: 'info', title: `${pending.length - 5} more gigs to verify`, sub: 'Open the verification queue', route: '/main-menu/verify-gigs' });
+      posts.filter((p: any) => p.applications_count > 0).forEach((p: any) => out.push({
+        icon: 'front_hand', tone: 'info', title: `${p.applications_count} new applicant${p.applications_count > 1 ? 's' : ''}`,
+        sub: `For “${p.title}”`, route: '/main-menu/job-posts',
+      }));
       disputes.filter((d) => d.status === 'open').forEach((d) => out.push({
         icon: 'gavel', tone: 'danger', title: 'A worker disputed a gig', sub: d.reason, route: '/main-menu/all-gigs',
       }));

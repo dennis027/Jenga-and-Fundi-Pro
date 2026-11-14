@@ -17,13 +17,18 @@
     } @else {
       <div class="table-wrap">
         <table class="tbl">
-          <thead><tr><th>Job</th><th>Site</th><th>Posted</th><th></th></tr></thead>
+          <thead><tr><th>Job</th><th>Site</th><th>Posted</th><th>Applicants</th><th></th></tr></thead>
           <tbody>
             @for (p of shown(); track p.id) {
               <tr>
                 <td><div class="cell-main">{{ p.title }}</div>@if (p.description) { <div class="cell-sub clamp">{{ p.description }}</div> }</td>
                 <td><div>{{ p.organization_name }}</div><div class="cell-sub">{{ p.ward }}, {{ p.county }}</div></td>
                 <td class="nowrap">{{ daysAgo(p.created_at) }}</td>
+                <td>
+                  <button class="btn sm" [class.soft]="p.applications_count" [class.ghost]="!p.applications_count" type="button" (click)="openApplicants(p)">
+                    <span class="icon">groups</span> {{ p.applications_count ? p.applications_count + ' new' : 'View' }}
+                  </button>
+                </td>
                 <td><div class="row-actions"><button class="btn danger-outline sm" type="button" (click)="remove(p)"><span class="icon">delete</span> Remove</button></div></td>
               </tr>
             }
@@ -55,4 +60,46 @@
       <button class="btn primary" type="submit" [disabled]="!form.title.trim() || !form.organization || saving()">{{ saving() ? 'Posting…' : 'Post job' }}</button>
     </div>
   </form>
+</dialog>
+
+<dialog class="modal wide" #appsDialog>
+  @if (viewing(); as p) {
+    <div class="modal-head">
+      <div><h2>Applicants</h2><p>{{ p.title }} · {{ p.organization_name }}</p></div>
+      <button class="icon-btn" type="button" (click)="closeApplicants()" aria-label="Close"><span class="icon">close</span></button>
+    </div>
+    <div class="modal-body">
+      @if (appsLoading()) { <div class="skeleton" style="height:120px"></div> }
+      @for (a of applicants(); track a.id) {
+        <div class="applicant">
+          <span class="avatar">{{ initials(a.worker.name) }}</span>
+          <div class="grow">
+            <div class="who">
+              <strong>{{ a.worker.name }}</strong>
+              @if (a.worker.id_verified) { <span class="badge ok"><span class="icon fill">verified</span> ID</span> }
+              <span class="badge info">Score {{ a.worker.credit_score }}</span>
+              <span class="muted small">{{ a.worker.completed_gigs }} completed gig{{ a.worker.completed_gigs === 1 ? '' : 's' }}</span>
+            </div>
+            @if (a.message) { <p class="note">“{{ a.message }}”</p> }
+            <div class="acts">
+              @if (a.worker.phone) { <a class="btn ghost sm" [href]="'tel:' + a.worker.phone"><span class="icon">call</span> {{ a.worker.phone }}</a> }
+              <a class="btn ghost sm" routerLink="/main-menu/manage-workers" [queryParams]="{ q: a.worker.username }" (click)="closeApplicants()"><span class="icon">badge</span> Full record</a>
+              <span class="spacer"></span>
+              @switch (a.status) {
+                @case ('pending') {
+                  <button class="btn ghost sm" type="button" (click)="decide(a, 'declined')">Decline</button>
+                  <button class="btn primary sm" type="button" (click)="decide(a, 'accepted')"><span class="icon">check</span> Accept</button>
+                }
+                @case ('accepted') { <span class="badge ok">Accepted</span> }
+                @case ('declined') { <span class="badge">Declined</span> }
+              }
+            </div>
+          </div>
+        </div>
+      } @empty {
+        @if (!appsLoading()) { <div class="empty"><span class="icon">group_off</span><p>No applicants yet. Fundis see this post under “Find work”.</p></div> }
+      }
+    </div>
+    <div class="modal-foot"><button class="btn primary" type="button" (click)="closeApplicants()">Done</button></div>
+  }
 </dialog>

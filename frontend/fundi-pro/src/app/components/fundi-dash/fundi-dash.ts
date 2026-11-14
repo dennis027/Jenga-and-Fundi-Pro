@@ -33,6 +33,9 @@ export class FundiDash implements OnInit {
   gigs = signal<any[]>([]);
   history = signal<any[]>([]);
   completing = signal<number | null>(null);
+  checkedIn = signal<Record<number, string>>({});
+  checking = signal<number | null>(null);
+  apps = signal<any[]>([]);
   today = new Date();
   greeting = (() => { const h = new Date().getHours(); return h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening'; })();
 
@@ -40,6 +43,17 @@ export class FundiDash implements OnInit {
   level = computed(() => scoreLevel(this.score()));
   ready = computed(() => this.gigs().filter((g) => g.is_verified));
   waiting = computed(() => this.gigs().filter((g) => !g.is_verified));
+  accepted = computed(() => this.apps().filter((a) => a.status === 'accepted'));
+  steps = computed(() => {
+    const m = this.me() || {};
+    return [
+      { done: !!(m.full_name && m.national_id && m.phone && m.county), label: 'Complete your profile', hint: 'Name, ID number, phone and area', route: '/main-menu/profile' },
+      { done: !!m.id_verified, label: 'Verify your ID', hint: '+20 to your score', route: '/main-menu/verification-status' },
+      { done: this.gigs().length + this.history().length > 0, label: 'Log your first gig', hint: 'At the site where you work', route: '/main-menu/gigs' },
+      { done: this.history().length > 0, label: 'Complete a verified gig', hint: 'It goes on your certificate', route: '/main-menu/gig-summary' },
+    ];
+  });
+  stepsDone = computed(() => this.steps().filter((s) => s.done).length);
   firstName = computed(() => ((this.me()?.full_name || this.me()?.username || '') as string).split(' ')[0]);
 
   ngOnInit() {
@@ -55,12 +69,26 @@ export class FundiDash implements OnInit {
       stats: safe(this.http.get<any>(API + 'fundi/dashboard/stats/'), null),
       gigs: safe(this.http.get<any[]>(API + 'user-gigs/'), []),
       history: safe(this.http.get<any[]>(API + 'user-work-history/'), []),
+      checkins: safe(this.http.get<number[]>(API + 'my-check-ins/today/'), []),
+      apps: safe(this.http.get<any[]>(API + 'my-applications/'), []),
     }).subscribe((r: any) => {
-      this.me.set(r.me); this.stats.set(r.stats); this.gigs.set(r.gigs);
+      this.me.set(r.me); this.stats.set(r.stats); this.gigs.set(r.gigs); this.apps.set(r.apps);
+      this.checkedIn.set(Object.fromEntries((r.checkins as number[]).map((id) => [id, 'today'])));
       this.history.set([...r.history].sort((a: any, b: any) => b.start_date.localeCompare(a.start_date)));
       this.loading.set(false);
     });
   }
+
+  checkIn(g: any) {
+    this.checking.set(g.id);
+    this.http.post<any>(API + `gigs/${g.id}/check-in/`, {}).subscribe({
+      next: (r) => { this.checking.set(null); this.checkedIn.update((m) => ({ ...m, [g.id]: r.checked_in_at }));
+        this.snack.open(`Checked in at ${g.organization_name}.`, 'OK', { duration: 3000, panelClass: 'success-snackbar' }); },
+      error: (e) => { this.checking.set(null); this.snack.open(e?.error?.detail || 'Could not check in.', 'OK', { duration: 4000, panelClass: 'error-snackbar' }); },
+    });
+  }
+
+  checkedTime(id: number) { const v = this.checkedIn()[id]; return v && v !== 'today' ? v : null; }
 
   complete(g: any) {
     this.completing.set(g.id);
