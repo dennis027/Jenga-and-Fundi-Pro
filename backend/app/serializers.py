@@ -83,6 +83,16 @@ def _id_verified(user):
 
 
 class GigSerializer(serializers.ModelSerializer):
+    job_type_name = serializers.CharField(source="job_type.name", read_only=True, default=None)
+    organization_name = serializers.CharField(source="organization.name", read_only=True, default=None)
+    worker_name = serializers.SerializerMethodField()
+
+    def get_worker_name(self, obj):
+        w = obj.worker
+        return (w.full_name or w.username) if w else None
+
+    worker_username = serializers.CharField(source="worker.username", read_only=True, default=None)
+
     class Meta:
         model = Gig
         fields = '__all__'
@@ -150,9 +160,32 @@ class PaymentSerializer(serializers.ModelSerializer):
         fields = '__all__'
         read_only_fields = ['user', 'payment_date', 'is_confirmed']
 
+    def validate_transaction_code(self, value):
+        code = (value or "").strip().upper()
+        if Payment.objects.filter(transaction_code__iexact=code).exclude(pk=getattr(self.instance, "pk", None)).exists():
+            raise serializers.ValidationError("This M-Pesa code has already been uploaded.")
+        return code
+
+    def to_representation(self, instance):
+        # Payment screenshots show names and phone numbers: signed, short-lived links only.
+        from .media import signed_media_url
+        data = super().to_representation(instance)
+        data["screenshot"] = signed_media_url(instance.screenshot, self.context.get("request"))
+        return data
+
 
 
 class GigHistorySerializer(serializers.ModelSerializer):
+    job_type_name = serializers.CharField(source="job_type.name", read_only=True, default=None)
+    organization_name = serializers.CharField(source="organization.name", read_only=True, default=None)
+    worker_name = serializers.SerializerMethodField()
+
+    def get_worker_name(self, obj):
+        w = obj.worker
+        return (w.full_name or w.username) if w else None
+
+    worker_username = serializers.CharField(source="worker.username", read_only=True, default=None)
+
     class Meta:
         model = GigHistory
         fields = '__all__'
@@ -238,9 +271,13 @@ class VerificationRequestSerializer(serializers.ModelSerializer):
 
 
 class GigsAvailableSerializer(serializers.ModelSerializer):
+    organization_name = serializers.CharField(source="organization.name", read_only=True)
+    organization_phone = serializers.CharField(source="organization.phone_number", read_only=True, default=None)
+
     class Meta:
         model = GigsAvailable
-        fields = ['id', 'title', 'description', 'county','constituency','ward', 'created_at', 'organization', 'worker']
+        fields = ['id', 'title', 'description', 'county', 'constituency', 'ward', 'created_at', 'organization',
+                  'organization_name', 'organization_phone', 'worker']
         read_only_fields = ['id', 'created_at', 'organization', 'worker']
 
 
@@ -381,6 +418,16 @@ class CalendarDaySerializer(serializers.Serializer):
 
 class GigSearchResultSerializer(serializers.ModelSerializer):
     """Gig as shown to people who are not its worker or its site's contractor."""
+
+    job_type_name = serializers.CharField(source="job_type.name", read_only=True, default=None)
+    organization_name = serializers.CharField(source="organization.name", read_only=True, default=None)
+    worker_name = serializers.SerializerMethodField()
+
+    def get_worker_name(self, obj):
+        w = obj.worker
+        return (w.full_name or w.username) if w else None
+
+    worker_username = serializers.CharField(source="worker.username", read_only=True, default=None)
 
     class Meta:
         model = Gig

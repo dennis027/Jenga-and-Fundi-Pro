@@ -137,3 +137,16 @@ class AsyncMailTests(TestCase):
             m.send_mail_async("Hi", "body", "a@example.com", ["b@example.com"])
             m._executor.submit(lambda: None).result(timeout=5)  # drain queue
         sm.assert_called_once()
+
+
+@override_settings(PASSWORD_HASHERS=FAST)
+class PaymentProofTests(TestCase):
+    def test_list_own_payments_and_reject_reused_code(self):
+        me, other = user("payer"), user("other")
+        api = APIClient(); api.force_authenticate(me)
+        self.assertEqual(api.post("/api/upload-payment/", {"amount": "1500", "transaction_code": "tjd4m7xk2p"}).status_code, 201)
+        rows = api.get("/api/upload-payment/").json()
+        self.assertEqual((len(rows), rows[0]["transaction_code"]), (1, "TJD4M7XK2P"))
+        o = APIClient(); o.force_authenticate(other)
+        self.assertEqual(o.get("/api/upload-payment/").json(), [])
+        self.assertEqual(o.post("/api/upload-payment/", {"amount": "1500", "transaction_code": "TJD4M7XK2P"}).status_code, 400)

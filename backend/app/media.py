@@ -12,7 +12,7 @@ from django.core import signing
 from django.http import Http404
 from django.views.static import serve
 
-PRIVATE_PREFIXES = ("verifications/",)
+PRIVATE_PREFIXES = ("verifications/", "payments/")
 _SALT = "app.media.private"
 
 

@@ -237,8 +237,11 @@ class GigsAvailableListCreateView(generics.ListCreateAPIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
-        # Show only gigs from the organizations owned by the logged-in user
-        return GigsAvailable.objects.all().order_by('-created_at')
+        # Open job posts at active sites; ?mine=1 -> the signed-in contractor's own posts.
+        qs = GigsAvailable.objects.select_related("organization").order_by('-created_at')
+        if self.request.query_params.get("mine"):
+            return qs.filter(organization__owner=self.request.user)
+        return qs.filter(organization__is_active=True)
 
     def perform_create(self, serializer):
         org_id = self.request.data.get("organization")
@@ -432,4 +435,31 @@ class WorkerSearchAPIView(APIView):
                 or User.objects.filter(full_name__icontains=query).order_by("id").first())
         if not user:
             return Response({"error": "User not found."}, status=status.HTTP_404_NOT_FOUND)
-        return Response(UserDetailWithGigsSerializer(user).data, status=status.HTTP_200_OK)
+        data = UserDetailWithGigsSerializer(user).data
+        # Gigs at other contractors' sites: no client phone / pay / verifier details.
+        mine = set(visible_gigs(request.user, Gig.objects.filter(worker=user)).values_list("id", flat=True))
+        data["gigs"] = [GigSerializer(g).data if g.id in mine else GigSearchResultSerializer(g).data
+                        for g in Gig.objects.filter(worker=user).select_related("job_type", "organization")]
+        data["logged_gigs"] = []
+        from ..models import GigHistory, GigRating
+        from django.db.models import Avg, Count
+        agg = GigRating.objects.filter(history__worker=user).aggregate(avg=Avg("stars"), n=Count("id"))
+        data["completed_gigs"] = GigHistory.objects.filter(worker=user, is_verified=True).count()
+        data["rating_avg"] = round(agg["avg"], 1) if agg["avg"] else None
+        data["ratings_count"] = agg["n"]
+        return Response(data, status=status.HTTP_200_OK)
+
+
+
+class GigsAvailableDeleteView(APIView):
+    """DELETE a job post (owner of its site, or staff)."""
+    permission_classes = [IsAuthenticated]
+
+    def delete(self, request, pk):
+        post = GigsAvailable.objects.select_related("organization").filter(pk=pk).first()
+        if not post:
+            return Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND)
+        if not owns_organization(request.user, post.organization):
+            return Response({"detail": "You can only remove posts for your own sites."}, status=status.HTTP_403_FORBIDDEN)
+        post.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)

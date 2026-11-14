@@ -10,7 +10,7 @@ from rest_framework_simplejwt.tokens import RefreshToken, TokenError
 from django.utils.timezone import now
 from datetime import timedelta
 from rest_framework.permissions import IsAuthenticated
-from ..models import CreditScoreHistory, Gig, GigsAvailable,JobType,GigHistory, Organization,MpesaNewTransaction,UserPaymentSession,PhoneOTP, VerificationRequest
+from ..models import CreditScoreHistory, Gig, Payment, GigsAvailable,JobType,GigHistory, Organization,MpesaNewTransaction,UserPaymentSession,PhoneOTP, VerificationRequest
 from rest_framework.parsers import MultiPartParser, FormParser,JSONParser
 from django.db.models import Q 
 import logging
@@ -93,8 +93,12 @@ class PaymentUploadView(APIView):
     permission_classes = [IsAuthenticated]
     parser_classes = [MultiPartParser, FormParser, JSONParser]  # allow both
 
+    def get(self, request):
+        payments = Payment.objects.filter(user=request.user).order_by("-payment_date")
+        return Response(PaymentSerializer(payments, many=True, context={"request": request}).data)
+
     def post(self, request):
-        serializer = PaymentSerializer(data=request.data)
+        serializer = PaymentSerializer(data=request.data, context={"request": request})
         if serializer.is_valid():
             serializer.save(user=request.user)
             return Response(serializer.data, status=201)

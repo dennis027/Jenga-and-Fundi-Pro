@@ -70,6 +70,12 @@ class RatingTests(FeatureBase):
         self.assertEqual(self.api(self.boss).post(self.url(), {"stars": 5}).status_code, 200)
         self.assertEqual(GigRating.objects.get().stars, 5)
 
+    def test_completed_gigs_listed_for_site_owner_only(self):
+        GigRating.objects.create(history=self.hist, rated_by=self.boss, stars=4)
+        rows = self.api(self.boss).get("/api/contractor/completed-gigs/").json()
+        self.assertEqual((len(rows), rows[0]["rating"]["stars"], rows[0]["worker_name"]), (1, 4, "Wanjiku Mason"))
+        self.assertEqual(self.api(self.rival).get("/api/contractor/completed-gigs/").json(), [])
+
     def test_stars_validated(self):
         self.assertEqual(self.api(self.boss).post(self.url(), {"stars": 9}).status_code, 400)
 
@@ -128,3 +134,18 @@ class AdminReviewTests(FeatureBase):
         for m in ("user", "gig", "gighistory", "gigdispute", "creditscorehistory", "mpesanewtransaction",
                   "organization", "gigrating"):
             self.assertEqual(self.client.get(f"/admin/app/{m}/").status_code, 200, m)
+
+
+class JobPostTests(FeatureBase):
+    def test_contractor_posts_fundis_see_owner_deletes(self):
+        r = self.api(self.boss).post("/api/gigs-available/", {"organization": self.org.id, "title": "2 masons needed",
+                                                              "county": "Nairobi", "constituency": "Westlands", "ward": "Parklands"})
+        self.assertEqual(r.status_code, 201)
+        pid = r.json()["id"]
+        rows = self.api(self.fundi).get("/api/gigs-available/").json()
+        self.assertEqual(rows[0]["organization_name"], "Site A")
+        self.assertEqual(len(self.api(self.rival).get("/api/gigs-available/", {"mine": 1}).json()), 0)
+        self.assertEqual(self.api(self.rival).post("/api/gigs-available/", {"organization": self.org.id, "title": "x",
+                         "county": "a", "constituency": "b", "ward": "c"}).status_code, 403)
+        self.assertEqual(self.api(self.rival).delete(f"/api/gigs-available/{pid}/").status_code, 403)
+        self.assertEqual(self.api(self.boss).delete(f"/api/gigs-available/{pid}/").status_code, 204)

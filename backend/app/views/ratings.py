@@ -85,3 +85,25 @@ class ResolveDisputeView(APIView):
         d.resolved_by, d.resolved_at = request.user, timezone.now()
         d.save()
         return Response(GigDisputeSerializer(d).data)
+
+
+class CompletedGigsView(APIView):
+    """GET: completed gigs (GigHistory) at the signed-in contractor's sites, with their rating."""
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        qs = (GigHistory.objects.select_related("worker", "job_type", "organization", "rating")
+              .order_by("-start_date"))
+        if not request.user.is_staff:
+            qs = qs.filter(organization__owner=request.user)
+        out = []
+        for h in qs:
+            r = getattr(h, "rating", None)
+            out.append({
+                "id": h.id, "worker": h.worker_id, "worker_name": h.worker.full_name or h.worker.username, "worker_username": h.worker.username,
+                "job_type_name": h.job_type.name if h.job_type_id else None,
+                "organization": h.organization_id, "organization_name": h.organization.name,
+                "start_date": h.start_date, "duration_value": h.duration_value, "duration_unit": h.duration_unit,
+                "rating": {"stars": r.stars, "comment": r.comment} if r else None,
+            })
+        return Response(out)

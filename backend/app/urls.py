@@ -59,6 +59,7 @@ urlpatterns = [
     path('api/upload-payment/', PaymentUploadView.as_view(), name='upload_payment'),
     path('api/user-work-history/', UserGigHistoryView.as_view(), name='my-work-history'),
     path('api/gigs-available/', GigsAvailableListCreateView.as_view(), name='gig-list-create'),
+    path('api/gigs-available/<int:pk>/', views.GigsAvailableDeleteView.as_view(), name='gig-post-delete'),
     path('api/credit-history/', CreditScoreHistoryView.as_view(), name='credit-history'),
   
 
@@ -159,6 +160,7 @@ urlpatterns = [
 
     # ratings and disputes
     path('api/gig-history/<int:history_id>/rate/', views.RateGigView.as_view(), name='rate-gig'),
+    path('api/contractor/completed-gigs/', views.CompletedGigsView.as_view(), name='completed-gigs'),
     path('api/disputes/', views.DisputeListCreateView.as_view(), name='disputes'),
     path('api/disputes/<int:pk>/resolve/', views.ResolveDisputeView.as_view(), name='resolve-dispute'),
 

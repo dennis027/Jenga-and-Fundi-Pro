@@ -165,6 +165,14 @@ class DataExposureTests(TrustBase):
         self.assertEqual(self.api(self.contractor).post(
             "/api/job-types/", {"name": "Tiling X", "organization": self.org.id}).status_code, 201)
 
+    def test_worker_search_hides_other_sites_private_fields(self):
+        self.new_gig(org=self.other_org)  # same fundi, rival's site
+        body = self.api(self.contractor).get("/api/workers/search/", {"q": "fundi"}).json()
+        by_site = {g["organization"]: g for g in body["gigs"]}
+        self.assertEqual(by_site[self.org.id]["client_phone"], "0700111222")
+        self.assertNotIn("client_phone", by_site[self.other_org.id])
+        self.assertIn("rating_avg", body)
+
     def test_worker_search_contractors_only(self):
         self.assertEqual(self.api(self.other_fundi).get("/api/workers/search/", {"q": "fundi"}).status_code, 403)
         self.assertEqual(self.api(self.contractor).get("/api/workers/search/", {"q": "fundi"}).status_code, 200)
