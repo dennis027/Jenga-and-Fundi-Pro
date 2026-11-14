@@ -1,3 +1,4 @@
+import { I18nService, TPipe } from '../../services/i18n';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { Component, ElementRef, OnInit, PLATFORM_ID, ViewChild, computed, inject, signal } from '@angular/core';
@@ -15,11 +16,12 @@ interface Post { id: number; title: string; description: string; county: string;
 @Component({
   selector: 'app-search-gigs',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterModule],
+  imports: [TPipe, CommonModule, FormsModule, RouterModule],
   templateUrl: './search-gigs.html',
   styleUrl: './search-gigs.css',
 })
 export class SearchGigs implements OnInit {
+  private i18n = inject(I18nService);
   private http = inject(HttpClient);
   private appBar = inject(AppBarService);
   private snack = inject(MatSnackBar);
@@ -68,9 +70,9 @@ export class SearchGigs implements OnInit {
         this.sending.set(false); this.closeApply();
         this.posts.update((l) => l.map((x) => (x.id === p.id ? { ...x, my_application: { id: a.id, status: a.status } } : x)));
         this.apps.update((l) => [a, ...l.filter((x) => x.id !== a.id)]);
-        this.snack.open(`Sent to ${p.organization_name}. You'll see their answer here.`, 'OK', { duration: 3500, panelClass: 'success-snackbar' });
+        this.snack.open(this.i18n.t('Sent to {0}. You\'ll see their answer here.', p.organization_name), this.i18n.t('OK'), { duration: 3500, panelClass: 'success-snackbar' });
       },
-      error: (e) => { this.sending.set(false); this.snack.open(e?.error?.detail || 'Could not send.', 'OK', { duration: 4000, panelClass: 'error-snackbar' }); },
+      error: (e) => { this.sending.set(false); this.snack.open(e?.error?.detail || this.i18n.t('Could not send.'), this.i18n.t('OK'), { duration: 4000, panelClass: 'error-snackbar' }); },
     });
   }
 }

@@ -1,3 +1,4 @@
+import { I18nService, TPipe } from '../../services/i18n';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { Component, OnInit, PLATFORM_ID, computed, inject, signal } from '@angular/core';
@@ -14,11 +15,12 @@ interface Trade { id: number; name: string; }
 @Component({
   selector: 'app-add-gig',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterModule],
+  imports: [TPipe, CommonModule, FormsModule, RouterModule],
   templateUrl: './add-gig.html',
   styleUrl: './add-gig.css',
 })
 export class AddGig implements OnInit {
+  private i18n = inject(I18nService);
   private http = inject(HttpClient);
   private snack = inject(MatSnackBar);
   private appBar = inject(AppBarService);
@@ -71,13 +73,13 @@ export class AddGig implements OnInit {
     this.http.post<any>(API + 'gigs/', payload).subscribe({
       next: () => {
         this.saving.set(false);
-        this.snack.open(`Logged. ${this.site()!.name}'s contractor will verify it.`, 'OK', { duration: 4000, panelClass: 'success-snackbar' });
+        this.snack.open(this.i18n.t('Logged. {0}\'s contractor will verify it.', this.site()!.name), this.i18n.t('OK'), { duration: 4000, panelClass: 'success-snackbar' });
         this.router.navigate(['/main-menu/gig-summary'], { queryParams: { tab: 'waiting' } });
       },
       error: (e) => {
         this.saving.set(false);
-        const msg = e?.error?.detail || Object.values(e?.error || {}).flat().join(' ') || 'Could not log the gig.';
-        this.snack.open(String(msg), 'OK', { duration: 5000, panelClass: 'error-snackbar' });
+        const msg = e?.error?.detail || Object.values(e?.error || {}).flat().join(' ') || this.i18n.t('Could not log the gig.');
+        this.snack.open(String(msg), this.i18n.t('OK'), { duration: 5000, panelClass: 'error-snackbar' });
       },
     });
   }

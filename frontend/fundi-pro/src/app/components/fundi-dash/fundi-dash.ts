@@ -1,3 +1,4 @@
+import { I18nService, TPipe } from '../../services/i18n';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { Component, OnInit, PLATFORM_ID, computed, inject, signal } from '@angular/core';
@@ -6,7 +7,6 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { catchError, forkJoin, of } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { AppBarService } from '../../services/app-bar-service';
-import { duration } from '../../shell/ui';
 
 const API = environment.apiUrl + 'api/';
 
@@ -16,16 +16,17 @@ export const scoreLevel = (s: number) =>
 @Component({
   selector: 'app-fundi-dash',
   standalone: true,
-  imports: [CommonModule, RouterModule],
+  imports: [TPipe, CommonModule, RouterModule],
   templateUrl: './fundi-dash.html',
   styleUrl: './fundi-dash.css',
 })
 export class FundiDash implements OnInit {
+  private i18n = inject(I18nService);
   private http = inject(HttpClient);
   private snack = inject(MatSnackBar);
   private appBar = inject(AppBarService);
   private browser = isPlatformBrowser(inject(PLATFORM_ID));
-  duration = duration;
+  duration = (v: number, u: string) => this.i18n.t(u === 'weeks' ? (v === 1 ? '{0} week' : '{0} weeks') : (v === 1 ? '{0} day' : '{0} days'), v);
 
   loading = signal(true);
   me = signal<any>(null);
@@ -83,8 +84,8 @@ export class FundiDash implements OnInit {
     this.checking.set(g.id);
     this.http.post<any>(API + `gigs/${g.id}/check-in/`, {}).subscribe({
       next: (r) => { this.checking.set(null); this.checkedIn.update((m) => ({ ...m, [g.id]: r.checked_in_at }));
-        this.snack.open(`Checked in at ${g.organization_name}.`, 'OK', { duration: 3000, panelClass: 'success-snackbar' }); },
-      error: (e) => { this.checking.set(null); this.snack.open(e?.error?.detail || 'Could not check in.', 'OK', { duration: 4000, panelClass: 'error-snackbar' }); },
+        this.snack.open(this.i18n.t('Checked in at {0}.', g.organization_name), this.i18n.t('OK'), { duration: 3000, panelClass: 'success-snackbar' }); },
+      error: (e) => { this.checking.set(null); this.snack.open(e?.error?.detail || this.i18n.t('Could not check in.'), this.i18n.t('OK'), { duration: 4000, panelClass: 'error-snackbar' }); },
     });
   }
 
@@ -96,10 +97,10 @@ export class FundiDash implements OnInit {
       next: (res) => {
         this.completing.set(null);
         this.me.update((m) => m && { ...m, credit_score: res.new_score });
-        this.snack.open(`Gig completed. Your score is now ${res.new_score}.`, 'OK', { duration: 3500, panelClass: 'success-snackbar' });
+        this.snack.open(this.i18n.t('Gig completed. Your score is now {0}.', res.new_score), this.i18n.t('OK'), { duration: 3500, panelClass: 'success-snackbar' });
         this.load();
       },
-      error: (e) => { this.completing.set(null); this.snack.open(e?.error?.error || 'Could not complete this gig.', 'OK', { duration: 4000, panelClass: 'error-snackbar' }); },
+      error: (e) => { this.completing.set(null); this.snack.open(e?.error?.error || this.i18n.t('Could not complete this gig.'), this.i18n.t('OK'), { duration: 4000, panelClass: 'error-snackbar' }); },
     });
   }
 }

@@ -15,6 +15,7 @@ for app in fundi-pro jenga-pro; do
     "$DS/custom-theme.scss:$A/custom-theme.scss" \
     "$DS/theme.ts:$A/app/services/theme.ts" \
     "$DS/install.ts:$A/app/services/install.ts" \
+    "$DS/i18n.ts:$A/app/services/i18n.ts" \
     "$DS/shell/types.ts:$A/app/shell/types.ts" \
     "$DS/shell/site-context.ts:$A/app/shell/site-context.ts" \
     "$DS/shell/ui.ts:$A/app/shell/ui.ts" \

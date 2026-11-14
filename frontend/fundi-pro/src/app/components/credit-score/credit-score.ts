@@ -1,3 +1,4 @@
+import { I18nService, TPipe } from '../../services/i18n';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { Component, OnInit, PLATFORM_ID, computed, inject, signal } from '@angular/core';
@@ -19,11 +20,12 @@ const ACTIONS: Record<string, { label: string; icon: string }> = {
 @Component({
   selector: 'app-credit-score',
   standalone: true,
-  imports: [CommonModule, RouterModule],
+  imports: [TPipe, CommonModule, RouterModule],
   templateUrl: './credit-score.html',
   styleUrl: './credit-score.css',
 })
 export class CreditScore implements OnInit {
+  private i18n = inject(I18nService);
   private http = inject(HttpClient);
   private snack = inject(MatSnackBar);
   private appBar = inject(AppBarService);
@@ -71,7 +73,7 @@ export class CreditScore implements OnInit {
           await navigator.clipboard.writeText(res.url); this.copied.set(true);
         } catch { /* user cancelled share or clipboard blocked: link stays visible */ }
       },
-      error: () => { this.certBusy.set(false); this.snack.open('Could not create the link. Please try again.', 'OK', { duration: 4000, panelClass: 'error-snackbar' }); },
+      error: () => { this.certBusy.set(false); this.snack.open(this.i18n.t('Could not create the link. Please try again.'), this.i18n.t('OK'), { duration: 4000, panelClass: 'error-snackbar' }); },
     });
   }
 }

@@ -1,3 +1,4 @@
+import { I18nService, TPipe } from '../../services/i18n';
 import { isPlatformBrowser, CommonModule } from '@angular/common';
 import { Component, inject, PLATFORM_ID, OnInit, signal } from '@angular/core';
 import { Router } from '@angular/router';
@@ -23,11 +24,12 @@ interface Constituency {
 @Component({
   selector: 'app-profile',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule],
+  imports: [TPipe, CommonModule, ReactiveFormsModule],
   templateUrl: './profile.html',
   styleUrl: './profile.css',
 })
 export class Profile implements OnInit {
+  private i18n = inject(I18nService);
   private appBar = inject(AppBarService);
   private userService = inject(UserService);
   private platformId = inject(PLATFORM_ID);
@@ -38,7 +40,7 @@ export class Profile implements OnInit {
 
 
   private showSuccess(message: string) {
-    this.snackBar.open(message, 'Close', {
+    this.snackBar.open(message, this.i18n.t('Close'), {
       duration: 3000,
       panelClass: ['success-snackbar'],
       horizontalPosition: 'right',
@@ -47,7 +49,7 @@ export class Profile implements OnInit {
   }
 
   private showError(message: string) {
-    this.snackBar.open(message, 'Close', {
+    this.snackBar.open(message, this.i18n.t('Close'), {
       duration: 4000,
       panelClass: ['error-snackbar'],
       horizontalPosition: 'right',
@@ -238,11 +240,11 @@ export class Profile implements OnInit {
     
         this.isSaving.set(false);
         this.router.navigate(['/main-menu']);
-        this.showSuccess('Profile updated successfully!');
+        this.showSuccess(this.i18n.t('Profile updated successfully!'));
       },
       error: (err) => {
         this.isSaving.set(false);
-        this.showError('Failed to update profile. Please try again.');
+        this.showError(this.i18n.t('Failed to update profile. Please try again.'));
       }
     });
   }

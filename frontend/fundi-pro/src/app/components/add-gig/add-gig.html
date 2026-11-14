@@ -1,24 +1,24 @@
 <div class="page">
   <div class="page-head">
     <div>
-      <h1>Log a gig</h1>
-      <p>Record work you are doing at a site. The site's contractor verifies it, and it counts towards your credit score.</p>
+      <h1>{{ 'Log a gig' | t }}</h1>
+      <p>{{ "Record work you are doing at a site. The site's contractor verifies it, and it counts towards your credit score." | t }}</p>
     </div>
   </div>
 
   <div class="layout">
     <form class="panel" (ngSubmit)="submit()">
       <div class="panel-body section">
-        <h2><span class="num-dot">1</span> Where are you working?</h2>
+        <h2><span class="num-dot">1</span> {{ 'Where are you working?' | t }}</h2>
         @if (site(); as s) {
           <div class="picked">
             <span class="site-mark"><span class="icon">apartment</span></span>
             <div class="grow"><strong>{{ s.name }}</strong><small>{{ s.ward }}, {{ s.constituency }}, {{ s.county }}</small></div>
-            <button class="btn ghost sm" type="button" (click)="clearSite()">Change</button>
+            <button class="btn ghost sm" type="button" (click)="clearSite()">{{ 'Change' | t }}</button>
           </div>
         } @else {
           <div class="input-icon"><span class="icon">search</span>
-            <input class="input" name="siteQ" placeholder="Search site name or area" [ngModel]="siteQ()" (ngModelChange)="siteQ.set($event)" autocomplete="off"></div>
+            <input class="input" name="siteQ" [placeholder]="'Search site name or area' | t" [ngModel]="siteQ()" (ngModelChange)="siteQ.set($event)" autocomplete="off"></div>
           <div class="site-list">
             @for (s of matches(); track s.id) {
               <button class="site-opt" type="button" (click)="pickSite(s)">
@@ -27,57 +27,57 @@
                 <span class="icon chev">chevron_right</span>
               </button>
             } @empty {
-              <div class="muted small">No active site matches. Ask your contractor for the site name.</div>
+              <div class="muted small">{{ 'No active site matches. Ask your contractor for the site name.' | t }}</div>
             }
           </div>
         }
       </div>
 
       <div class="panel-body section" [class.dim]="!site()">
-        <h2><span class="num-dot">2</span> What work?</h2>
+        <h2><span class="num-dot">2</span> {{ 'What work?' | t }}</h2>
         <div class="form-grid">
           <div class="field full">
-            <label for="trade">Trade *</label>
+            <label for="trade">{{ 'Trade *' | t }}</label>
             <select id="trade" name="job_type" class="input" [(ngModel)]="form.job_type" [disabled]="!site() || tradesLoading()" required>
-              <option [ngValue]="null" disabled>{{ tradesLoading() ? 'Loading trades…' : 'Select your trade' }}</option>
+              <option [ngValue]="null" disabled>{{ (tradesLoading() ? 'Loading trades…' : 'Select your trade') | t }}</option>
               @for (t of trades(); track t.id) { <option [ngValue]="t.id">{{ t.name }}</option> }
             </select>
           </div>
           <div class="field">
-            <label for="start">Start date *</label>
+            <label for="start">{{ 'Start date *' | t }}</label>
             <input id="start" name="start_date" type="date" class="input" [(ngModel)]="form.start_date" [max]="today" [disabled]="!site()" required>
           </div>
           <div class="field">
-            <label>Duration *</label>
+            <label>{{ 'Duration *' | t }}</label>
             <div class="duo">
-              <input name="duration_value" type="number" min="1" class="input" [(ngModel)]="form.duration_value" [disabled]="!site()" aria-label="Duration">
-              <select name="duration_unit" class="input" [(ngModel)]="form.duration_unit" [disabled]="!site()" aria-label="Unit">
-                <option value="days">days</option><option value="weeks">weeks</option>
+              <input name="duration_value" type="number" min="1" class="input" [(ngModel)]="form.duration_value" [disabled]="!site()" [attr.aria-label]="'Duration' | t">
+              <select name="duration_unit" class="input" [(ngModel)]="form.duration_unit" [disabled]="!site()" [attr.aria-label]="'Unit' | t">
+                <option value="days">{{ 'days' | t }}</option><option value="weeks">{{ 'weeks' | t }}</option>
               </select>
             </div>
           </div>
           <div class="field full">
-            <label for="pay">Agreed pay (KSh)</label>
-            <input id="pay" name="amount_paid" type="number" min="0" step="50" class="input" placeholder="e.g. 1500 per day × days" [(ngModel)]="form.amount_paid" [disabled]="!site()">
-            <span class="hint">Optional. Helps you prove your income later.</span>
+            <label for="pay">{{ 'Agreed pay (KSh)' | t }}</label>
+            <input id="pay" name="amount_paid" type="number" min="0" step="50" class="input" [placeholder]="'e.g. 1500 per day × days' | t" [(ngModel)]="form.amount_paid" [disabled]="!site()">
+            <span class="hint">{{ 'Optional. Helps you prove your income later.' | t }}</span>
           </div>
         </div>
       </div>
 
       <div class="panel-foot">
-        <a class="btn ghost" routerLink="/main-menu/gig-summary">Cancel</a>
-        <button class="btn primary" type="submit" [disabled]="!valid() || saving()"><span class="icon">send</span> {{ saving() ? 'Logging…' : 'Log gig' }}</button>
+        <a class="btn ghost" routerLink="/main-menu/gig-summary">{{ 'Cancel' | t }}</a>
+        <button class="btn primary" type="submit" [disabled]="!valid() || saving()"><span class="icon">send</span> {{ (saving() ? 'Logging…' : 'Log gig') | t }}</button>
       </div>
     </form>
 
     <aside class="panel next">
-      <h2>What happens next</h2>
+      <h2>{{ 'What happens next' | t }}</h2>
       <ol>
-        <li><span class="icon">hourglass_top</span><div><strong>The contractor verifies</strong><small>They confirm you did the work. +5 to your score.</small></div></li>
-        <li><span class="icon">task_alt</span><div><strong>You mark it complete</strong><small>When the job is done. +5 more.</small></div></li>
-        <li><span class="icon">workspace_premium</span><div><strong>It goes on your certificate</strong><small>Share it with lenders and employers.</small></div></li>
+        <li><span class="icon">hourglass_top</span><div><strong>{{ 'The contractor verifies' | t }}</strong><small>{{ 'They confirm you did the work. +5 to your score.' | t }}</small></div></li>
+        <li><span class="icon">task_alt</span><div><strong>{{ 'You mark it complete' | t }}</strong><small>{{ 'When the job is done. +5 more.' | t }}</small></div></li>
+        <li><span class="icon">workspace_premium</span><div><strong>{{ 'It goes on your certificate' | t }}</strong><small>{{ 'Share it with lenders and employers.' | t }}</small></div></li>
       </ol>
-      <div class="notice"><span class="icon">info</span><span>Only log real work. False gigs are rejected and can be disputed by the contractor.</span></div>
+      <div class="notice"><span class="icon">info</span><span>{{ 'Only log real work. False gigs are rejected and can be disputed by the contractor.' | t }}</span></div>
     </aside>
   </div>
 </div>

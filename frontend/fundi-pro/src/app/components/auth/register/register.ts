@@ -1,3 +1,4 @@
+import { I18nService, TPipe } from '../../../services/i18n';
 import { ThemeService } from '../../../services/theme';
 import {
   Component,
@@ -22,11 +23,12 @@ import { AuthService } from '../../../services/auth';
 @Component({
   selector: 'app-register',
   standalone: true,
-  imports: [ReactiveFormsModule, CommonModule, RouterModule],
+  imports: [TPipe, ReactiveFormsModule, CommonModule, RouterModule],
   templateUrl: './register.html',
   styleUrls: ['./register.css'],
 })
 export class Register {
+  private i18n = inject(I18nService);
   theme = inject(ThemeService);
   private fb = inject(FormBuilder);
   private authService = inject(AuthService);
@@ -70,7 +72,7 @@ export class Register {
 
   // 🔹 SnackBar helpers
   private showSuccess(message: string) {
-    this.snackBar.open(message, 'Close', {
+    this.snackBar.open(message, this.i18n.t('Close'), {
       duration: 3000,
       panelClass: ['success-snackbar'],
       horizontalPosition: 'right',
@@ -79,7 +81,7 @@ export class Register {
   }
 
   private showError(message: string) {
-    this.snackBar.open(message, 'Close', {
+    this.snackBar.open(message, this.i18n.t('Close'), {
       duration: 4000,
       panelClass: ['error-snackbar'],
       horizontalPosition: 'right',
@@ -101,7 +103,7 @@ export class Register {
       .pipe(finalize(() => this.loading.set(false)))
       .subscribe({
         next: () => {
-          this.showSuccess('Account created successfully!');
+          this.showSuccess(this.i18n.t('Account created successfully!'));
 
           // Navigate to email verification page with email in state
           this.router.navigate(['/email-verify'], {
@@ -122,7 +124,7 @@ export class Register {
           if (code === 'EMAIL_NOT_VERIFIED') {
             const email = err?.error?.email;
             if (!email) {
-              this.showError('Your email is not verified. Please check your inbox.');
+              this.showError(this.i18n.t('Your email is not verified. Please check your inbox.'));
               return;
             }
 

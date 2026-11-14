@@ -1,3 +1,4 @@
+import { I18nService, TPipe } from '../../../services/i18n';
 import { ThemeService } from '../../../services/theme';
 import {
   Component,
@@ -23,11 +24,12 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 @Component({
   selector: 'app-login',
   standalone: true,
-  imports: [ReactiveFormsModule, CommonModule, RouterModule],
+  imports: [TPipe, ReactiveFormsModule, CommonModule, RouterModule],
   templateUrl: './login.html',
   styleUrls: ['./login.css'],
 })
 export class Login implements OnInit, OnDestroy {
+  private i18n = inject(I18nService);
   theme = inject(ThemeService);
   private fb = inject(FormBuilder);
   private authService = inject(AuthService);
@@ -50,7 +52,7 @@ export class Login implements OnInit, OnDestroy {
 
   // 🔹 Snackbar helpers
   private showSuccess(message: string) {
-    this.snackBar.open(message, 'Close', {
+    this.snackBar.open(message, this.i18n.t('Close'), {
       duration: 3000,
       panelClass: ['success-snackbar'],
       horizontalPosition: 'right',
@@ -59,7 +61,7 @@ export class Login implements OnInit, OnDestroy {
   }
 
   private showError(message: string) {
-    this.snackBar.open(message, 'Close', {
+    this.snackBar.open(message, this.i18n.t('Close'), {
       duration: 4000,
       panelClass: ['error-snackbar'],
       horizontalPosition: 'right',
@@ -97,10 +99,10 @@ export class Login implements OnInit, OnDestroy {
           const accountType = res?.user?.account_type;
 
           if (accountType !== '01') {
-            this.showError('This login is only allowed for Fundi accounts.');
+            this.showError(this.i18n.t('This login is only allowed for Fundi accounts.'));
             return;
           }
-          this.showSuccess('Logged in successfully!');
+          this.showSuccess(this.i18n.t('Logged in successfully!'));
           this.router.navigate(['/main-menu']);
           this.cdr.detectChanges();
         },
@@ -112,7 +114,7 @@ export class Login implements OnInit, OnDestroy {
           if (code === 'EMAIL_NOT_VERIFIED') {
             const email = err?.error?.email;
             if (!email) {
-              this.showError('Your email is not verified. Please check your inbox.');
+              this.showError(this.i18n.t('Your email is not verified. Please check your inbox.'));
               return;
             }
 
@@ -127,7 +129,7 @@ export class Login implements OnInit, OnDestroy {
           }
 
           // 🔹 Default error handling
-          this.showError('Check your credentials.');
+          this.showError(this.i18n.t('Check your credentials.'));
           this.errorMessage.set(message);
         },
       });

@@ -1,3 +1,4 @@
+import { I18nService, TPipe } from '../../services/i18n';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { Component, ElementRef, OnInit, PLATFORM_ID, ViewChild, computed, inject, signal } from '@angular/core';
@@ -12,11 +13,12 @@ const API = environment.apiUrl + 'api/';
 @Component({
   selector: 'app-mpesa',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [TPipe, CommonModule, FormsModule],
   templateUrl: './mpesa.html',
   styleUrl: './mpesa.css',
 })
 export class Mpesa implements OnInit {
+  private i18n = inject(I18nService);
   private http = inject(HttpClient);
   private snack = inject(MatSnackBar);
   private appBar = inject(AppBarService);
@@ -77,7 +79,7 @@ export class Mpesa implements OnInit {
         if (r.amount) this.form.amount = r.amount;
         this.readNote.set(r.transaction_code ? 'We read the code and amount from your screenshot. Check them before saving.' : 'We could not read this screenshot. Type the M-Pesa code and amount.');
       },
-      error: () => { this.reading.set(false); this.readNote.set('We could not read this screenshot. Type the M-Pesa code and amount.'); },
+      error: () => { this.reading.set(false); this.readNote.set(this.i18n.t('We could not read this screenshot. Type the M-Pesa code and amount.')); },
     });
   }
 
@@ -92,9 +94,9 @@ export class Mpesa implements OnInit {
     this.saving.set(true);
     this.http.post<any>(API + 'upload-payment/', fd).subscribe({
       next: (p) => { this.saving.set(false); this.close(); this.payments.update((l) => [p, ...l]);
-        this.snack.open('Saved. It counts as income proof once confirmed.', 'OK', { duration: 3500, panelClass: 'success-snackbar' }); },
+        this.snack.open(this.i18n.t('Saved. It counts as income proof once confirmed.'), this.i18n.t('OK'), { duration: 3500, panelClass: 'success-snackbar' }); },
       error: (e) => { this.saving.set(false);
-        this.snack.open(e?.error?.transaction_code?.[0] || 'Could not save this payment.', 'OK', { duration: 4500, panelClass: 'error-snackbar' }); },
+        this.snack.open(e?.error?.transaction_code?.[0] || this.i18n.t('Could not save this payment.'), this.i18n.t('OK'), { duration: 4500, panelClass: 'error-snackbar' }); },
     });
   }
 }

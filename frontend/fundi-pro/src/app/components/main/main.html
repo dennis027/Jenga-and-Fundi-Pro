@@ -8,12 +8,12 @@
 
     <nav class="nav">
       @for (section of config.sections; track section.title) {
-        <div class="nav-section">{{ section.title }}</div>
+        <div class="nav-section">{{ section.title | t }}</div>
         @for (item of section.items; track item.route) {
           <a class="nav-link" [routerLink]="item.route" routerLinkActive="active"
              [routerLinkActiveOptions]="{ exact: !!item.exact }" [attr.title]="collapsed() ? item.label : null">
             <span class="icon">{{ item.icon }}</span>
-            <span class="nav-label">{{ item.label }}</span>
+            <span class="nav-label">{{ item.label | t }}</span>
             @if (item.badge && badges()[item.badge]) {
               <span class="nav-badge">{{ badges()[item.badge] }}</span>
             }
@@ -25,7 +25,7 @@
     <div class="sidebar-foot">
       <button class="nav-link as-button" type="button" (click)="theme.toggle()" [attr.title]="collapsed() ? 'Theme' : null">
         <span class="icon">{{ theme.dark() ? 'light_mode' : 'dark_mode' }}</span>
-        <span class="nav-label">{{ theme.dark() ? 'Light mode' : 'Dark mode' }}</span>
+        <span class="nav-label">{{ (theme.dark() ? 'Light mode' : 'Dark mode') | t }}</span>
       </button>
     </div>
   </aside>
@@ -40,11 +40,11 @@
       <button class="icon-btn bordered burger" type="button" (click)="drawerOpen.set(true)" aria-label="Open menu">
         <span class="icon">menu</span>
       </button>
-      <h1 class="topbar-title">{{ appBar.title() }}</h1>
+      <h1 class="topbar-title">{{ appBar.title() | t }}</h1>
 
       <button class="search-trigger" type="button" (click)="openPalette()">
         <span class="icon">search</span>
-        <span class="placeholder">Search pages and actions…</span>
+        <span class="placeholder">{{ 'Search pages and actions…' | t }}</span>
         <kbd>Ctrl K</kbd>
       </button>
 
@@ -85,14 +85,14 @@
           </button>
           @if (menu() === 'notes') {
             <div class="menu menu-right notes" (click)="$event.stopPropagation()">
-              <div class="menu-title">Needs your attention</div>
+              <div class="menu-title">{{ 'Needs your attention' | t }}</div>
               @for (n of notifications(); track $index) {
                 <button class="note" type="button" (click)="go(n)">
                   <span class="note-icon" [class]="'note-icon ' + n.tone"><span class="icon">{{ n.icon }}</span></span>
                   <span class="note-text"><strong>{{ n.title }}</strong><small>{{ n.sub }}</small></span>
                 </button>
               } @empty {
-                <div class="menu-empty"><span class="icon">done_all</span> You're all caught up.</div>
+                <div class="menu-empty"><span class="icon">done_all</span> {{ "You're all caught up." | t }}</div>
               }
             </div>
           }
@@ -112,15 +112,20 @@
                 <strong>{{ user().name }}</strong>
                 <small>{{ user().subtitle }}</small>
               </div>
-              <a class="menu-item" routerLink="/main-menu/profile"><span class="icon">person</span> My profile</a>
+              <a class="menu-item" routerLink="/main-menu/profile"><span class="icon">person</span> {{ 'My profile' | t }}</a>
               <button class="menu-item" type="button" (click)="theme.toggle()">
-                <span class="icon">{{ theme.dark() ? 'light_mode' : 'dark_mode' }}</span> {{ theme.dark() ? 'Light mode' : 'Dark mode' }}
+                <span class="icon">{{ theme.dark() ? 'light_mode' : 'dark_mode' }}</span> {{ (theme.dark() ? 'Light mode' : 'Dark mode') | t }}
               </button>
               @if (installer.canInstall()) {
-                <button class="menu-item" type="button" (click)="installer.install()"><span class="icon">install_mobile</span> Install app</button>
+                <button class="menu-item" type="button" (click)="installer.install()"><span class="icon">install_mobile</span> {{ 'Install app' | t }}</button>
+              }
+              @for (l of i18n.languages; track l.code) {
+                @if (l.code !== i18n.lang()) {
+                  <button class="menu-item" type="button" (click)="i18n.set(l.code)"><span class="icon">translate</span> {{ l.label }}</button>
+                }
               }
               <div class="menu-sep"></div>
-              <button class="menu-item danger" type="button" (click)="logOut()"><span class="icon">logout</span> Sign out</button>
+              <button class="menu-item danger" type="button" (click)="logOut()"><span class="icon">logout</span> {{ 'Sign out' | t }}</button>
             </div>
           }
         </div>
@@ -140,18 +145,18 @@
       <div class="palette-input">
         <span class="icon">search</span>
         <input #paletteInput type="text" [ngModel]="query()" (ngModelChange)="query.set($event); active.set(0)"
-               (keydown)="paletteKey($event)" placeholder="Search pages and actions…" aria-label="Search">
+               (keydown)="paletteKey($event)" [placeholder]="'Search pages and actions…' | t" aria-label="Search">
         <kbd>Esc</kbd>
       </div>
       <div class="palette-list">
         @for (r of results(); track r.label + r.route; let i = $index) {
           <button class="palette-item" type="button" [class.on]="i === active()" (mouseenter)="active.set(i)" (click)="go(r)">
             <span class="icon">{{ r.icon }}</span>
-            <span class="grow">{{ r.label }}</span>
-            <small>{{ r.hint }}</small>
+            <span class="grow">{{ r.label | t }}</span>
+            <small>{{ (r.hint || '') | t }}</small>
           </button>
         } @empty {
-          <div class="menu-empty">No matches.</div>
+          <div class="menu-empty">{{ 'No matches.' | t }}</div>
         }
       </div>
     </div>

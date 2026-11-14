@@ -1,0 +1,168 @@
+// Fundi Pro translations. English text is the key; anything missing stays English.
+// Swahili draft: please have a native speaker review before launch.
+export const LANGUAGES: { code: string; label: string }[] = [
+  { code: 'en', label: 'English' },
+  { code: 'sw', label: 'Kiswahili' },
+];
+
+const SW: Record<string, string> = {
+  // ---- shell / navigation
+  'Overview': 'Muhtasari', 'Dashboard': 'Dashibodi', 'My work': 'Kazi yangu', 'My gigs': 'Kazi zangu', 'Log a gig': 'Sajili kazi',
+  'Find work': 'Tafuta kazi', 'Reputation': 'Sifa', 'Credit score': 'Alama ya mkopo', 'ID verification': 'Uthibitisho wa kitambulisho',
+  'Money': 'Pesa', 'Payments received': 'Malipo uliyopokea', 'Insights': 'Takwimu', 'Analytics': 'Takwimu',
+  'Light mode': 'Mwanga', 'Dark mode': 'Giza', 'Search pages and actions…': 'Tafuta kurasa na vitendo…',
+  'Needs your attention': 'Inahitaji umakini wako', "You're all caught up.": 'Hakuna kinachosubiri.', 'My profile': 'Wasifu wangu',
+  'Install app': 'Sakinisha programu', 'Sign out': 'Toka', 'No matches.': 'Hakuna kinacholingana.', 'Action': 'Kitendo',
+  'Share my work certificate': 'Shiriki cheti changu cha kazi', 'Verify my ID': 'Thibitisha kitambulisho changu',
+  'Add an M-Pesa payment': 'Ongeza malipo ya M-Pesa',
+
+  // ---- notifications (shell-data)
+  '{0} at {1} was verified': '{0} katika {1} imethibitishwa', 'Mark it complete to earn +5 points': 'Iweke imekamilika upate pointi +5',
+  '{0} gigs waiting for the contractor': 'Kazi {0} zinasubiri mkandarasi', '1 gig waiting for the contractor': 'Kazi 1 inasubiri mkandarasi',
+  'You will be notified once verified': 'Utajulishwa ikithibitishwa', 'Verify your ID': 'Thibitisha kitambulisho chako',
+  'Adds +20 to your credit score': 'Inaongeza +20 kwenye alama yako', '{0} accepted you': '{0} wamekukubali',
+  'For “{0}”. Call them to agree the start': 'Kwa “{0}”. Wapigie mkubaliane siku ya kuanza',
+
+  // ---- dashboard
+  'Good morning': 'Habari za asubuhi', 'Good afternoon': 'Habari za mchana', 'Good evening': 'Habari za jioni',
+  'Every gig a contractor verifies builds your record and your credit score.': 'Kila kazi inayothibitishwa na mkandarasi inajenga rekodi yako na alama yako ya mkopo.',
+  'Share my certificate': 'Shiriki cheti changu', 'Credit score · {0}': 'Alama ya mkopo · {0}',
+  '{0} points to {1} · +5 per verified gig': 'Pointi {0} hadi {1} · +5 kwa kila kazi iliyothibitishwa', 'Top level. Keep it up!': 'Kiwango cha juu. Endelea hivyo!',
+  'Finish verified gigs to earn points, and keep your profile complete.': 'Maliza kazi zilizothibitishwa upate pointi, na ukamilishe wasifu wako.',
+  'All my gigs': 'Kazi zangu zote', '{0} accepted you for “{1}”': '{0} wamekukubali kwa “{1}”',
+  'Call them to agree the start date, then log the gig when you begin': 'Wapigie mkubaliane tarehe ya kuanza, kisha sajili kazi ukianza',
+  'Call': 'Piga simu', '{0} at {1}': '{0} katika {1}', '{0} from {1} · mark it complete when the work is done': '{0} kuanzia {1} · iweke imekamilika kazi ikiisha',
+  "I'm on site today": 'Niko saiti leo', 'On site{0}': 'Niko saiti{0}', ' since {0}': ' tangu {0}', ' today': ' leo',
+  'Mark complete (+5)': 'Imekamilika (+5)', 'Saving…': 'Inahifadhi…', 'Waiting for the contractor to verify · logged {0}': 'Inasubiri mkandarasi athibitishe · imesajiliwa {0}',
+  'Waiting': 'Inasubiri', 'Upload your national ID and a selfie. Adds +20 to your score once approved.': 'Pakia kitambulisho chako na picha yako. Inaongeza +20 ikikubaliwa.',
+  'Verify now': 'Thibitisha sasa', 'Nothing waiting': 'Hakuna kinachosubiri', 'Log your next gig so the contractor can verify it.': 'Sajili kazi yako inayofuata ili mkandarasi aithibitishe.',
+  'Getting started': 'Kuanza', '{0} of {1} done. Each step makes your record stronger.': '{0} kati ya {1} zimekamilika. Kila hatua inaimarisha rekodi yako.',
+  'Complete your profile': 'Kamilisha wasifu wako', 'Name, ID number, phone and area': 'Jina, nambari ya kitambulisho, simu na eneo',
+  '+20 to your score': '+20 kwenye alama yako', 'Log your first gig': 'Sajili kazi yako ya kwanza', 'At the site where you work': 'Katika saiti unayofanyia kazi',
+  'Complete a verified gig': 'Kamilisha kazi iliyothibitishwa', 'It goes on your certificate': 'Inaingia kwenye cheti chako',
+  'Completed gigs': 'Kazi zilizokamilika', 'Verified days (30 days)': 'Siku zilizothibitishwa (siku 30)', 'Sites worked': 'Saiti ulizofanyia kazi',
+  'Verification rate': 'Kiwango cha uthibitisho', 'Recent completed work': 'Kazi za hivi karibuni zilizokamilika',
+  'Verified by the contractor and finished': 'Zimethibitishwa na mkandarasi na kukamilika', 'History': 'Historia', 'Trade': 'Fani', 'Site': 'Saiti',
+  'Start': 'Kuanza', 'Duration': 'Muda', 'Completed gigs will show here.': 'Kazi zilizokamilika zitaonekana hapa.',
+  'Your verified work certificate': 'Cheti chako cha kazi kilichothibitishwa',
+  'A link lenders and employers can open to see your contractor-verified gigs, ratings and score. No phone or ID number is shown.': 'Kiungo ambacho wakopeshaji na waajiri wanaweza kufungua kuona kazi zako zilizothibitishwa, ukadiriaji na alama. Simu na nambari ya kitambulisho hazionyeshwi.',
+
+  // ---- my gigs
+  'Log a gig, wait for the site\'s contractor to verify it, then mark it complete. Each step adds to your credit score.': 'Sajili kazi, subiri mkandarasi wa saiti aithibitishe, kisha iweke imekamilika. Kila hatua inaongeza alama yako.',
+  'Log': 'Sajili', 'Record the work at a site': 'Rekodi kazi katika saiti', 'Contractor verifies': 'Mkandarasi anathibitisha', '+5 to your score': '+5 kwenye alama yako',
+  'Mark complete': 'Weka imekamilika', '+5 more, goes on your certificate': '+5 zaidi, inaingia kwenye cheti', 'Ready to complete': 'Tayari kukamilishwa',
+  'Completed': 'Imekamilika', 'Search trade or site': 'Tafuta fani au saiti', 'No gigs waiting': 'Hakuna kazi zinazosubiri',
+  'Log a gig after you start work at a site.': 'Sajili kazi ukianza kufanya kazi katika saiti.', 'Nothing to complete': 'Hakuna cha kukamilisha',
+  'Gigs appear here once the contractor verifies them.': 'Kazi zinaonekana hapa mkandarasi akizithibitisha.', 'No completed gigs yet': 'Bado hakuna kazi zilizokamilika',
+  'Finished, verified work is listed here.': 'Kazi zilizokamilika na kuthibitishwa zinaonyeshwa hapa.', 'Agreed pay (KSh)': 'Malipo yaliyokubaliwa (KSh)',
+  'Status': 'Hali', 'Verified': 'Imethibitishwa', 'Dispute {0}': 'Lalamiko {0}', 'Complete': 'Kamilisha', 'Report a problem': 'Ripoti tatizo',
+  'What is wrong?': 'Kuna tatizo gani?', 'e.g. I worked 10 days, not 8. Or: the contractor has not verified after 2 weeks.': 'mf. Nilifanya kazi siku 10, si 8. Au: mkandarasi hajathibitisha baada ya wiki 2.',
+  'The site\'s contractor and our team can see this. At least 10 characters.': 'Mkandarasi wa saiti na timu yetu wanaweza kuona hili. Angalau herufi 10.',
+  'Cancel': 'Ghairi', 'Send': 'Tuma', 'Sending…': 'Inatuma…', 'Dispute': 'Lalamiko',
+
+  // ---- log a gig
+  'Record work you are doing at a site. The site\'s contractor verifies it, and it counts towards your credit score.': 'Rekodi kazi unayofanya katika saiti. Mkandarasi wa saiti anaithibitisha, nayo inahesabiwa kwenye alama yako.',
+  'Where are you working?': 'Unafanya kazi wapi?', 'Search site name or area': 'Tafuta jina la saiti au eneo', 'Change': 'Badilisha',
+  'No active site matches. Ask your contractor for the site name.': 'Hakuna saiti inayolingana. Muulize mkandarasi jina la saiti.',
+  'What work?': 'Kazi gani?', 'Trade *': 'Fani *', 'Start date *': 'Tarehe ya kuanza *', 'Duration *': 'Muda *', 'Unit': 'Kipimo',
+  'e.g. 1500 per day × days': 'mf. 1500 kwa siku × siku', 'Optional. Helps you prove your income later.': 'Si lazima. Inakusaidia kuthibitisha mapato yako baadaye.',
+  'What happens next': 'Kinachofuata', 'The contractor verifies': 'Mkandarasi anathibitisha', 'They confirm you did the work. +5 to your score.': 'Wanathibitisha ulifanya kazi. +5 kwenye alama yako.',
+  'You mark it complete': 'Unaiweka imekamilika', 'When the job is done. +5 more.': 'Kazi ikiisha. +5 zaidi.', 'Share it with lenders and employers.': 'Ishiriki na wakopeshaji na waajiri.',
+  'Only log real work. False gigs are rejected and can be disputed by the contractor.': 'Sajili kazi halisi tu. Kazi za uongo zinakataliwa na mkandarasi anaweza kuzipinga.',
+  'Select your trade': 'Chagua fani yako', 'Loading trades…': 'Inapakia fani…', 'days': 'siku', 'weeks': 'wiki', 'Log gig': 'Sajili kazi', 'Logging…': 'Inasajili…',
+
+  // ---- find work
+  'Open jobs posted by contractors on Fundi Pro. Call the site, and once you start, log the gig so it counts.': 'Kazi zilizo wazi zilizowekwa na wakandarasi kwenye Fundi Pro. Piga simu saiti, na ukianza, sajili kazi ili ihesabiwe.',
+  'All counties': 'Kaunti zote', 'Trade, site or area': 'Fani, saiti au eneo', '{0} open jobs': 'Kazi {0} zilizo wazi', '{0} open job': 'Kazi {0} iliyo wazi',
+  'No open jobs{0}': 'Hakuna kazi zilizo wazi{0}', ' in {0}': ' katika {0}', 'New posts from contractors appear here. Check again soon.': 'Kazi mpya kutoka kwa wakandarasi zinaonekana hapa. Angalia tena hivi karibuni.',
+  'Applied': 'Umeomba', 'Accepted': 'Umekubaliwa', 'Not this time': 'Si wakati huu', 'Call site': 'Piga simu saiti', "I'm interested": 'Ninavutiwa',
+  'Log a gig here': 'Sajili kazi hapa', 'The contractor sees your name, credit score, ID status and completed gigs, plus your note.': 'Mkandarasi ataona jina lako, alama ya mkopo, hali ya kitambulisho na kazi ulizokamilisha, pamoja na ujumbe wako.',
+  'Note (optional)': 'Ujumbe (si lazima)', 'e.g. I can start Monday. 10 years in block work.': 'mf. Ninaweza kuanza Jumatatu. Miaka 10 katika ujenzi wa matofali.',
+  'for “{0}”. Call them to agree the start date, then log the gig when you begin.': 'kwa “{0}”. Wapigie mkubaliane tarehe ya kuanza, kisha sajili kazi ukianza.',
+
+  // ---- credit score
+  'Your score grows with contractor-verified work. Lenders and employers can see it on your work certificate.': 'Alama yako inakua na kazi zilizothibitishwa na wakandarasi. Wakopeshaji na waajiri wanaiona kwenye cheti chako.',
+  'of 100': 'kati ya 100', '{0} points to the next level': 'Pointi {0} hadi kiwango kijacho', "You're at the top level": 'Uko kiwango cha juu',
+  '{0} points this month · {1} changes in total': 'Pointi {0} mwezi huu · mabadiliko {1} kwa jumla',
+  'Verified work certificate': 'Cheti cha kazi kilichothibitishwa',
+  'A link showing your verified gigs, days worked, ratings and score. It never shows your phone or ID number, and expires after 90 days.': 'Kiungo kinachoonyesha kazi zako zilizothibitishwa, siku ulizofanya kazi, ukadiriaji na alama. Hakionyeshi simu wala nambari ya kitambulisho, na kinaisha baada ya siku 90.',
+  'Creating link…': 'Inaunda kiungo…', 'Link copied. Paste it in WhatsApp or SMS.': 'Kiungo kimenakiliwa. Kibandike kwenye WhatsApp au SMS.',
+  'Score history': 'Historia ya alama', 'Every change, newest first': 'Kila badiliko, la karibuni kwanza', 'No points yet': 'Bado hakuna pointi',
+  'Log a gig and ask the contractor to verify it.': 'Sajili kazi na umuombe mkandarasi aithibitishe.', 'How to earn points': 'Jinsi ya kupata pointi',
+  'Points only come from things others confirm': 'Pointi zinatokana tu na mambo yanayothibitishwa na wengine', 'A contractor verifies your gig': 'Mkandarasi anathibitisha kazi yako',
+  'Log every gig you work on': 'Sajili kila kazi unayofanya', 'You complete a verified gig': 'Unakamilisha kazi iliyothibitishwa',
+  'From My gigs, when the job is done': 'Kutoka Kazi zangu, kazi ikiisha', 'Your ID is verified': 'Kitambulisho chako kimethibitishwa',
+  'Once, after our team checks it': 'Mara moja, baada ya timu yetu kukiangalia', 'Contractor verified a gig': 'Mkandarasi alithibitisha kazi',
+  'Gig completed': 'Kazi imekamilika', 'ID verified': 'Kitambulisho kimethibitishwa', 'Adjustment by support': 'Marekebisho na timu ya msaada',
+  'Bronze': 'Shaba', 'Silver': 'Fedha', 'Gold': 'Dhahabu', 'Platinum': 'Platinamu',
+
+  // ---- ID verification
+  'Prove who you are once. A verified ID adds +20 to your credit score and a “verified” badge on your certificate.': 'Thibitisha wewe ni nani mara moja. Kitambulisho kilichothibitishwa kinaongeza +20 kwenye alama yako na beji ya “imethibitishwa” kwenye cheti.',
+  'Approved {0}. Contractors and lenders see the verified badge.': 'Kimekubaliwa {0}. Wakandarasi na wakopeshaji wanaona beji ya uthibitisho.',
+  'Under review': 'Inakaguliwa', 'Sent {0}. We usually finish within 1 to 2 working days.': 'Kimetumwa {0}. Kwa kawaida tunamaliza ndani ya siku 1 hadi 2 za kazi.',
+  'We could not verify your ID': 'Hatukuweza kuthibitisha kitambulisho chako', '{0} Please submit new photos below.': '{0} Tafadhali tuma picha mpya hapa chini.',
+  'Not verified yet': 'Bado hakijathibitishwa', 'Take three photos below. It takes about two minutes.': 'Piga picha tatu hapa chini. Inachukua kama dakika mbili.',
+  'Upload your photos': 'Pakia picha zako', 'Use your Kenyan national ID. On a phone, each box opens the camera.': 'Tumia kitambulisho chako cha taifa cha Kenya. Kwenye simu, kila kisanduku kinafungua kamera.',
+  'Retake': 'Piga tena', 'Take photo': 'Piga picha', 'Front of ID': 'Mbele ya kitambulisho', 'Back of ID': 'Nyuma ya kitambulisho', 'Selfie': 'Picha yako',
+  'All four corners visible, no glare': 'Pembe zote nne zionekane, bila mwanga mkali', 'Make sure the text is readable': 'Hakikisha maandishi yanasomeka',
+  'Face the camera in good light': 'Angalia kamera kwenye mwanga mzuri',
+  'Only our verification team sees these photos. They are never shared or shown on your certificate.': 'Timu yetu ya uthibitisho pekee ndiyo inaona picha hizi. Hazishirikiwi wala kuonyeshwa kwenye cheti chako.',
+  'Submit for review': 'Tuma ikaguliwe', 'Uploading…': 'Inapakia…', 'The photos were not clear enough.': 'Picha hazikuwa wazi vya kutosha.',
+
+  // ---- payments
+  'Upload the M-Pesa message for money you were paid for a gig. It becomes proof of your income.': 'Pakia ujumbe wa M-Pesa wa pesa ulizolipwa kwa kazi. Unakuwa ushahidi wa mapato yako.',
+  'Add M-Pesa payment': 'Ongeza malipo ya M-Pesa', 'Total recorded': 'Jumla iliyorekodiwa', 'This month': 'Mwezi huu', 'Confirmed': 'Imethibitishwa',
+  'No payments yet': 'Bado hakuna malipo', 'When a contractor pays you on M-Pesa, add the confirmation message here.': 'Mkandarasi akikulipa kwa M-Pesa, ongeza ujumbe wa uthibitisho hapa.',
+  'Date': 'Tarehe', 'M-Pesa code': 'Nambari ya M-Pesa', 'Amount (KSh)': 'Kiasi (KSh)', 'Screenshot': 'Picha ya skrini', 'KSh': 'KSh',
+  'Upload a screenshot of the M-Pesa message, or type the details.': 'Pakia picha ya skrini ya ujumbe wa M-Pesa, au andika maelezo.',
+  'Choose screenshot': 'Chagua picha ya skrini', "We'll read the code and amount for you": 'Tutasoma nambari na kiasi kwa ajili yako',
+  'Reading your screenshot…': 'Inasoma picha yako ya skrini…', 'M-Pesa code *': 'Nambari ya M-Pesa *', 'Amount (KSh) *': 'Kiasi (KSh) *',
+  'e.g. TJD4M7XK2P': 'mf. TJD4M7XK2P', 'e.g. 1500': 'mf. 1500', 'Save payment': 'Hifadhi malipo', 'Close': 'Funga',
+
+  // ---- profile
+  'Your details as contractors and lenders see them. Keep your phone number current. It\'s how sites and M-Pesa reach you.': 'Maelezo yako kama yanavyoonekana kwa wakandarasi na wakopeshaji. Weka nambari yako ya simu sahihi, ndiyo njia ya saiti na M-Pesa kukufikia.',
+  'Upload photo': 'Pakia picha', 'Camera': 'Kamera', 'Remove': 'Ondoa', 'A clear face photo helps contractors recognise you on site.': 'Picha wazi ya uso inawasaidia wakandarasi kukutambua saiti.',
+  'Personal details': 'Maelezo binafsi', 'Fields marked * are required': 'Sehemu zenye * ni za lazima', 'Full name *': 'Jina kamili *',
+  'As on your national ID': 'Kama ilivyo kwenye kitambulisho', 'Enter your full name.': 'Andika jina lako kamili.', 'National ID number *': 'Nambari ya kitambulisho *',
+  'e.g. 28104500': 'mf. 28104500', 'Enter a valid ID number.': 'Andika nambari sahihi ya kitambulisho.', 'Phone (M-Pesa) *': 'Simu (M-Pesa) *',
+  '0712345678 or 254712345678': '0712345678 au 254712345678', 'Enter a valid Kenyan phone number.': 'Andika nambari sahihi ya simu ya Kenya.',
+  'County *': 'Kaunti *', 'County': 'Kaunti', 'Select county': 'Chagua kaunti', 'Please select a county.': 'Tafadhali chagua kaunti.',
+  'Constituency *': 'Eneo bunge *', 'Please select a constituency.': 'Tafadhali chagua eneo bunge.', 'Ward *': 'Wadi *',
+  'Please select a ward.': 'Tafadhali chagua wadi.', 'Save changes': 'Hifadhi mabadiliko', 'Select constituency': 'Chagua eneo bunge',
+  'Select county first': 'Chagua kaunti kwanza', 'Select ward': 'Chagua wadi', 'Select constituency first': 'Chagua eneo bunge kwanza',
+
+  // ---- sign in / register
+  'Your work, verified. Your record, portable.': 'Kazi yako, imethibitishwa. Rekodi yako, popote uendapo.', 'Contractor-verified work history': 'Historia ya kazi iliyothibitishwa na wakandarasi',
+  'A credit score lenders can trust': 'Alama ya mkopo ambayo wakopeshaji wanaiamini', 'Share your certificate on WhatsApp': 'Shiriki cheti chako kwenye WhatsApp',
+  'M-Pesa payments, all in one place': 'Malipo ya M-Pesa, mahali pamoja', 'Welcome back': 'Karibu tena', 'Sign in to Fundi Pro as a fundi (worker)': 'Ingia kwenye Fundi Pro kama fundi',
+  'Username or email': 'Jina la mtumiaji au barua pepe', 'Enter your username or email': 'Andika jina la mtumiaji au barua pepe', 'Password': 'Nenosiri',
+  'Enter your password': 'Andika nenosiri lako', 'Remember me': 'Nikumbuke', 'Forgot password?': 'Umesahau nenosiri?', 'Sign in': 'Ingia', 'Signing in…': 'Inaingia…',
+  'New to Fundi Pro?': 'Mgeni kwenye Fundi Pro?', 'Create an account': 'Fungua akaunti', 'Are you a contractor? Use Jenga Pro.': 'Wewe ni mkandarasi? Tumia Jenga Pro.',
+  'Create your account': 'Fungua akaunti yako', "Join Fundi Pro as a fundi (worker). It's free.": 'Jiunge na Fundi Pro kama fundi. Ni bure.', 'Username': 'Jina la mtumiaji',
+  'e.g. wanjiku.k': 'mf. wanjiku.k', 'Email': 'Barua pepe', "We'll send a link to confirm it.": 'Tutakutumia kiungo cha kuithibitisha.', 'At least 8 characters': 'Angalau herufi 8',
+  'Confirm password': 'Thibitisha nenosiri', 'Type it again': 'Iandike tena', 'Passwords do not match.': 'Manenosiri hayalingani.', 'Create account': 'Fungua akaunti',
+  'Creating…': 'Inaunda…', 'Already have an account?': 'Tayari una akaunti?', 'you@example.com': 'wewe@mfano.com', 'Fundi Pro': 'Fundi Pro',
+  'Show password': 'Onyesha nenosiri', 'Hide password': 'Ficha nenosiri',
+
+  'No open jobs in {0}': 'Hakuna kazi zilizo wazi katika {0}', 'No open jobs': 'Hakuna kazi zilizo wazi',
+  'On site since {0}': 'Niko saiti tangu {0}', 'On site today': 'Niko saiti leo',
+  '{0} day': 'Siku {0}', '{0} days': 'Siku {0}', '{0} week': 'Wiki {0}', '{0} weeks': 'Wiki {0}',
+  'Credit score {0}/100': 'Alama ya mkopo {0}/100',
+  'Proof Of Payment': 'Uthibitisho wa malipo', 'Work History': 'Historia ya kazi',
+  // ---- messages (snackbars)
+  'OK': 'Sawa', 'Could not complete this gig.': 'Haikuwezekana kukamilisha kazi hii.', 'Could not complete the gig.': 'Haikuwezekana kukamilisha kazi.',
+  'Could not check in.': 'Haikuwezekana kujisajili saiti.', 'Checked in at {0}.': 'Umejisajili katika {0}.', 'Gig completed. Your score is now {0}.': 'Kazi imekamilika. Alama yako sasa ni {0}.',
+  'Done! Your credit score is now {0}.': 'Tayari! Alama yako sasa ni {0}.', 'Dispute sent. Our team will review it and contact you.': 'Lalamiko limetumwa. Timu yetu italikagua na kuwasiliana nawe.',
+  'Could not send the dispute.': 'Haikuwezekana kutuma lalamiko.', "Logged. {0}'s contractor will verify it.": 'Imesajiliwa. Mkandarasi wa {0} ataithibitisha.',
+  'Could not log the gig.': 'Haikuwezekana kusajili kazi.', "Sent to {0}. You'll see their answer here.": 'Imetumwa kwa {0}. Utaona jibu lao hapa.', 'Could not send.': 'Haikuwezekana kutuma.',
+  'Could not create the link. Please try again.': 'Haikuwezekana kuunda kiungo. Tafadhali jaribu tena.',
+  'Submitted. We usually review IDs within 1 to 2 working days.': 'Imetumwa. Kwa kawaida tunakagua vitambulisho ndani ya siku 1 hadi 2 za kazi.',
+  'Upload failed. Check your connection and try again.': 'Upakiaji umeshindikana. Angalia mtandao wako ujaribu tena.',
+  'That photo is over 8 MB. Please take a smaller one.': 'Picha hiyo ni zaidi ya MB 8. Tafadhali piga ndogo zaidi.',
+  'Saved. It counts as income proof once confirmed.': 'Imehifadhiwa. Inahesabiwa kama ushahidi wa mapato ikithibitishwa.', 'Could not save this payment.': 'Haikuwezekana kuhifadhi malipo haya.',
+  'We read the code and amount from your screenshot. Check them before saving.': 'Tumesoma nambari na kiasi kutoka kwenye picha yako. Viangalie kabla ya kuhifadhi.',
+  'We could not read this screenshot. Type the M-Pesa code and amount.': 'Hatukuweza kusoma picha hii. Andika nambari ya M-Pesa na kiasi.',
+  'Check your credentials.': 'Angalia jina la mtumiaji na nenosiri.', 'Logged in successfully!': 'Umeingia!',
+};
+
+export const TRANSLATIONS: Record<string, Record<string, string>> = { sw: SW };

@@ -1,23 +1,23 @@
 <div class="page">
   <div class="page-head">
     <div>
-      <h1>Credit score</h1>
-      <p>Your score grows with contractor-verified work. Lenders and employers can see it on your work certificate.</p>
+      <h1>{{ 'Credit score' | t }}</h1>
+      <p>{{ 'Your score grows with contractor-verified work. Lenders and employers can see it on your work certificate.' | t }}</p>
     </div>
   </div>
 
   <div class="top">
     <section class="panel score-card">
       <div class="ring" [class]="'ring ' + tone()" [style.--pct]="score()">
-        <span class="v">{{ score() }}</span><small>of 100</small>
+        <span class="v">{{ score() }}</span><small>{{ 'of 100' | t }}</small>
       </div>
       <div class="score-text">
-        <span class="badge info"><span class="icon fill">military_tech</span> {{ level().name }}</span>
-        <h2>@if (level().next) { {{ level().next! - score() }} points to the next level } @else { You're at the top level }</h2>
-        <p class="muted">{{ thisMonth() >= 0 ? '+' : '' }}{{ thisMonth() }} points this month · {{ history().length }} changes in total</p>
+        <span class="badge info"><span class="icon fill">military_tech</span> {{ level().name | t }}</span>
+        <h2>@if (level().next) { {{ '{0} points to the next level' | t : (level().next! - score()) }} } @else { {{ "You're at the top level" | t }} }</h2>
+        <p class="muted">{{ '{0} points this month · {1} changes in total' | t : ((thisMonth() >= 0 ? '+' : '') + thisMonth()) : history().length }}</p>
         <div class="levels">
           @for (l of [{ n: 'Bronze', a: 0 }, { n: 'Silver', a: 30 }, { n: 'Gold', a: 60 }, { n: 'Platinum', a: 85 }]; track l.n) {
-            <span [class.on]="level().name === l.n">{{ l.n }}<small>{{ l.a }}+</small></span>
+            <span [class.on]="level().name === l.n">{{ l.n | t }}<small>{{ l.a }}+</small></span>
           }
         </div>
       </div>
@@ -25,11 +25,11 @@
 
     <section class="panel cert">
       <span class="cert-mark"><span class="icon fill">workspace_premium</span></span>
-      <h2>Verified work certificate</h2>
-      <p>A link showing your verified gigs, days worked, ratings and score. It never shows your phone or ID number, and expires after 90 days.</p>
-      <button class="btn primary" type="button" (click)="share()" [disabled]="certBusy()"><span class="icon">share</span> {{ certBusy() ? 'Creating link…' : 'Share my certificate' }}</button>
+      <h2>{{ 'Verified work certificate' | t }}</h2>
+      <p>{{ 'A link showing your verified gigs, days worked, ratings and score. It never shows your phone or ID number, and expires after 90 days.' | t }}</p>
+      <button class="btn primary" type="button" (click)="share()" [disabled]="certBusy()"><span class="icon">share</span> {{ (certBusy() ? 'Creating link…' : 'Share my certificate') | t }}</button>
       @if (certUrl()) {
-        @if (copied()) { <p class="notice ok"><span class="icon">check</span> Link copied. Paste it in WhatsApp or SMS.</p> }
+        @if (copied()) { <p class="notice ok"><span class="icon">check</span> {{ 'Link copied. Paste it in WhatsApp or SMS.' | t }}</p> }
         <a class="cert-link" [href]="certUrl()" target="_blank" rel="noopener">{{ certUrl() }}</a>
       }
     </section>
@@ -37,7 +37,7 @@
 
   <div class="grid-2">
     <section class="panel">
-      <div class="panel-head"><div><h2>Score history</h2><p>Every change, newest first</p></div></div>
+      <div class="panel-head"><div><h2>{{ 'Score history' | t }}</h2><p>{{ 'Every change, newest first' | t }}</p></div></div>
       @if (loading()) {
         <div class="panel-body"><div class="skeleton" style="height:160px"></div></div>
       } @else {
@@ -45,27 +45,27 @@
           @for (h of history(); track h.id) {
             <div class="row">
               <span class="row-icon" [class.neg]="h.change < 0"><span class="icon">{{ actions[h.action]?.icon || 'tune' }}</span></span>
-              <div class="grow"><div class="title">{{ actions[h.action]?.label || h.action }}</div><div class="sub">{{ h.timestamp | date: 'd MMM y, HH:mm' }}</div></div>
+              <div class="grow"><div class="title">{{ (actions[h.action]?.label || h.action) | t }}</div><div class="sub">{{ h.timestamp | date: 'd MMM y, HH:mm' }}</div></div>
               <span class="delta" [class.neg]="h.change < 0">{{ h.change > 0 ? '+' : '' }}{{ h.change }}</span>
               <span class="after num">{{ h.new_score }}</span>
             </div>
           } @empty {
-            <div class="empty"><span class="icon">timeline</span><h3>No points yet</h3><p>Log a gig and ask the contractor to verify it.</p></div>
+            <div class="empty"><span class="icon">timeline</span><h3>{{ 'No points yet' | t }}</h3><p>{{ 'Log a gig and ask the contractor to verify it.' | t }}</p></div>
           }
         </div>
       }
     </section>
 
     <section class="panel">
-      <div class="panel-head"><div><h2>How to earn points</h2><p>Points only come from things others confirm</p></div></div>
+      <div class="panel-head"><div><h2>{{ 'How to earn points' | t }}</h2><p>{{ 'Points only come from things others confirm' | t }}</p></div></div>
       <div class="rows earn">
-        <div class="row"><span class="row-icon"><span class="icon">fact_check</span></span><div class="grow"><div class="title">A contractor verifies your gig</div><div class="sub">Log every gig you work on</div></div><span class="delta">+5</span></div>
-        <div class="row"><span class="row-icon"><span class="icon">task_alt</span></span><div class="grow"><div class="title">You complete a verified gig</div><div class="sub">From My gigs, when the job is done</div></div><span class="delta">+5</span></div>
-        <div class="row"><span class="row-icon"><span class="icon">verified_user</span></span><div class="grow"><div class="title">Your ID is verified</div><div class="sub">Once, after our team checks it</div></div><span class="delta">+20</span></div>
+        <div class="row"><span class="row-icon"><span class="icon">fact_check</span></span><div class="grow"><div class="title">{{ 'A contractor verifies your gig' | t }}</div><div class="sub">{{ 'Log every gig you work on' | t }}</div></div><span class="delta">+5</span></div>
+        <div class="row"><span class="row-icon"><span class="icon">task_alt</span></span><div class="grow"><div class="title">{{ 'You complete a verified gig' | t }}</div><div class="sub">{{ 'From My gigs, when the job is done' | t }}</div></div><span class="delta">+5</span></div>
+        <div class="row"><span class="row-icon"><span class="icon">verified_user</span></span><div class="grow"><div class="title">{{ 'Your ID is verified' | t }}</div><div class="sub">{{ 'Once, after our team checks it' | t }}</div></div><span class="delta">+20</span></div>
       </div>
       <div class="panel-foot">
-        <a class="btn outline sm" routerLink="/main-menu/verification-status">Verify my ID</a>
-        <a class="btn primary sm" routerLink="/main-menu/gigs"><span class="icon">add_task</span> Log a gig</a>
+        <a class="btn outline sm" routerLink="/main-menu/verification-status">{{ 'Verify my ID' | t }}</a>
+        <a class="btn primary sm" routerLink="/main-menu/gigs"><span class="icon">add_task</span> {{ 'Log a gig' | t }}</a>
       </div>
     </section>
   </div>

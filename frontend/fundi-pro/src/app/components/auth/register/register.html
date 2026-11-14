@@ -1,46 +1,46 @@
 <div class="auth">
   <aside class="brand-side">
-    <div class="logo"><span class="logo-mark"><span class="icon fill">construction</span></span><strong>Fundi Pro</strong></div>
-    <h1>Your work, verified. Your record, portable.</h1>
-    <ul class="points"><li><span class="icon">verified</span>Contractor-verified work history</li><li><span class="icon">workspace_premium</span>A credit score lenders can trust</li><li><span class="icon">share</span>Share your certificate on WhatsApp</li><li><span class="icon">payments</span>M-Pesa payments, all in one place</li></ul>
+    <div class="logo"><span class="logo-mark"><span class="icon fill">construction</span></span><strong>{{ 'Fundi Pro' | t }}</strong></div>
+    <h1>{{ 'Your work, verified. Your record, portable.' | t }}</h1>
+    <ul class="points"><li><span class="icon">verified</span>{{ 'Contractor-verified work history' | t }}</li><li><span class="icon">workspace_premium</span>{{ 'A credit score lenders can trust' | t }}</li><li><span class="icon">share</span>{{ 'Share your certificate on WhatsApp' | t }}</li><li><span class="icon">payments</span>{{ 'M-Pesa payments, all in one place' | t }}</li></ul>
   </aside>
   <main class="form-side">
     <button class="icon-btn bordered theme-btn" type="button" (click)="theme.toggle()" [attr.aria-label]="theme.dark() ? 'Light mode' : 'Dark mode'">
       <span class="icon">{{ theme.dark() ? 'light_mode' : 'dark_mode' }}</span>
     </button>
     <div class="card">
-      <h2>Create your account</h2>
-      <p class="sub">Join Fundi Pro as a fundi (worker). It's free.</p>
+      <h2>{{ 'Create your account' | t }}</h2>
+      <p class="sub">{{ "Join Fundi Pro as a fundi (worker). It's free." | t }}</p>
       <form [formGroup]="registerForm" (ngSubmit)="onSubmit()" novalidate>
         <div class="field">
-          <label for="username">Username</label>
-          <div class="input-icon"><span class="icon">person</span><input id="username" class="input" formControlName="username" placeholder="e.g. wanjiku.k" autocomplete="username"></div>
+          <label for="username">{{ 'Username' | t }}</label>
+          <div class="input-icon"><span class="icon">person</span><input id="username" class="input" formControlName="username" [placeholder]="'e.g. wanjiku.k' | t" autocomplete="username"></div>
         </div>
         <div class="field">
-          <label for="email">Email</label>
-          <div class="input-icon"><span class="icon">mail</span><input id="email" class="input" type="email" formControlName="email" placeholder="you@example.com" autocomplete="email"></div>
-          <span class="hint">We'll send a link to confirm it.</span>
+          <label for="email">{{ 'Email' | t }}</label>
+          <div class="input-icon"><span class="icon">mail</span><input id="email" class="input" type="email" formControlName="email" [placeholder]="'you@example.com' | t" autocomplete="email"></div>
+          <span class="hint">{{ "We'll send a link to confirm it." | t }}</span>
         </div>
         <div class="field">
-          <label for="password">Password</label>
+          <label for="password">{{ 'Password' | t }}</label>
           <div class="input-icon"><span class="icon">lock</span>
-            <input id="password" class="input" [type]="showPassword() ? 'text' : 'password'" formControlName="password" placeholder="At least 8 characters" autocomplete="new-password">
+            <input id="password" class="input" [type]="showPassword() ? 'text' : 'password'" formControlName="password" [placeholder]="'At least 8 characters' | t" autocomplete="new-password">
             <button class="icon-btn trail" type="button" (click)="togglePassword()" [attr.aria-label]="showPassword() ? 'Hide password' : 'Show password'"><span class="icon">{{ showPassword() ? 'visibility_off' : 'visibility' }}</span></button>
           </div>
         </div>
         <div class="field">
-          <label for="confirm_password">Confirm password</label>
+          <label for="confirm_password">{{ 'Confirm password' | t }}</label>
           <div class="input-icon"><span class="icon">lock</span>
-            <input id="confirm_password" class="input" [type]="showConfirmPassword() ? 'text' : 'password'" formControlName="confirm_password" placeholder="Type it again" autocomplete="new-password">
+            <input id="confirm_password" class="input" [type]="showConfirmPassword() ? 'text' : 'password'" formControlName="confirm_password" [placeholder]="'Type it again' | t" autocomplete="new-password">
             <button class="icon-btn trail" type="button" (click)="toggleConfirmPassword()" [attr.aria-label]="showConfirmPassword() ? 'Hide password' : 'Show password'"><span class="icon">{{ showConfirmPassword() ? 'visibility_off' : 'visibility' }}</span></button>
           </div>
         </div>
-        @if (registerForm.errors?.['passwordMismatch']) { <span class="err">Passwords do not match.</span> }
+        @if (registerForm.errors?.['passwordMismatch']) { <span class="err">{{ 'Passwords do not match.' | t }}</span> }
         <button class="btn primary lg block" type="submit" [disabled]="loading()">
-          @if (!loading()) { Create account } @else { <span class="spin"></span> Creating… }
+          @if (!loading()) { {{ 'Create account' | t }} } @else { <span class="spin"></span> {{ 'Creating…' | t }} }
         </button>
       </form>
-      <p class="foot">Already have an account? <a routerLink="/login">Sign in</a></p>
+      <p class="foot">{{ 'Already have an account?' | t }} <a routerLink="/login">{{ 'Sign in' | t }}</a></p>
     </div>
   </main>
 </div>

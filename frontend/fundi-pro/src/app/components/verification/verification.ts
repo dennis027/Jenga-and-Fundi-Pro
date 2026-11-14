@@ -1,3 +1,4 @@
+import { I18nService, TPipe } from '../../services/i18n';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { Component, OnDestroy, OnInit, PLATFORM_ID, computed, inject, signal } from '@angular/core';
@@ -11,11 +12,12 @@ type Slot = 'id_front' | 'id_back' | 'selfie';
 @Component({
   selector: 'app-verification',
   standalone: true,
-  imports: [CommonModule],
+  imports: [TPipe, CommonModule],
   templateUrl: './verification.html',
   styleUrl: './verification.css',
 })
 export class Verification implements OnInit, OnDestroy {
+  private i18n = inject(I18nService);
   private http = inject(HttpClient);
   private snack = inject(MatSnackBar);
   private appBar = inject(AppBarService);
@@ -53,7 +55,7 @@ export class Verification implements OnInit, OnDestroy {
   pick(slot: Slot, ev: Event) {
     const f = (ev.target as HTMLInputElement).files?.[0];
     if (!f) return;
-    if (f.size > 8 * 1024 * 1024) { this.snack.open('That photo is over 8 MB. Please take a smaller one.', 'OK', { duration: 4000 }); return; }
+    if (f.size > 8 * 1024 * 1024) { this.snack.open(this.i18n.t('That photo is over 8 MB. Please take a smaller one.'), this.i18n.t('OK'), { duration: 4000 }); return; }
     const old = this.previews()[slot]; if (old) URL.revokeObjectURL(old);
     this.files.update((x) => ({ ...x, [slot]: f }));
     this.previews.update((x) => ({ ...x, [slot]: URL.createObjectURL(f) }));
@@ -69,12 +71,12 @@ export class Verification implements OnInit, OnDestroy {
         this.sending.set(false);
         this.files.set({ id_front: null, id_back: null, selfie: null });
         this.previews.set({ id_front: null, id_back: null, selfie: null });
-        this.snack.open('Submitted. We usually review IDs within 1 to 2 working days.', 'OK', { duration: 4500, panelClass: 'success-snackbar' });
+        this.snack.open(this.i18n.t('Submitted. We usually review IDs within 1 to 2 working days.'), this.i18n.t('OK'), { duration: 4500, panelClass: 'success-snackbar' });
         this.load();
       },
       error: (e) => {
         this.sending.set(false);
-        this.snack.open(e?.error?.detail || 'Upload failed. Check your connection and try again.', 'OK', { duration: 4500, panelClass: 'error-snackbar' });
+        this.snack.open(e?.error?.detail || this.i18n.t('Upload failed. Check your connection and try again.'), this.i18n.t('OK'), { duration: 4500, panelClass: 'error-snackbar' });
       },
     });
   }

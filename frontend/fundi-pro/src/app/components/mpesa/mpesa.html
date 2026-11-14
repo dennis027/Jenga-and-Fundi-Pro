@@ -1,36 +1,36 @@
 <div class="page">
   <div class="page-head">
     <div>
-      <h1>Payments received</h1>
-      <p>Upload the M-Pesa message for money you were paid for a gig. It becomes proof of your income.</p>
+      <h1>{{ 'Payments received' | t }}</h1>
+      <p>{{ 'Upload the M-Pesa message for money you were paid for a gig. It becomes proof of your income.' | t }}</p>
     </div>
-    <div class="actions"><button class="btn primary" type="button" (click)="open()"><span class="icon">upload</span> Add M-Pesa payment</button></div>
+    <div class="actions"><button class="btn primary" type="button" (click)="open()"><span class="icon">upload</span> {{ 'Add M-Pesa payment' | t }}</button></div>
   </div>
 
   <div class="stat-grid">
-    <div class="stat"><span class="tile green"><span class="icon">payments</span></span><div><div class="label">Total recorded</div><div class="value"><small class="cur">KSh</small>{{ total() | number: '1.0-0' }}</div></div></div>
-    <div class="stat"><span class="tile blue"><span class="icon">calendar_month</span></span><div><div class="label">This month</div><div class="value"><small class="cur">KSh</small>{{ thisMonth() | number: '1.0-0' }}</div></div></div>
-    <div class="stat"><span class="tile purple"><span class="icon">verified</span></span><div><div class="label">Confirmed</div><div class="value"><small class="cur">KSh</small>{{ confirmed() | number: '1.0-0' }}</div></div></div>
+    <div class="stat"><span class="tile green"><span class="icon">payments</span></span><div><div class="label">{{ 'Total recorded' | t }}</div><div class="value"><small class="cur">{{ 'KSh' | t }}</small>{{ total() | number: '1.0-0' }}</div></div></div>
+    <div class="stat"><span class="tile blue"><span class="icon">calendar_month</span></span><div><div class="label">{{ 'This month' | t }}</div><div class="value"><small class="cur">{{ 'KSh' | t }}</small>{{ thisMonth() | number: '1.0-0' }}</div></div></div>
+    <div class="stat"><span class="tile purple"><span class="icon">verified</span></span><div><div class="label">{{ 'Confirmed' | t }}</div><div class="value"><small class="cur">{{ 'KSh' | t }}</small>{{ confirmed() | number: '1.0-0' }}</div></div></div>
   </div>
 
   <div class="panel">
     @if (loading()) {
       <div class="panel-body"><div class="skeleton" style="height:160px"></div></div>
     } @else if (!payments().length) {
-      <div class="empty"><span class="icon">receipt_long</span><h3>No payments yet</h3><p>When a contractor pays you on M-Pesa, add the confirmation message here.</p>
-        <button class="btn primary sm" type="button" (click)="open()"><span class="icon">upload</span> Add M-Pesa payment</button></div>
+      <div class="empty"><span class="icon">receipt_long</span><h3>{{ 'No payments yet' | t }}</h3><p>{{ 'When a contractor pays you on M-Pesa, add the confirmation message here.' | t }}</p>
+        <button class="btn primary sm" type="button" (click)="open()"><span class="icon">upload</span> {{ 'Add M-Pesa payment' | t }}</button></div>
     } @else {
       <div class="table-wrap">
         <table class="tbl">
-          <thead><tr><th>Date</th><th>M-Pesa code</th><th class="right">Amount (KSh)</th><th>Status</th><th></th></tr></thead>
+          <thead><tr><th>{{ 'Date' | t }}</th><th>{{ 'M-Pesa code' | t }}</th><th class="right">{{ 'Amount (KSh)' | t }}</th><th>{{ 'Status' | t }}</th><th></th></tr></thead>
           <tbody>
             @for (p of payments(); track p.id) {
               <tr>
                 <td class="nowrap">{{ p.payment_date | date: 'd MMM y' }}</td>
                 <td class="mono">{{ p.transaction_code }}</td>
                 <td class="right num cell-main">{{ +p.amount | number: '1.2-2' }}</td>
-                <td>@if (p.is_confirmed) { <span class="badge ok">Confirmed</span> } @else { <span class="badge warn">Under review</span> }</td>
-                <td><div class="row-actions">@if (p.screenshot) { <a class="btn ghost sm" [href]="p.screenshot" target="_blank" rel="noopener"><span class="icon">image</span> Screenshot</a> }</div></td>
+                <td>@if (p.is_confirmed) { <span class="badge ok">{{ 'Confirmed' | t }}</span> } @else { <span class="badge warn">{{ 'Under review' | t }}</span> }</td>
+                <td><div class="row-actions">@if (p.screenshot) { <a class="btn ghost sm" [href]="p.screenshot" target="_blank" rel="noopener"><span class="icon">image</span> {{ 'Screenshot' | t }}</a> }</div></td>
               </tr>
             }
           </tbody>
@@ -43,25 +43,25 @@
 <dialog class="modal" #uploadDialog>
   <form (ngSubmit)="save()">
     <div class="modal-head">
-      <div><h2>Add M-Pesa payment</h2><p>Upload a screenshot of the M-Pesa message, or type the details.</p></div>
-      <button class="icon-btn" type="button" (click)="close()" aria-label="Close"><span class="icon">close</span></button>
+      <div><h2>{{ 'Add M-Pesa payment' | t }}</h2><p>{{ 'Upload a screenshot of the M-Pesa message, or type the details.' | t }}</p></div>
+      <button class="icon-btn" type="button" (click)="close()" [attr.aria-label]="'Close' | t"><span class="icon">close</span></button>
     </div>
     <div class="modal-body">
       <label class="drop" [class.filled]="preview()">
         <input type="file" accept="image/*" (change)="pick($event)" hidden>
         @if (preview()) { <img [src]="preview()" alt="Screenshot"> }
-        @else { <span class="icon">add_photo_alternate</span><strong>Choose screenshot</strong><small>We'll read the code and amount for you</small> }
+        @else { <span class="icon">add_photo_alternate</span><strong>{{ 'Choose screenshot' | t }}</strong><small>{{ "We'll read the code and amount for you" | t }}</small> }
       </label>
-      @if (reading()) { <div class="notice"><span class="icon">hourglass_top</span> Reading your screenshot…</div> }
+      @if (reading()) { <div class="notice"><span class="icon">hourglass_top</span> {{ 'Reading your screenshot…' | t }}</div> }
       @else if (readNote()) { <div class="notice" [class.warn]="!form.transaction_code"><span class="icon">info</span> {{ readNote() }}</div> }
       <div class="form-grid">
-        <div class="field"><label for="code">M-Pesa code *</label><input id="code" name="code" class="input mono" [(ngModel)]="form.transaction_code" placeholder="e.g. TJD4M7XK2P" maxlength="12"></div>
-        <div class="field"><label for="amount">Amount (KSh) *</label><input id="amount" name="amount" type="number" min="1" class="input" [(ngModel)]="form.amount" placeholder="e.g. 1500"></div>
+        <div class="field"><label for="code">{{ 'M-Pesa code *' | t }}</label><input id="code" name="code" class="input mono" [(ngModel)]="form.transaction_code" [placeholder]="'e.g. TJD4M7XK2P' | t" maxlength="12"></div>
+        <div class="field"><label for="amount">{{ 'Amount (KSh) *' | t }}</label><input id="amount" name="amount" type="number" min="1" class="input" [(ngModel)]="form.amount" [placeholder]="'e.g. 1500' | t"></div>
       </div>
     </div>
     <div class="modal-foot">
-      <button class="btn ghost" type="button" (click)="close()">Cancel</button>
-      <button class="btn primary" type="submit" [disabled]="!valid() || saving() || reading()">{{ saving() ? 'Saving…' : 'Save payment' }}</button>
+      <button class="btn ghost" type="button" (click)="close()">{{ 'Cancel' | t }}</button>
+      <button class="btn primary" type="submit" [disabled]="!valid() || saving() || reading()">{{ (saving() ? 'Saving…' : 'Save payment') | t }}</button>
     </div>
   </form>
 </dialog>

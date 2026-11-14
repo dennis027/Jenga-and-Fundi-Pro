@@ -1,35 +1,35 @@
 <div class="page">
   <div class="page-head">
     <div>
-      <h1>Find work</h1>
-      <p>Open jobs posted by contractors on Fundi Pro. Call the site, and once you start, log the gig so it counts.</p>
+      <h1>{{ 'Find work' | t }}</h1>
+      <p>{{ 'Open jobs posted by contractors on Fundi Pro. Call the site, and once you start, log the gig so it counts.' | t }}</p>
     </div>
   </div>
 
   @for (a of accepted(); track a.id) {
     <div class="notice ok accepted">
       <span class="icon fill">celebration</span>
-      <span><strong>{{ a.site }} accepted you</strong> for “{{ a.post_title }}”. Call them to agree the start date, then log the gig when you begin.</span>
-      @if (a.site_phone) { <a class="btn primary sm" [href]="'tel:' + a.site_phone"><span class="icon">call</span> Call</a> }
+      <span><strong>{{ '{0} accepted you' | t : (a.site) }}</strong> {{ 'for “{0}”. Call them to agree the start date, then log the gig when you begin.' | t : (a.post_title) }}</span>
+      @if (a.site_phone) { <a class="btn primary sm" [href]="'tel:' + a.site_phone"><span class="icon">call</span> {{ 'Call' | t }}</a> }
     </div>
   }
 
   <div class="panel">
     <div class="toolbar">
       <div class="filters">
-        <select class="input county" [ngModel]="county()" (ngModelChange)="county.set($event)" aria-label="County">
-          <option value="">All counties</option>
+        <select class="input county" [ngModel]="county()" (ngModelChange)="county.set($event)" [attr.aria-label]="'County' | t">
+          <option value="">{{ 'All counties' | t }}</option>
           @for (c of counties(); track c) { <option [value]="c">{{ c }}</option> }
         </select>
-        <span class="muted">{{ shown().length }} open job{{ shown().length === 1 ? '' : 's' }}</span>
+        <span class="muted">{{ (shown().length === 1 ? '{0} open job' : '{0} open jobs') | t : shown().length }}</span>
       </div>
-      <label class="search"><input type="search" placeholder="Trade, site or area" [ngModel]="q()" (ngModelChange)="q.set($event)"><span class="icon">search</span></label>
+      <label class="search"><input type="search" [placeholder]="'Trade, site or area' | t" [ngModel]="q()" (ngModelChange)="q.set($event)"><span class="icon">search</span></label>
     </div>
 
     @if (loading()) {
       <div class="panel-body"><div class="skeleton" style="height:200px"></div></div>
     } @else if (!shown().length) {
-      <div class="empty"><span class="icon">travel_explore</span><h3>No open jobs{{ county() ? ' in ' + county() : '' }}</h3><p>New posts from contractors appear here. Check again soon.</p></div>
+      <div class="empty"><span class="icon">travel_explore</span><h3>{{ county() ? ('No open jobs in {0}' | t : county()) : ('No open jobs' | t) }}</h3><p>{{ 'New posts from contractors appear here. Check again soon.' | t }}</p></div>
     } @else {
       <div class="posts">
         @for (p of shown(); track p.id) {
@@ -41,19 +41,19 @@
                 <div class="meta"><span class="icon">apartment</span> {{ p.organization_name }} · <span class="icon">location_on</span> {{ p.ward }}, {{ p.county }}</div>
               </div>
               @switch (p.my_application?.status) {
-                @case ('pending') { <span class="badge warn">Applied</span> }
-                @case ('accepted') { <span class="badge ok">Accepted</span> }
-                @case ('declined') { <span class="badge">Not this time</span> }
+                @case ('pending') { <span class="badge warn">{{ 'Applied' | t }}</span> }
+                @case ('accepted') { <span class="badge ok">{{ 'Accepted' | t }}</span> }
+                @case ('declined') { <span class="badge">{{ 'Not this time' | t }}</span> }
                 @default { <span class="badge info">{{ daysAgo(p.created_at) }}</span> }
               }
             </div>
             @if (p.description) { <p class="desc">{{ p.description }}</p> }
             <div class="post-foot">
-              @if (p.organization_phone) { <a class="btn outline sm" [href]="'tel:' + p.organization_phone"><span class="icon">call</span> Call site</a> }
+              @if (p.organization_phone) { <a class="btn outline sm" [href]="'tel:' + p.organization_phone"><span class="icon">call</span> {{ 'Call site' | t }}</a> }
               @if (!p.my_application) {
-                <button class="btn primary sm" type="button" (click)="openApply(p)"><span class="icon">front_hand</span> I'm interested</button>
+                <button class="btn primary sm" type="button" (click)="openApply(p)"><span class="icon">front_hand</span> {{ "I'm interested" | t }}</button>
               } @else {
-                <a class="btn outline sm" routerLink="/main-menu/gigs" [queryParams]="{ site: p.organization }"><span class="icon">add_task</span> Log a gig here</a>
+                <a class="btn outline sm" routerLink="/main-menu/gigs" [queryParams]="{ site: p.organization }"><span class="icon">add_task</span> {{ 'Log a gig here' | t }}</a>
               }
             </div>
           </article>
@@ -66,20 +66,20 @@
 <dialog class="modal" #applyDialog>
   @if (applying(); as p) {
     <div class="modal-head">
-      <div><h2>I'm interested</h2><p>{{ p.title }} · {{ p.organization_name }}</p></div>
-      <button class="icon-btn" type="button" (click)="closeApply()" aria-label="Close"><span class="icon">close</span></button>
+      <div><h2>{{ "I'm interested" | t }}</h2><p>{{ p.title }} · {{ p.organization_name }}</p></div>
+      <button class="icon-btn" type="button" (click)="closeApply()" [attr.aria-label]="'Close' | t"><span class="icon">close</span></button>
     </div>
     <div class="modal-body">
-      <p class="muted">The contractor sees your name, credit score, ID status and completed gigs, plus your note.</p>
+      <p class="muted">{{ 'The contractor sees your name, credit score, ID status and completed gigs, plus your note.' | t }}</p>
       <div class="field">
-        <label for="apply-note">Note (optional)</label>
-        <textarea id="apply-note" class="input" rows="3" maxlength="300" placeholder="e.g. I can start Monday. 10 years in block work."
+        <label for="apply-note">{{ 'Note (optional)' | t }}</label>
+        <textarea id="apply-note" class="input" rows="3" maxlength="300" [placeholder]="'e.g. I can start Monday. 10 years in block work.' | t"
                   [ngModel]="note()" (ngModelChange)="note.set($event)"></textarea>
       </div>
     </div>
     <div class="modal-foot">
-      <button class="btn ghost" type="button" (click)="closeApply()">Cancel</button>
-      <button class="btn primary" type="button" (click)="apply()" [disabled]="sending()"><span class="icon">send</span> {{ sending() ? 'Sending…' : 'Send' }}</button>
+      <button class="btn ghost" type="button" (click)="closeApply()">{{ 'Cancel' | t }}</button>
+      <button class="btn primary" type="button" (click)="apply()" [disabled]="sending()"><span class="icon">send</span> {{ (sending() ? 'Sending…' : 'Send') | t }}</button>
     </div>
   }
 </dialog>

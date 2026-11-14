@@ -318,6 +318,12 @@ IDs or client details. Links expire after `CERTIFICATE_MAX_AGE_DAYS` (90). In Fu
 - **Score audit:** `python manage.py audit_credit_scores [--fix]` lists scores that don't
   match their history.
 
+### Language
+
+Fundi Pro can be used in **Kiswahili**: open the user menu (top right) and choose *Kiswahili*.
+The choice is remembered on that device. Strings are in
+`frontend/fundi-pro/src/app/shell/i18n-dict.ts`; text without an entry stays in English.
+
 ### Staff back office
 
 Create a staff account: `docker compose exec backend python manage.py createsuperuser`.

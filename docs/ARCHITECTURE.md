@@ -143,7 +143,10 @@ All of these keep existing behaviour and API contracts unless noted.
   names and branding. Extracting them means building both apps from a common context. That
   changes both Dockerfiles, Compose, CI and both live Render services, for no user-facing change,
   so it's left for a dedicated change.
-- Swahili translation (Angular i18n for both portals) is not done.
+- Translation: Fundi Pro has English and Kiswahili, switched from the user menu and kept in
+  `localStorage`. It is a runtime dictionary (`design-system/i18n.ts` plus each portal's
+  `shell/i18n-dict.ts`, keyed by the English text), so a missing key falls back to English. Jenga Pro
+  ships an empty dictionary, so it has no language switch yet.
 - Some analytics views have no serializer, so `/api/docs/` lists them without typed responses.
 - Certificate links can't be revoked before expiry. A per-user nonce would allow that.
 - `backend/e` is a committed `psql \dt` output; harmless, can be deleted.

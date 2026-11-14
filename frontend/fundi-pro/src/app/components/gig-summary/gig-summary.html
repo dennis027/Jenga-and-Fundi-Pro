@@ -1,26 +1,26 @@
 <div class="page">
   <div class="page-head">
     <div>
-      <h1>My gigs</h1>
-      <p>Log a gig, wait for the site's contractor to verify it, then mark it complete. Each step adds to your credit score.</p>
+      <h1>{{ 'My gigs' | t }}</h1>
+      <p>{{ "Log a gig, wait for the site's contractor to verify it, then mark it complete. Each step adds to your credit score." | t }}</p>
     </div>
-    <div class="actions"><a class="btn primary" routerLink="/main-menu/gigs"><span class="icon">add_task</span> Log a gig</a></div>
+    <div class="actions"><a class="btn primary" routerLink="/main-menu/gigs"><span class="icon">add_task</span> {{ 'Log a gig' | t }}</a></div>
   </div>
 
   <ol class="steps">
-    <li [class.on]="tab() === 'waiting'"><span class="n">1</span><div><strong>Log</strong><small>Record the work at a site</small></div></li>
-    <li [class.on]="tab() === 'ready'"><span class="n">2</span><div><strong>Contractor verifies</strong><small>+5 to your score</small></div></li>
-    <li [class.on]="tab() === 'completed'"><span class="n">3</span><div><strong>Mark complete</strong><small>+5 more, goes on your certificate</small></div></li>
+    <li [class.on]="tab() === 'waiting'"><span class="n">1</span><div><strong>{{ 'Log' | t }}</strong><small>{{ 'Record the work at a site' | t }}</small></div></li>
+    <li [class.on]="tab() === 'ready'"><span class="n">2</span><div><strong>{{ 'Contractor verifies' | t }}</strong><small>{{ '+5 to your score' | t }}</small></div></li>
+    <li [class.on]="tab() === 'completed'"><span class="n">3</span><div><strong>{{ 'Mark complete' | t }}</strong><small>{{ '+5 more, goes on your certificate' | t }}</small></div></li>
   </ol>
 
   <div class="panel">
     <div class="toolbar">
       <div class="seg" role="tablist">
         @for (t of tabs; track t.id) {
-          <button type="button" role="tab" [class.on]="tab() === t.id" (click)="tab.set(t.id)">{{ t.label }} <span class="count">{{ counts()[t.id] }}</span></button>
+          <button type="button" role="tab" [class.on]="tab() === t.id" (click)="tab.set(t.id)">{{ t.label | t }} <span class="count">{{ counts()[t.id] }}</span></button>
         }
       </div>
-      <label class="search"><input type="search" placeholder="Search trade or site" [ngModel]="q()" (ngModelChange)="q.set($event)"><span class="icon">search</span></label>
+      <label class="search"><input type="search" [placeholder]="'Search trade or site' | t" [ngModel]="q()" (ngModelChange)="q.set($event)"><span class="icon">search</span></label>
     </div>
 
     @if (loading()) {
@@ -28,15 +28,15 @@
     } @else if (!rows().length) {
       <div class="empty">
         @switch (tab()) {
-          @case ('waiting') { <span class="icon">hourglass_empty</span><h3>No gigs waiting</h3><p>Log a gig after you start work at a site.</p><a class="btn primary sm" routerLink="/main-menu/gigs"><span class="icon">add</span> Log a gig</a> }
-          @case ('ready') { <span class="icon">task_alt</span><h3>Nothing to complete</h3><p>Gigs appear here once the contractor verifies them.</p> }
-          @case ('completed') { <span class="icon">history</span><h3>No completed gigs yet</h3><p>Finished, verified work is listed here.</p> }
+          @case ('waiting') { <span class="icon">hourglass_empty</span><h3>{{ 'No gigs waiting' | t }}</h3><p>{{ 'Log a gig after you start work at a site.' | t }}</p><a class="btn primary sm" routerLink="/main-menu/gigs"><span class="icon">add</span> {{ 'Log a gig' | t }}</a> }
+          @case ('ready') { <span class="icon">task_alt</span><h3>{{ 'Nothing to complete' | t }}</h3><p>{{ 'Gigs appear here once the contractor verifies them.' | t }}</p> }
+          @case ('completed') { <span class="icon">history</span><h3>{{ 'No completed gigs yet' | t }}</h3><p>{{ 'Finished, verified work is listed here.' | t }}</p> }
         }
       </div>
     } @else {
       <div class="table-wrap">
         <table class="tbl">
-          <thead><tr><th>Trade</th><th>Site</th><th>Start</th><th>Duration</th>@if (tab() !== 'completed') { <th class="right">Agreed pay (KSh)</th> }<th>Status</th><th></th></tr></thead>
+          <thead><tr><th>{{ 'Trade' | t }}</th><th>{{ 'Site' | t }}</th><th>{{ 'Start' | t }}</th><th>{{ 'Duration' | t }}</th>@if (tab() !== 'completed') { <th class="right">{{ 'Agreed pay (KSh)' | t }}</th> }<th>{{ 'Status' | t }}</th><th></th></tr></thead>
           <tbody>
             @for (g of rows(); track g.id) {
               <tr>
@@ -46,20 +46,20 @@
                 <td class="nowrap">{{ duration(g.duration_value, g.duration_unit) }}</td>
                 @if (tab() !== 'completed') { <td class="right num">{{ +g.amount_paid | number: '1.2-2' }}</td> }
                 <td>
-                  @if (tab() === 'completed') { <span class="badge ok">Completed</span> }
-                  @else if (g.is_verified) { <span class="badge info">Verified</span> }
-                  @else { <span class="badge warn">Waiting</span> }
+                  @if (tab() === 'completed') { <span class="badge ok">{{ 'Completed' | t }}</span> }
+                  @else if (g.is_verified) { <span class="badge info">{{ 'Verified' | t }}</span> }
+                  @else { <span class="badge warn">{{ 'Waiting' | t }}</span> }
                   @if (disputeFor(tab() === 'completed' ? 'history' : 'gig', g.id); as d) {
-                    <span class="badge" [class.danger]="d.status === 'open'" title="Dispute">Dispute {{ d.status }}</span>
+                    <span class="badge" [class.danger]="d.status === 'open'" [title]="'Dispute' | t">{{ 'Dispute {0}' | t : (d.status) }}</span>
                   }
                 </td>
                 <td>
                   <div class="row-actions">
                     @if (tab() === 'ready') {
-                      <button class="btn primary sm" type="button" (click)="complete(g)" [disabled]="completing() === g.id"><span class="icon">done</span> Complete</button>
+                      <button class="btn primary sm" type="button" (click)="complete(g)" [disabled]="completing() === g.id"><span class="icon">done</span> {{ 'Complete' | t }}</button>
                     }
                     @if (!disputeFor(tab() === 'completed' ? 'history' : 'gig', g.id)) {
-                      <button class="icon-btn" type="button" (click)="openDispute(tab() === 'completed' ? 'history' : 'gig', g)" title="Report a problem" aria-label="Report a problem"><span class="icon">flag</span></button>
+                      <button class="icon-btn" type="button" (click)="openDispute(tab() === 'completed' ? 'history' : 'gig', g)" [title]="'Report a problem' | t" [attr.aria-label]="'Report a problem' | t"><span class="icon">flag</span></button>
                     }
                   </div>
                 </td>
@@ -75,20 +75,20 @@
 <dialog class="modal" #disputeDialog>
   @if (disputing(); as d) {
     <div class="modal-head">
-      <div><h2>Report a problem</h2><p>{{ d.row.job_type_name }} at {{ d.row.organization_name }} · {{ d.row.start_date | date: 'd MMM y' }}</p></div>
-      <button class="icon-btn" type="button" (click)="closeDispute()" aria-label="Close"><span class="icon">close</span></button>
+      <div><h2>{{ 'Report a problem' | t }}</h2><p>{{ '{0} at {1} · {2}' | t : (d.row.job_type_name) : (d.row.organization_name) : (d.row.start_date | date: 'd MMM y') }}</p></div>
+      <button class="icon-btn" type="button" (click)="closeDispute()" [attr.aria-label]="'Close' | t"><span class="icon">close</span></button>
     </div>
     <div class="modal-body">
       <div class="field">
-        <label for="dispute-reason">What is wrong?</label>
-        <textarea id="dispute-reason" class="input" rows="4" placeholder="e.g. I worked 10 days, not 8. Or: the contractor has not verified after 2 weeks."
+        <label for="dispute-reason">{{ 'What is wrong?' | t }}</label>
+        <textarea id="dispute-reason" class="input" rows="4" [placeholder]="'e.g. I worked 10 days, not 8. Or: the contractor has not verified after 2 weeks.' | t"
                   [ngModel]="reason()" (ngModelChange)="reason.set($event)"></textarea>
-        <span class="hint">The site's contractor and our team can see this. At least 10 characters.</span>
+        <span class="hint">{{ "The site's contractor and our team can see this. At least 10 characters." | t }}</span>
       </div>
     </div>
     <div class="modal-foot">
-      <button class="btn ghost" type="button" (click)="closeDispute()">Cancel</button>
-      <button class="btn primary" type="button" (click)="sendDispute()" [disabled]="reason().trim().length < 10 || sending()">{{ sending() ? 'Sending…' : 'Send' }}</button>
+      <button class="btn ghost" type="button" (click)="closeDispute()">{{ 'Cancel' | t }}</button>
+      <button class="btn primary" type="button" (click)="sendDispute()" [disabled]="reason().trim().length < 10 || sending()">{{ (sending() ? 'Sending…' : 'Send') | t }}</button>
     </div>
   }
 </dialog>

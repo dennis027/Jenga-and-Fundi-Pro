@@ -1,8 +1,8 @@
 <div class="page">
   <div class="page-head">
     <div>
-      <h1>ID verification</h1>
-      <p>Prove who you are once. A verified ID adds +20 to your credit score and a “verified” badge on your certificate.</p>
+      <h1>{{ 'ID verification' | t }}</h1>
+      <p>{{ 'Prove who you are once. A verified ID adds +20 to your credit score and a “verified” badge on your certificate.' | t }}</p>
     </div>
   </div>
 
@@ -10,39 +10,39 @@
     <section class="panel status" [class]="'panel status ' + status()">
       @switch (status()) {
         @case ('approved') { <span class="st-icon"><span class="icon fill">verified</span></span>
-          <div><h2>Your ID is verified</h2><p>Approved {{ latest().updated_at | date: 'd MMM y' }}. Contractors and lenders see the verified badge.</p></div> }
+          <div><h2>{{ 'Your ID is verified' | t }}</h2><p>{{ 'Approved {0}. Contractors and lenders see the verified badge.' | t : (latest().updated_at | date: 'd MMM y') }}</p></div> }
         @case ('pending') { <span class="st-icon"><span class="icon">hourglass_top</span></span>
-          <div><h2>Under review</h2><p>Sent {{ latest().created_at | date: 'd MMM y' }}. We usually finish within 1 to 2 working days.</p></div> }
+          <div><h2>{{ 'Under review' | t }}</h2><p>{{ 'Sent {0}. We usually finish within 1 to 2 working days.' | t : (latest().created_at | date: 'd MMM y') }}</p></div> }
         @case ('rejected') { <span class="st-icon"><span class="icon">error</span></span>
-          <div><h2>We could not verify your ID</h2><p>{{ latest().rejection_reason || 'The photos were not clear enough.' }} Please submit new photos below.</p></div> }
+          <div><h2>{{ 'We could not verify your ID' | t }}</h2><p>{{ '{0} Please submit new photos below.' | t : (latest().rejection_reason || 'The photos were not clear enough.') }}</p></div> }
         @default { <span class="st-icon"><span class="icon">badge</span></span>
-          <div><h2>Not verified yet</h2><p>Take three photos below. It takes about two minutes.</p></div> }
+          <div><h2>{{ 'Not verified yet' | t }}</h2><p>{{ 'Take three photos below. It takes about two minutes.' | t }}</p></div> }
       }
     </section>
   }
 
   @if (canSubmit()) {
     <section class="panel">
-      <div class="panel-head"><div><h2>Upload your photos</h2><p>Use your Kenyan national ID. On a phone, each box opens the camera.</p></div></div>
+      <div class="panel-head"><div><h2>{{ 'Upload your photos' | t }}</h2><p>{{ 'Use your Kenyan national ID. On a phone, each box opens the camera.' | t }}</p></div></div>
       <div class="slots">
         @for (s of slots; track s.id) {
           <label class="slot" [class.filled]="previews()[s.id]">
             <input type="file" accept="image/*" [attr.capture]="s.capture" (change)="pick(s.id, $event)" hidden>
             @if (previews()[s.id]; as src) {
               <img [src]="src" [alt]="s.label">
-              <span class="retake"><span class="icon">photo_camera</span> Retake</span>
+              <span class="retake"><span class="icon">photo_camera</span> {{ 'Retake' | t }}</span>
             } @else {
               <span class="slot-icon"><span class="icon">{{ s.icon }}</span></span>
-              <strong>{{ s.label }}</strong>
-              <small>{{ s.hint }}</small>
-              <span class="btn soft sm"><span class="icon">photo_camera</span> Take photo</span>
+              <strong>{{ s.label | t }}</strong>
+              <small>{{ s.hint | t }}</small>
+              <span class="btn soft sm"><span class="icon">photo_camera</span> {{ 'Take photo' | t }}</span>
             }
           </label>
         }
       </div>
       <div class="panel-foot between">
-        <span class="muted small"><span class="icon">lock</span> Only our verification team sees these photos. They are never shared or shown on your certificate.</span>
-        <button class="btn primary" type="button" (click)="submit()" [disabled]="!ready() || sending()"><span class="icon">upload</span> {{ sending() ? 'Uploading…' : 'Submit for review' }}</button>
+        <span class="muted small"><span class="icon">lock</span> {{ 'Only our verification team sees these photos. They are never shared or shown on your certificate.' | t }}</span>
+        <button class="btn primary" type="button" (click)="submit()" [disabled]="!ready() || sending()"><span class="icon">upload</span> {{ (sending() ? 'Uploading…' : 'Submit for review') | t }}</button>
       </div>
     </section>
   }

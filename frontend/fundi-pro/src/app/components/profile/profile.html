@@ -1,8 +1,8 @@
 <div class="page">
   <div class="page-head">
     <div>
-      <h1>My profile</h1>
-      <p>Your details as contractors and lenders see them. Keep your phone number current. It's how sites and M-Pesa reach you.</p>
+      <h1>{{ 'My profile' | t }}</h1>
+      <p>{{ "Your details as contractors and lenders see them. Keep your phone number current. It's how sites and M-Pesa reach you." | t }}</p>
     </div>
   </div>
 
@@ -16,68 +16,68 @@
           @else { <span class="icon placeholder">person</span> }
         </div>
         <div class="photo-actions">
-          <label class="btn outline sm"><span class="icon">photo_library</span> Upload photo
+          <label class="btn outline sm"><span class="icon">photo_library</span> {{ 'Upload photo' | t }}
             <input type="file" accept="image/*" (change)="onFileSelected($event)" hidden></label>
-          <label class="btn ghost sm"><span class="icon">photo_camera</span> Camera
+          <label class="btn ghost sm"><span class="icon">photo_camera</span> {{ 'Camera' | t }}
             <input type="file" accept="image/*" capture="user" (change)="onFileSelected($event)" hidden></label>
           @if (selectedImagePreview() || profilePicUrl()) {
-            <button class="btn ghost sm danger-text" type="button" (click)="removeImage()"><span class="icon">delete</span> Remove</button>
+            <button class="btn ghost sm danger-text" type="button" (click)="removeImage()"><span class="icon">delete</span> {{ 'Remove' | t }}</button>
           }
         </div>
-        <p class="muted small">A clear face photo helps contractors recognise you on site.</p>
+        <p class="muted small">{{ 'A clear face photo helps contractors recognise you on site.' | t }}</p>
       </aside>
 
       <section class="panel">
-        <div class="panel-head"><div><h2>Personal details</h2><p>Fields marked * are required</p></div></div>
+        <div class="panel-head"><div><h2>{{ 'Personal details' | t }}</h2><p>{{ 'Fields marked * are required' | t }}</p></div></div>
         <div class="panel-body">
           <div class="form-grid">
             <div class="field full">
-              <label for="fullName">Full name *</label>
-              <input id="fullName" class="input" formControlName="fullName" placeholder="As on your national ID"
+              <label for="fullName">{{ 'Full name *' | t }}</label>
+              <input id="fullName" class="input" formControlName="fullName" [placeholder]="'As on your national ID' | t"
                      [class.invalid]="profileForm.get('fullName')?.invalid && profileForm.get('fullName')?.touched">
-              @if (profileForm.get('fullName')?.invalid && profileForm.get('fullName')?.touched) { <span class="err">Enter your full name.</span> }
+              @if (profileForm.get('fullName')?.invalid && profileForm.get('fullName')?.touched) { <span class="err">{{ 'Enter your full name.' | t }}</span> }
             </div>
             <div class="field">
-              <label for="nationalId">National ID number *</label>
-              <input id="nationalId" class="input" formControlName="nationalId" inputmode="numeric" placeholder="e.g. 28104500"
+              <label for="nationalId">{{ 'National ID number *' | t }}</label>
+              <input id="nationalId" class="input" formControlName="nationalId" inputmode="numeric" [placeholder]="'e.g. 28104500' | t"
                      [class.invalid]="profileForm.get('nationalId')?.invalid && profileForm.get('nationalId')?.touched">
-              @if (profileForm.get('nationalId')?.invalid && profileForm.get('nationalId')?.touched) { <span class="err">Enter a valid ID number.</span> }
+              @if (profileForm.get('nationalId')?.invalid && profileForm.get('nationalId')?.touched) { <span class="err">{{ 'Enter a valid ID number.' | t }}</span> }
             </div>
             <div class="field">
-              <label for="phone">Phone (M-Pesa) *</label>
+              <label for="phone">{{ 'Phone (M-Pesa) *' | t }}</label>
               <div class="input-icon"><span class="icon">call</span>
-                <input id="phone" class="input" formControlName="phone" inputmode="tel" placeholder="0712345678 or 254712345678"
+                <input id="phone" class="input" formControlName="phone" inputmode="tel" [placeholder]="'0712345678 or 254712345678' | t"
                        [class.invalid]="profileForm.get('phone')?.invalid && profileForm.get('phone')?.touched"></div>
-              @if (profileForm.get('phone')?.invalid && profileForm.get('phone')?.touched) { <span class="err">Enter a valid Kenyan phone number.</span> }
+              @if (profileForm.get('phone')?.invalid && profileForm.get('phone')?.touched) { <span class="err">{{ 'Enter a valid Kenyan phone number.' | t }}</span> }
             </div>
             <div class="field">
-              <label for="county">County *</label>
+              <label for="county">{{ 'County *' | t }}</label>
               <select id="county" class="input" formControlName="county" [class.invalid]="profileForm.get('county')?.invalid && profileForm.get('county')?.touched">
-                <option value="">Select county</option>
+                <option value="">{{ 'Select county' | t }}</option>
                 @for (region of regions; track region.county_code) { <option [value]="region.county_name">{{ region.county_name }}</option> }
               </select>
-              @if (profileForm.get('county')?.invalid && profileForm.get('county')?.touched) { <span class="err">Please select a county.</span> }
+              @if (profileForm.get('county')?.invalid && profileForm.get('county')?.touched) { <span class="err">{{ 'Please select a county.' | t }}</span> }
             </div>
             <div class="field">
-              <label for="constituency">Constituency *</label>
+              <label for="constituency">{{ 'Constituency *' | t }}</label>
               <select id="constituency" class="input" formControlName="constituency" [class.invalid]="profileForm.get('constituency')?.invalid && profileForm.get('constituency')?.touched">
-                <option value="">{{ constituencies.length ? 'Select constituency' : 'Select county first' }}</option>
+                <option value="">{{ (constituencies.length ? 'Select constituency' : 'Select county first') | t }}</option>
                 @for (constituency of constituencies; track constituency) { <option [value]="constituency">{{ constituency }}</option> }
               </select>
-              @if (profileForm.get('constituency')?.invalid && profileForm.get('constituency')?.touched) { <span class="err">Please select a constituency.</span> }
+              @if (profileForm.get('constituency')?.invalid && profileForm.get('constituency')?.touched) { <span class="err">{{ 'Please select a constituency.' | t }}</span> }
             </div>
             <div class="field full">
-              <label for="ward">Ward *</label>
+              <label for="ward">{{ 'Ward *' | t }}</label>
               <select id="ward" class="input" formControlName="ward" [class.invalid]="profileForm.get('ward')?.invalid && profileForm.get('ward')?.touched">
-                <option value="">{{ wards.length ? 'Select ward' : 'Select constituency first' }}</option>
+                <option value="">{{ (wards.length ? 'Select ward' : 'Select constituency first') | t }}</option>
                 @for (ward of wards; track ward) { <option [value]="ward">{{ ward }}</option> }
               </select>
-              @if (profileForm.get('ward')?.invalid && profileForm.get('ward')?.touched) { <span class="err">Please select a ward.</span> }
+              @if (profileForm.get('ward')?.invalid && profileForm.get('ward')?.touched) { <span class="err">{{ 'Please select a ward.' | t }}</span> }
             </div>
           </div>
         </div>
         <div class="panel-foot">
-          <button class="btn primary" type="submit" [disabled]="isSaving()"><span class="icon">save</span> {{ isSaving() ? 'Saving…' : 'Save changes' }}</button>
+          <button class="btn primary" type="submit" [disabled]="isSaving()"><span class="icon">save</span> {{ (isSaving() ? 'Saving…' : 'Save changes') | t }}</button>
         </div>
       </section>
     </form>

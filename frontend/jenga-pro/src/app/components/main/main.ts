@@ -9,6 +9,7 @@ import { AuthService } from '../../services/auth';
 import { AppBarService } from '../../services/app-bar-service';
 import { ThemeService } from '../../services/theme';
 import { InstallService } from '../../services/install';
+import { I18nService, TPipe } from '../../services/i18n';
 import { SiteContextService } from '../../shell/site-context';
 import { SHELL_CONFIG } from '../../shell/shell-config';
 import { ShellDataService } from '../../shell/shell-data';
@@ -17,7 +18,7 @@ import { QuickAction, ShellContext, ShellData, ShellNotification, ShellUser } fr
 @Component({
   selector: 'app-main',
   standalone: true,
-  imports: [CommonModule, RouterModule, FormsModule],
+  imports: [CommonModule, RouterModule, FormsModule, TPipe],
   templateUrl: './main.html',
   styleUrls: ['./main.css'],
 })
@@ -29,6 +30,7 @@ export class Main implements OnInit, OnDestroy {
   appBar = inject(AppBarService);
   theme = inject(ThemeService);
   installer = inject(InstallService);
+  i18n = inject(I18nService);
   site = inject(SiteContextService);
   config = SHELL_CONFIG;
 

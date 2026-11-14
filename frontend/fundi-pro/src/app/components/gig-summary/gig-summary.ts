@@ -1,3 +1,4 @@
+import { I18nService, TPipe } from '../../services/i18n';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { Component, ElementRef, OnInit, PLATFORM_ID, ViewChild, computed, inject, signal } from '@angular/core';
@@ -7,7 +8,6 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { catchError, forkJoin, of } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { AppBarService } from '../../services/app-bar-service';
-import { duration } from '../../shell/ui';
 
 const API = environment.apiUrl + 'api/';
 type Tab = 'waiting' | 'ready' | 'completed';
@@ -15,17 +15,18 @@ type Tab = 'waiting' | 'ready' | 'completed';
 @Component({
   selector: 'app-gig-summary',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterModule],
+  imports: [TPipe, CommonModule, FormsModule, RouterModule],
   templateUrl: './gig-summary.html',
   styleUrl: './gig-summary.css',
 })
 export class GigSummary implements OnInit {
+  private i18n = inject(I18nService);
   private http = inject(HttpClient);
   private snack = inject(MatSnackBar);
   private appBar = inject(AppBarService);
   private route = inject(ActivatedRoute);
   private browser = isPlatformBrowser(inject(PLATFORM_ID));
-  duration = duration;
+  duration = (v: number, u: string) => this.i18n.t(u === 'weeks' ? (v === 1 ? '{0} week' : '{0} weeks') : (v === 1 ? '{0} day' : '{0} days'), v);
   @ViewChild('disputeDialog') disputeDialog?: ElementRef<HTMLDialogElement>;
 
   loading = signal(true);
@@ -81,8 +82,8 @@ export class GigSummary implements OnInit {
   complete(g: any) {
     this.completing.set(g.id);
     this.http.post<any>(API + `gigs/${g.id}/complete/`, {}).subscribe({
-      next: (res) => { this.completing.set(null); this.snack.open(`Done! Your credit score is now ${res.new_score}.`, 'OK', { duration: 3500, panelClass: 'success-snackbar' }); this.load(); },
-      error: (e) => { this.completing.set(null); this.snack.open(e?.error?.error || 'Could not complete the gig.', 'OK', { duration: 4000, panelClass: 'error-snackbar' }); },
+      next: (res) => { this.completing.set(null); this.snack.open(this.i18n.t('Done! Your credit score is now {0}.', res.new_score), this.i18n.t('OK'), { duration: 3500, panelClass: 'success-snackbar' }); this.load(); },
+      error: (e) => { this.completing.set(null); this.snack.open(e?.error?.error || this.i18n.t('Could not complete the gig.'), this.i18n.t('OK'), { duration: 4000, panelClass: 'error-snackbar' }); },
     });
   }
 
@@ -96,8 +97,8 @@ export class GigSummary implements OnInit {
     this.sending.set(true);
     this.http.post<any>(API + 'disputes/', { [d.kind]: d.row.id, reason: this.reason().trim() }).subscribe({
       next: (res) => { this.sending.set(false); this.disputes.update((l) => [res, ...l]); this.closeDispute();
-        this.snack.open('Dispute sent. Our team will review it and contact you.', 'OK', { duration: 4000, panelClass: 'success-snackbar' }); },
-      error: (e) => { this.sending.set(false); this.snack.open(e?.error?.detail || 'Could not send the dispute.', 'OK', { duration: 4000, panelClass: 'error-snackbar' }); },
+        this.snack.open(this.i18n.t('Dispute sent. Our team will review it and contact you.'), this.i18n.t('OK'), { duration: 4000, panelClass: 'success-snackbar' }); },
+      error: (e) => { this.sending.set(false); this.snack.open(e?.error?.detail || this.i18n.t('Could not send the dispute.'), this.i18n.t('OK'), { duration: 4000, panelClass: 'error-snackbar' }); },
     });
   }
 }
