@@ -94,6 +94,19 @@
               } @empty {
                 <div class="menu-empty"><span class="icon">done_all</span> {{ "You're all caught up." | t }}</div>
               }
+              @if (recent().length) {
+                <div class="menu-title notes-head">
+                  <span>{{ 'Recent' | t }}</span>
+                  @if (unread()) { <button class="link-btn" type="button" (click)="markAllRead()">{{ 'Mark all read' | t }}</button> }
+                </div>
+                @for (n of recent(); track $index) {
+                  <button class="note" type="button" [class.unread]="n.unread" (click)="go(n)">
+                    <span class="note-icon" [class]="'note-icon ' + n.tone"><span class="icon">{{ n.icon }}</span></span>
+                    <span class="note-text"><strong>{{ n.title }}</strong>@if (n.sub) {<small>{{ n.sub }}</small>}</span>
+                    <span class="note-time">{{ n.time }}</span>
+                  </button>
+                }
+              }
             </div>
           }
         </div>

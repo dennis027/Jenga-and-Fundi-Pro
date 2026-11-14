@@ -12,6 +12,7 @@ export const SHELL_CONFIG: ShellConfig = {
         { label: 'My gigs', icon: 'work', route: '/main-menu/gig-summary', badge: 'ready' },
         { label: 'Log a gig', icon: 'add_task', route: '/main-menu/gigs' },
         { label: 'Find work', icon: 'travel_explore', route: '/main-menu/search-gigs' },
+        { label: 'Site safety', icon: 'health_and_safety', route: '/main-menu/safety' },
       ],
     },
     {
@@ -35,5 +36,8 @@ export const SHELL_CONFIG: ShellConfig = {
     { label: 'Verify my ID', icon: 'verified_user', route: '/main-menu/verification-status' },
     { label: 'Add an M-Pesa payment', icon: 'receipt_long', route: '/main-menu/mpesa?upload=1' },
     { label: 'My profile', icon: 'person', route: '/main-menu/profile' },
+    { label: 'Report a safety incident', icon: 'health_and_safety', route: '/main-menu/safety' },
+    { label: 'Job alerts', icon: 'campaign', route: '/main-menu/search-gigs' },
+    { label: 'Earnings statement', icon: 'receipt_long', route: '/main-menu/gig-summary?tab=completed' },
   ],
 };

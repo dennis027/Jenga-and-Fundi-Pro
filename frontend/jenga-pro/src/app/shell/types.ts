@@ -14,7 +14,7 @@ export interface ShellConfig {
   searchAction?: (q: string) => QuickAction | null;
 }
 export interface ShellUser { name: string; subtitle: string; picture?: string | null; }
-export interface ShellNotification { icon: string; tone: 'info' | 'ok' | 'warn' | 'danger'; title: string; sub: string; route: string; }
+export interface ShellNotification { icon: string; tone: 'info' | 'ok' | 'warn' | 'danger'; title: string; sub: string; route: string; unread?: boolean; time?: string; }
 export interface ShellContext { id: number | null; label: string; }
 
 /** Implemented per app in app/shell/shell-data.ts */

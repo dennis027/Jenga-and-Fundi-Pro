@@ -4,8 +4,21 @@
       <h1>{{ 'Find work' | t }}</h1>
       <p>{{ 'Open jobs posted by contractors on Fundi Pro. Call the site, and once you start, log the gig so it counts.' | t }}</p>
     </div>
+    <div class="actions">
+      <button class="btn outline" type="button" (click)="showAlerts.set(!showAlerts())">
+        <span class="icon">campaign</span> {{ 'Job alerts' | t }} @if (alerts().length) { <span class="badge info">{{ alerts().length }}</span> }
+      </button>
+    </div>
   </div>
 
+  @for (a of invitations(); track a.id) {
+    <div class="notice info accepted">
+      <span class="icon fill">mail</span>
+      <span><strong>{{ '{0} invited you' | t : (a.site) }}</strong> {{ 'for “{0}”.' | t : (a.post_title) }}</span>
+      <button class="btn ghost sm" type="button" (click)="respond(a, false)">{{ 'Decline' | t }}</button>
+      <button class="btn primary sm" type="button" (click)="respond(a, true)"><span class="icon">check</span> {{ 'Accept' | t }}</button>
+    </div>
+  }
   @for (a of accepted(); track a.id) {
     <div class="notice ok accepted">
       <span class="icon fill">celebration</span>
@@ -14,22 +27,79 @@
     </div>
   }
 
+  @if (showAlerts()) {
+    <div class="panel alerts">
+      <div class="panel-head"><div><h3>{{ 'Job alerts' | t }}</h3><p>{{ 'Get notified when a matching job is posted.' | t }}</p></div></div>
+      <div class="panel-body">
+        <form class="alert-form" (ngSubmit)="addAlert()">
+          <input class="input" name="kw" [placeholder]="'Trade or keyword, e.g. tiling' | t" [ngModel]="alertKeyword()" (ngModelChange)="alertKeyword.set($event)">
+          <input class="input" name="county" [placeholder]="'County (optional)' | t" [ngModel]="alertCounty()" (ngModelChange)="alertCounty.set($event)">
+          <label class="check"><input type="checkbox" name="sms" [ngModel]="alertSms()" (ngModelChange)="alertSms.set($event)"> {{ 'Also by SMS' | t }}</label>
+          <button class="btn primary" type="submit" [disabled]="!alertKeyword().trim() && !alertCounty().trim()"><span class="icon">add</span> {{ 'Add alert' | t }}</button>
+        </form>
+        @if (alerts().length) {
+          <div class="chips">
+            @for (a of alerts(); track a.id) {
+              <span class="chip"><span class="icon">{{ a.sms ? 'sms' : 'notifications' }}</span>
+                {{ a.keyword || ('Any trade' | t) }}@if (a.county) { · {{ a.county }} }
+                <button type="button" (click)="removeAlert(a)" [attr.aria-label]="'Remove' | t"><span class="icon">close</span></button></span>
+            }
+          </div>
+        } @else { <p class="muted">{{ 'No alerts yet.' | t }}</p> }
+      </div>
+    </div>
+  }
+
   <div class="panel">
     <div class="toolbar">
-      <div class="filters">
-        <select class="input county" [ngModel]="county()" (ngModelChange)="county.set($event)" [attr.aria-label]="'County' | t">
-          <option value="">{{ 'All counties' | t }}</option>
-          @for (c of counties(); track c) { <option [value]="c">{{ c }}</option> }
-        </select>
-        <span class="muted">{{ (shown().length === 1 ? '{0} open job' : '{0} open jobs') | t : shown().length }}</span>
+      <div class="seg" role="tablist">
+        <button type="button" role="tab" [class.on]="tab() === 'open'" (click)="tab.set('open')">{{ 'Open jobs' | t }} <span class="count">{{ posts().length }}</span></button>
+        <button type="button" role="tab" [class.on]="tab() === 'saved'" (click)="tab.set('saved')">{{ 'Saved' | t }} <span class="count">{{ saved().length }}</span></button>
+        <button type="button" role="tab" [class.on]="tab() === 'applied'" (click)="tab.set('applied')">{{ 'My applications' | t }} <span class="count">{{ applied().length }}</span></button>
       </div>
-      <label class="search"><input type="search" [placeholder]="'Trade, site or area' | t" [ngModel]="q()" (ngModelChange)="q.set($event)"><span class="icon">search</span></label>
+      @if (tab() !== 'applied') {
+        <div class="filters">
+          <select class="input county" [ngModel]="county()" (ngModelChange)="county.set($event)" [attr.aria-label]="'County' | t">
+            <option value="">{{ 'All counties' | t }}</option>
+            @for (c of counties(); track c) { <option [value]="c">{{ c }}</option> }
+          </select>
+          <label class="search"><input type="search" [placeholder]="'Trade, site or area' | t" [ngModel]="q()" (ngModelChange)="q.set($event)"><span class="icon">search</span></label>
+        </div>
+      }
     </div>
 
     @if (loading()) {
       <div class="panel-body"><div class="skeleton" style="height:200px"></div></div>
+    } @else if (tab() === 'applied') {
+      @if (!applied().length) {
+        <div class="empty"><span class="icon">front_hand</span><h3>{{ 'No applications yet' | t }}</h3><p>{{ "Tap “I'm interested” on a job to apply." | t }}</p></div>
+      } @else {
+        <div class="table-wrap">
+          <table class="tbl">
+            <thead><tr><th>{{ 'Job' | t }}</th><th>{{ 'Site' | t }}</th><th>{{ 'Sent' | t }}</th><th>{{ 'Status' | t }}</th><th></th></tr></thead>
+            <tbody>
+              @for (a of applied(); track a.id) {
+                <tr>
+                  <td><strong>{{ a.post_title }}</strong>@if (a.message) {<div class="muted small">“{{ a.message }}”</div>}</td>
+                  <td>{{ a.site }}</td>
+                  <td class="nowrap">{{ daysAgo(a.created_at) }}</td>
+                  <td><span class="badge" [ngClass]="statusTone(a.status)">{{ statusLabel(a.status) | t }}</span></td>
+                  <td class="right">
+                    @if (a.status === 'pending') { <button class="btn ghost sm" type="button" (click)="withdraw(a)">{{ 'Withdraw' | t }}</button> }
+                    @if (a.status === 'accepted' && a.site_phone) { <a class="btn outline sm" [href]="'tel:' + a.site_phone"><span class="icon">call</span> {{ 'Call' | t }}</a> }
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
     } @else if (!shown().length) {
-      <div class="empty"><span class="icon">travel_explore</span><h3>{{ county() ? ('No open jobs in {0}' | t : county()) : ('No open jobs' | t) }}</h3><p>{{ 'New posts from contractors appear here. Check again soon.' | t }}</p></div>
+      @if (tab() === 'saved') {
+        <div class="empty"><span class="icon">bookmark</span><h3>{{ 'No saved jobs' | t }}</h3><p>{{ 'Tap the bookmark on a job to keep it here.' | t }}</p></div>
+      } @else {
+        <div class="empty"><span class="icon">travel_explore</span><h3>{{ county() ? ('No open jobs in {0}' | t : county()) : ('No open jobs' | t) }}</h3><p>{{ 'New posts from contractors appear here. Check again soon.' | t }}</p></div>
+      }
     } @else {
       <div class="posts">
         @for (p of shown(); track p.id) {
@@ -38,19 +108,28 @@
               <span class="post-mark"><span class="icon">engineering</span></span>
               <div class="grow">
                 <h3>{{ p.title }}</h3>
-                <div class="meta"><span class="icon">apartment</span> {{ p.organization_name }} · <span class="icon">location_on</span> {{ p.ward }}, {{ p.county }}</div>
+                <div class="meta"><span class="icon">apartment</span> {{ p.organization_name }}
+                  @if (p.site_rating) { · <span class="icon star">star</span> {{ p.site_rating.avg }} ({{ p.site_rating.count }}) }
+                  · <span class="icon">location_on</span> {{ p.ward }}, {{ p.county }}</div>
               </div>
+              <button class="icon-btn save" type="button" [class.on]="p.saved" (click)="toggleSave(p)" [attr.aria-label]="(p.saved ? 'Remove from saved' : 'Save job') | t">
+                <span class="icon" [class.fill]="p.saved">bookmark</span>
+              </button>
+            </div>
+            <div class="post-tags">
               @switch (p.my_application?.status) {
                 @case ('pending') { <span class="badge warn">{{ 'Applied' | t }}</span> }
                 @case ('accepted') { <span class="badge ok">{{ 'Accepted' | t }}</span> }
                 @case ('declined') { <span class="badge">{{ 'Not this time' | t }}</span> }
+                @case ('invited') { <span class="badge info">{{ 'Invited' | t }}</span> }
                 @default { <span class="badge info">{{ daysAgo(p.created_at) }}</span> }
               }
+              @if (p.positions > 1) { <span class="badge">{{ '{0} of {1} places filled' | t : p.filled : p.positions }}</span> }
             </div>
             @if (p.description) { <p class="desc">{{ p.description }}</p> }
             <div class="post-foot">
               @if (p.organization_phone) { <a class="btn outline sm" [href]="'tel:' + p.organization_phone"><span class="icon">call</span> {{ 'Call site' | t }}</a> }
-              @if (!p.my_application) {
+              @if (!p.my_application || p.my_application.status === 'withdrawn') {
                 <button class="btn primary sm" type="button" (click)="openApply(p)"><span class="icon">front_hand</span> {{ "I'm interested" | t }}</button>
               } @else {
                 <a class="btn outline sm" routerLink="/main-menu/gigs" [queryParams]="{ site: p.organization }"><span class="icon">add_task</span> {{ 'Log a gig here' | t }}</a>

@@ -29,7 +29,27 @@
             <span class="muted">{{ '@' + p.username }}</span>
             @if (p.ward || p.county) { <span class="muted">· {{ p.ward }}{{ p.ward && p.county ? ', ' : '' }}{{ p.county }}</span> }
           </div>
-          @if (p.phone) { <a class="btn outline sm call" [href]="'tel:' + p.phone"><span class="icon">call</span> {{ p.phone }}</a> }
+          @if (p.skills.length) { <div class="skills">@for (s of p.skills; track s) { <span class="skill">{{ s }}</span> }</div> }
+          <div class="facts">
+            @if (p.is_available) { <span class="badge ok"><span class="dot"></span> Available</span> }
+            @else { <span class="badge warn">Busy{{ p.available_from ? ' until ' + (p.available_from | date: 'd MMM') : '' }}</span> }
+            @if (p.years_experience !== null) { <span class="muted">{{ p.years_experience }} yrs experience</span> }
+            @if (p.day_rate) { <span class="muted">· KSh {{ p.day_rate | number }}/day</span> }
+          </div>
+          @if (p.bio) { <p class="bio">{{ p.bio }}</p> }
+          <div class="profile-acts">
+            @if (p.phone) { <a class="btn outline sm" [href]="'tel:' + p.phone"><span class="icon">call</span> {{ p.phone }}</a> }
+            <button class="btn sm" [class.soft]="p.in_crew" [class.outline]="!p.in_crew" type="button" (click)="toggleCrew(p.username, p.full_name || p.username, p.in_crew)">
+              <span class="icon" [class.fill]="p.in_crew">star</span> {{ p.in_crew ? 'In my crew' : 'Add to my crew' }}</button>
+            @if (openPosts().length) {
+              <span class="invite">
+                <select class="input sm" [ngModel]="invitePost()" (ngModelChange)="invitePost.set(+$event)" aria-label="Job post">
+                  @for (o of openPosts(); track o.id) { <option [value]="o.id">{{ o.title }}</option> }
+                </select>
+                <button class="btn primary sm" type="button" (click)="inviteTo(p.username, p.full_name || p.username)"><span class="icon">send</span> Invite</button>
+              </span>
+            }
+          </div>
         </div>
         <div class="score-ring" [class]="'score-ring ' + scoreTone(p.credit_score)" [style.--pct]="p.credit_score">
           <span class="v">{{ p.credit_score }}</span><small>credit score</small>
@@ -66,10 +86,34 @@
     <!-- directory -->
     <div class="panel">
       <div class="toolbar">
-        <div><strong>Worked at your sites</strong> <span class="muted">· {{ known().length }}</span></div>
-        <label class="search"><input type="search" placeholder="Filter this list" [ngModel]="filter()" (ngModelChange)="filter.set($event)"><span class="icon">filter_list</span></label>
+        <div class="seg" role="tablist">
+          <button type="button" [class.on]="dirTab() === 'known'" (click)="dirTab.set('known')">Worked at your sites <span class="count">{{ known().length }}</span></button>
+          <button type="button" [class.on]="dirTab() === 'crew'" (click)="dirTab.set('crew')">My crew <span class="count">{{ crew().length }}</span></button>
+          <button type="button" [class.on]="dirTab() === 'find'" (click)="dirTab.set('find')">Find by trade</button>
+        </div>
+        @if (dirTab() === 'known') { <label class="search"><input type="search" placeholder="Filter this list" [ngModel]="filter()" (ngModelChange)="filter.set($event)"><span class="icon">filter_list</span></label> }
       </div>
-      @if (loading()) {
+      @if (dirTab() === 'crew') {
+        <div class="cards">
+          @for (c of crew(); track c.username) { <ng-container *ngTemplateOutlet="card; context: { $implicit: c, crew: true }" /> }
+          @empty { <div class="empty"><span class="icon">star</span><h3>No crew yet</h3><p>Open a worker's record and tap “Add to my crew” to keep good fundis one tap away.</p></div> }
+        </div>
+      } @else if (dirTab() === 'find') {
+        <form class="find" (ngSubmit)="findWorkers()">
+          <input class="input" name="trade" placeholder="Trade, e.g. Tiling" [ngModel]="trade()" (ngModelChange)="trade.set($event)">
+          <input class="input" name="county" placeholder="County, e.g. Nairobi" [ngModel]="county()" (ngModelChange)="county.set($event)">
+          <label class="check"><input type="checkbox" name="avail" [ngModel]="onlyAvailable()" (ngModelChange)="onlyAvailable.set($event)"> Available now</label>
+          <button class="btn primary" type="submit" [disabled]="finding()"><span class="icon">search</span> {{ finding() ? 'Searching…' : 'Search' }}</button>
+        </form>
+        @if (found(); as list) {
+          <div class="cards">
+            @for (c of list; track c.username) { <ng-container *ngTemplateOutlet="card; context: { $implicit: c, crew: !!c.in_crew }" /> }
+            @empty { <div class="empty"><span class="icon">person_search</span><h3>No fundis match</h3><p>Try another trade or leave the county empty.</p></div> }
+          </div>
+        } @else {
+          <div class="empty"><span class="icon">engineering</span><p>Search fundis by the trades on their profile, best credit score first.</p></div>
+        }
+      } @else if (loading()) {
         <div class="panel-body"><div class="skeleton" style="height:180px"></div></div>
       } @else {
         <div class="table-wrap">
@@ -94,3 +138,24 @@
     </div>
   }
 </div>
+
+<ng-template #card let-c let-inCrew="crew">
+  <article class="wcard">
+    <div class="wtop">
+      <span class="avatar">{{ initials(c.name) }}</span>
+      <div class="grow"><strong>{{ c.name }}</strong><div class="muted small">{{ c.ward || c.county || '—' }}</div></div>
+      <button class="icon-btn" type="button" (click)="toggleCrew(c.username, c.name, inCrew)" [attr.aria-label]="inCrew ? 'Remove from crew' : 'Add to crew'">
+        <span class="icon star" [class.fill]="inCrew">star</span></button>
+    </div>
+    @if (c.skills.length) { <div class="skills">@for (s of c.skills; track s) { <span class="skill">{{ s }}</span> }</div> }
+    <div class="wfacts">
+      <span class="badge info">Score {{ c.credit_score }}</span>
+      @if (c.id_verified) { <span class="badge ok"><span class="icon fill">verified</span> ID</span> }
+      @if (c.is_available) { <span class="badge ok">Available</span> } @else { <span class="badge warn">Busy</span> }
+      @if (c.rating_avg) { <span class="muted small"><span class="icon star fill">star</span> {{ c.rating_avg }}</span> }
+      @if (c.day_rate) { <span class="muted small">KSh {{ c.day_rate | number }}/day</span> }
+    </div>
+    @if (c.note) { <p class="muted small">“{{ c.note }}”</p> }
+    <div class="wfoot"><button class="btn outline sm" type="button" (click)="open({ username: c.username, name: c.name, gigs: 0, sites: emptySet, last: '' })">View record <span class="icon">chevron_right</span></button></div>
+  </article>
+</ng-template>

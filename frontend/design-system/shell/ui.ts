@@ -16,3 +16,12 @@ export function downloadCsv(filename: string, rows: Record<string, unknown>[]) {
   a.click();
   URL.revokeObjectURL(a.href);
 }
+/** Save a downloaded Blob (e.g. a CSV fetched with auth headers) as a file. */
+export function saveBlob(blob: Blob, filename: string) {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+export const isoDate = (d: Date) => new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10);

@@ -110,7 +110,7 @@ class Command(BaseCommand):
                                                  duration_value=dur, duration_unit=unit, client_name=org.name,
                                                  client_phone=org.phone_number or "", county=org.county,
                                                  constituency=org.constituency, ward=org.ward, is_verified=True,
-                                                 organization=org)
+                                                 organization=org, amount_paid=Decimal(pay))
                 apply_score_change(worker, "complete_gig")
                 gig.delete()
                 GigRating.objects.create(history=hist, rated_by=boss, stars=rnd.choice([4, 5, 5, 3]),
@@ -144,9 +144,68 @@ class Command(BaseCommand):
         if hist:
             GigDispute.objects.create(history=hist, raised_by=fundis[2], reason="The days worked were 10, not 8.")
 
+        self._workforce(boss, orgs, fundis, posts, today, rnd)
+
         self.stdout.write(self.style.SUCCESS(
             f"Demo data: {len(orgs)} sites, {len(fundis)} fundis, {Gig.objects.filter(organization__in=orgs).count()} open gigs, "
             f"{GigHistory.objects.filter(organization__in=orgs).count()} completed. Other fundis' password: DemoFundi2026!"))
+
+    def _workforce(self, boss, orgs, fundis, posts, today, rnd):
+        """Work profiles, crew, alerts, site ratings, incidents, budgets, inbox and activity."""
+        from app.inbox import log, push
+        from app.models import ActivityLog, CrewMember, JobAlert, Notification, SafetyIncident, SiteRating
+        profiles = {
+            "fundi-pro": ("Masonry, Plastering, Block laying", 9, 1200, "Block work and plastering on multi-storey sites. Own tools.", True),
+            "otieno.mason": ("Masonry, Concrete works", 12, 1300, "Foreman experience on 6+ storey builds.", True),
+            "amina.tiles": ("Tiling", 6, 1500, "Bathrooms and kitchens, ceramic and porcelain.", False),
+            "kiptoo.weld": ("Welding, Steel fixing", 7, 1400, "", True),
+            "mwangi.wire": ("Electrical", 10, 1600, "Wiring, DBs and testing. KPLC-ready installs.", True),
+            "njeri.paint": ("Painting", 4, 1000, "", True),
+        }
+        for u in fundis:
+            sk, yrs, rate, bio, avail = profiles[u.username]
+            u.skills, u.years_experience, u.day_rate, u.bio, u.is_available = sk, yrs, rate, bio, avail
+            u.available_from = None if avail else today + timedelta(days=9)
+            u.save(update_fields=["skills", "years_experience", "day_rate", "bio", "is_available", "available_from"])
+        for u, note in [(fundis[1], "Best mason on Kilimani"), (fundis[4], "Reliable, tidy wiring"), (fundis[2], "")]:
+            CrewMember.objects.get_or_create(contractor=boss, worker=u, defaults={"note": note})
+        JobAlert.objects.get_or_create(user=fundis[0], keyword="mason", county="Nairobi")
+        for i, h in enumerate(GigHistory.objects.filter(organization__in=orgs).order_by("id")[:4]):
+            SiteRating.objects.get_or_create(history=h, defaults={"organization": h.organization, "rated_by": h.worker,
+                                                                   "stars": [5, 4, 4, 3][i], "paid_on_time": i != 3,
+                                                                   "comment": ["Paid every Friday.", "Good site, safe scaffolds.", "", "Pay came a week late."][i]})
+        orgs[0].labour_budget, orgs[1].labour_budget = Decimal("120000"), Decimal("45000")
+        for o in orgs:
+            o.save(update_fields=["labour_budget"])
+        SafetyIncident.objects.create(organization=orgs[0], reported_by=fundis[1], kind="near_miss", severity="high",
+                                      description="Scaffold plank on floor 5 slipped while carrying blocks. Nobody hurt.",
+                                      occurred_on=today - timedelta(days=1))
+        SafetyIncident.objects.create(organization=orgs[1], reported_by=fundis[2], kind="hazard", severity="medium",
+                                      description="Exposed wiring near the bathroom block, phase 2.", occurred_on=today - timedelta(days=6),
+                                      is_resolved=True, resolution="Electrician isolated and taped the cable.",
+                                      resolved_at=timezone.now() - timedelta(days=5))
+        if posts:
+            posts[0].positions = 2
+            posts[0].save(update_fields=["positions"])
+        Notification.objects.filter(user__in=[boss, *fundis]).delete()
+        push(fundis[0], "gig_verified", "Kilimani Heights verified your Masonry", "+5 points. Mark it complete when done.", "/main-menu/gig-summary")
+        push(fundis[0], "job_alert", "New job: 2 masons for block work, 3 weeks", "Kilimani Heights · Kilimani, Nairobi", "/main-menu/search-gigs")
+        push(fundis[0], "id_approved", "Your ID is verified", "+20 points added to your credit score.", "/main-menu/credit-score")
+        Notification.objects.filter(user=fundis[0], kind="id_approved").update(is_read=True)
+        push(boss, "incident", "Near miss reported at Kilimani Heights", "Scaffold plank on floor 5 slipped while carrying blocks.", "/main-menu/safety")
+        push(boss, "new_applicant", "Brian Otieno applied", "For '2 masons for block work, 3 weeks'", "/main-menu/job-posts")
+        push(boss, "site_rated", "Wanjiku Kamau rated Kilimani Heights 5★", "Paid every Friday.", "/main-menu/workforce?tab=ratings")
+        ActivityLog.objects.filter(organization__in=orgs).delete()
+        for o, action, text, ago in [
+            (orgs[0], "job_posted", "Posted job '2 masons for block work, 3 weeks'", 3),
+            (orgs[0], "gig_verified", "Verified Wanjiku Kamau's Masonry gig", 2),
+            (orgs[1], "gig_rejected", "Rejected Peter Mwangi's Plumbing gig: not on site these dates", 2),
+            (orgs[1], "hired", "Hired Amina Hassan for 'Tiler for bathrooms'", 1),
+            (orgs[0], "incident_reported", "Near miss (high) reported by Brian Otieno", 1),
+            (orgs[0], "budget_set", "Labour budget for Kilimani Heights set to KSh 120,000", 0),
+        ]:
+            a = log(boss, o, action, text)
+            ActivityLog.objects.filter(pk=a.pk).update(created_at=timezone.now() - timedelta(days=ago, hours=rnd.randint(1, 6)))
 
     def _reset(self, boss):
         orgs = Organization.objects.filter(owner=boss)
@@ -154,10 +213,13 @@ class Command(BaseCommand):
         GigDispute.objects.filter(gig__organization__in=orgs).delete()
         orgs.delete()  # cascades gigs, history, ratings, job types
         MpesaNewTransaction.objects.filter(user=boss, checkout_request_id__startswith="demo-").delete()
+        from app.models import CrewMember, JobAlert
+        CrewMember.objects.filter(contractor=boss).delete()
         User = get_user_model()
         for uname, *_ in FUNDIS:
             u = User.objects.filter(username=uname).first()
             if u:
                 VerificationRequest.objects.filter(user=u).delete()
+                JobAlert.objects.filter(user=u).delete()
                 u.current_verification = None
                 u.save(update_fields=["current_verification"])

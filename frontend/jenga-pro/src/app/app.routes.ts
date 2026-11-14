@@ -18,6 +18,9 @@ import { AddSites } from './components/add-sites/add-sites';
 import { MpesaPayments } from './components/mpesa-payments/mpesa-payments';
 import { Analytics } from './components/analytics/analytics';
 import { Profile } from './components/profile/profile';
+import { Safety } from './components/safety/safety';
+import { Workforce } from './components/workforce/workforce';
+import { Activity } from './components/activity/activity';
 
 export const routes: Routes = [
   {path:'home',component:Home},
@@ -38,6 +41,9 @@ export const routes: Routes = [
         {path:'MPESA-Payments',canActivate: [AuthGuard],component:MpesaPayments},
         {path:'analytics',canActivate: [AuthGuard],component:Analytics},
         {path:'profile',canActivate: [AuthGuard],component:Profile},
+        {path:'safety',canActivate: [AuthGuard],component:Safety},
+        {path:'workforce',canActivate: [AuthGuard],component:Workforce},
+        {path:'activity',canActivate: [AuthGuard],component:Activity},
 
         { path: '404', component: Dash404 },
         { path: '**', redirectTo: '/404' } 

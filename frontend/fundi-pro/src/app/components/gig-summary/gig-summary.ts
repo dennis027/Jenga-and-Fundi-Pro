@@ -8,6 +8,7 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { catchError, forkJoin, of } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { AppBarService } from '../../services/app-bar-service';
+import { isoDate, saveBlob } from '../../shell/ui';
 
 const API = environment.apiUrl + 'api/';
 type Tab = 'waiting' | 'ready' | 'completed';
@@ -33,6 +34,16 @@ export class GigSummary implements OnInit {
   open = signal<any[]>([]);
   done = signal<any[]>([]);
   disputes = signal<any[]>([]);
+  completedInfo = signal<any[]>([]);
+  rating = signal<any | null>(null);
+  stars = signal(0);
+  paidOnTime = signal<boolean | null>(null);
+  comment = signal('');
+  stFrom = signal(isoDate(new Date(Date.now() - 90 * 86400000)));
+  stTo = signal(isoDate(new Date()));
+  statement = signal<any | null>(null);
+  @ViewChild('rateDialog') rateDialogRef?: ElementRef<HTMLDialogElement>;
+  @ViewChild('statementDialog') statementDialogRef?: ElementRef<HTMLDialogElement>;
   tab = signal<Tab>('waiting');
   q = signal('');
   completing = signal<number | null>(null);
@@ -68,10 +79,48 @@ export class GigSummary implements OnInit {
       open: this.http.get<any[]>(API + 'user-gigs/').pipe(catchError(() => of([]))),
       done: this.http.get<any[]>(API + 'user-work-history/').pipe(catchError(() => of([]))),
       disputes: this.http.get<any[]>(API + 'disputes/').pipe(catchError(() => of([]))),
+      info: this.http.get<any[]>(API + 'fundi/completed/').pipe(catchError(() => of([]))),
     }).subscribe((r) => {
-      this.open.set(r.open); this.done.set(r.done); this.disputes.set(r.disputes);
+      this.open.set(r.open); this.done.set(r.done); this.disputes.set(r.disputes); this.completedInfo.set(r.info);
       if (!this.route.snapshot.queryParamMap.get('tab') && !r.open.some((g) => !g.is_verified) && r.open.some((g) => g.is_verified)) this.tab.set('ready');
       this.loading.set(false);
+    });
+  }
+
+  siteRatingFor(historyId: number) {
+    return this.completedInfo().find((h) => h.id === historyId)?.my_site_rating || null;
+  }
+
+  openRate(g: any) {
+    this.rating.set(g); this.stars.set(0); this.paidOnTime.set(null); this.comment.set('');
+    this.rateDialogRef?.nativeElement.showModal();
+  }
+
+  sendRating(dlg: HTMLDialogElement) {
+    const g = this.rating(); if (!g || !this.stars()) return;
+    this.sending.set(true);
+    this.http.post<any>(API + `gig-history/${g.id}/rate-site/`, { stars: this.stars(), paid_on_time: this.paidOnTime(), comment: this.comment().trim() }).subscribe({
+      next: (r) => {
+        this.sending.set(false); dlg.close();
+        this.completedInfo.update((l) => l.map((h) => (h.id === g.id ? { ...h, my_site_rating: r } : h)));
+        this.snack.open(this.i18n.t('Thanks! Your rating helps other fundis.'), this.i18n.t('OK'), { duration: 3500, panelClass: 'success-snackbar' });
+      },
+      error: (e) => { this.sending.set(false); this.snack.open(e?.error?.detail || this.i18n.t('Could not send.'), this.i18n.t('OK'), { duration: 4000, panelClass: 'error-snackbar' }); },
+    });
+  }
+
+  openStatement() { this.statement.set(null); this.statementDialogRef?.nativeElement.showModal(); this.previewStatement(); }
+  private stParams(extra: Record<string, string> = {}) { return { from: this.stFrom(), to: this.stTo(), ...extra }; }
+  previewStatement() {
+    this.http.get<any>(API + 'fundi/statement/', { params: this.stParams() }).subscribe({
+      next: (s) => this.statement.set(s),
+      error: (e) => this.snack.open(e?.error?.detail || this.i18n.t('Could not load.'), this.i18n.t('OK'), { duration: 4000, panelClass: 'error-snackbar' }),
+    });
+  }
+  downloadStatement() {
+    this.http.get(API + 'fundi/statement/', { params: this.stParams({ csv: '1' }), responseType: 'blob' }).subscribe({
+      next: (b) => saveBlob(b, `fundi-statement_${this.stFrom()}_${this.stTo()}.csv`),
+      error: () => this.snack.open(this.i18n.t('Could not download.'), this.i18n.t('OK'), { duration: 4000, panelClass: 'error-snackbar' }),
     });
   }
 

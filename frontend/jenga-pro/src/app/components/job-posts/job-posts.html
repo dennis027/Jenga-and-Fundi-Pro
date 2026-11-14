@@ -17,19 +17,25 @@
     } @else {
       <div class="table-wrap">
         <table class="tbl">
-          <thead><tr><th>Job</th><th>Site</th><th>Posted</th><th>Applicants</th><th></th></tr></thead>
+          <thead><tr><th>Job</th><th>Site</th><th>Posted</th><th>Places</th><th>Applicants</th><th></th></tr></thead>
           <tbody>
             @for (p of shown(); track p.id) {
               <tr>
                 <td><div class="cell-main">{{ p.title }}</div>@if (p.description) { <div class="cell-sub clamp">{{ p.description }}</div> }</td>
                 <td><div>{{ p.organization_name }}</div><div class="cell-sub">{{ p.ward }}, {{ p.county }}</div></td>
                 <td class="nowrap">{{ daysAgo(p.created_at) }}</td>
+                <td class="nowrap">
+                  <div>{{ p.filled }} / {{ p.positions }} filled</div>
+                  @if (p.is_open) { <span class="badge ok">Open</span> } @else { <span class="badge">Closed</span> }
+                </td>
                 <td>
                   <button class="btn sm" [class.soft]="p.applications_count" [class.ghost]="!p.applications_count" type="button" (click)="openApplicants(p)">
                     <span class="icon">groups</span> {{ p.applications_count ? p.applications_count + ' new' : 'View' }}
                   </button>
                 </td>
-                <td><div class="row-actions"><button class="btn danger-outline sm" type="button" (click)="remove(p)"><span class="icon">delete</span> Remove</button></div></td>
+                <td><div class="row-actions">
+                  <button class="btn ghost sm" type="button" (click)="toggleOpen(p)"><span class="icon">{{ p.is_open ? 'pause_circle' : 'play_circle' }}</span> {{ p.is_open ? 'Close' : 'Reopen' }}</button>
+                  <button class="btn danger-outline sm" type="button" (click)="remove(p)"><span class="icon">delete</span> Remove</button></div></td>
               </tr>
             }
           </tbody>
@@ -52,6 +58,9 @@
         </select></div>
       <div class="field"><label for="p-title">What do you need? *</label>
         <input id="p-title" name="title" class="input" [(ngModel)]="form.title" maxlength="255" placeholder="e.g. 2 masons for block work, 3 weeks" required></div>
+      <div class="field"><label for="p-pos">How many workers?</label>
+        <input id="p-pos" name="positions" class="input" type="number" min="1" max="50" [(ngModel)]="form.positions">
+        <span class="hint">The post closes by itself once this many are accepted.</span></div>
       <div class="field"><label for="p-desc">Details</label>
         <textarea id="p-desc" name="description" class="input" rows="3" [(ngModel)]="form.description" placeholder="Pay, start date, hours, what to bring"></textarea></div>
     </div>
@@ -92,12 +101,26 @@
                 }
                 @case ('accepted') { <span class="badge ok">Accepted</span> }
                 @case ('declined') { <span class="badge">Declined</span> }
+                @case ('invited') { <span class="badge info">Invited · waiting</span> }
+                @case ('withdrawn') { <span class="badge">Withdrawn</span> }
               }
             </div>
           </div>
         </div>
       } @empty {
         @if (!appsLoading()) { <div class="empty"><span class="icon">group_off</span><p>No applicants yet. Fundis see this post under “Find work”.</p></div> }
+      }
+      @if (p.is_open && invitable().length) {
+        <h3 class="invite-head">Invite from your crew</h3>
+        @for (c of invitable(); track c.username) {
+          <div class="invite-row">
+            <span class="avatar">{{ initials(c.name) }}</span>
+            <div class="grow"><strong>{{ c.name }}</strong>
+              <div class="muted small">{{ c.skills.join(', ') || 'No trades listed' }} · Score {{ c.credit_score }}
+                @if (!c.is_available) { · <span class="warn-text">Busy</span> }</div></div>
+            <button class="btn outline sm" type="button" (click)="invite(c)" [disabled]="inviting() === c.username"><span class="icon">send</span> Invite</button>
+          </div>
+        }
       }
     </div>
     <div class="modal-foot"><button class="btn primary" type="button" (click)="closeApplicants()">Done</button></div>

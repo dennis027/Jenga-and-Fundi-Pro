@@ -14,3 +14,21 @@
 @media (max-width: 500px) { .posts { grid-template-columns: 1fr; padding: 14px; } .county { width: 100%; } }
 .accepted { align-items: center; }
 .accepted span:nth-child(2) { flex: 1; }
+.post-tags { display: flex; gap: 6px; flex-wrap: wrap; }
+.save { margin: -6px -6px 0 0; color: var(--muted); }
+.save.on { color: var(--primary); }
+.star { color: #f59e0b; }
+.alerts { margin-bottom: 18px; }
+.alert-form { display: grid; grid-template-columns: 1.4fr 1fr auto auto; gap: 10px; align-items: center; }
+.check { display: flex; align-items: center; gap: 6px; font-size: .9rem; white-space: nowrap; }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+.chip { display: inline-flex; align-items: center; gap: 6px; padding: 6px 6px 6px 10px; border-radius: 999px; background: var(--primary-soft); color: var(--primary); font-size: .85rem; font-weight: 500; }
+.chip .icon { font-size: 16px; }
+.chip button { border: 0; background: none; color: inherit; cursor: pointer; display: grid; place-items: center; padding: 2px; border-radius: 50%; }
+.chip button:hover { background: rgba(0,0,0,.08); }
+.small { font-size: .82rem; }
+.toolbar .filters .search { min-width: 220px; }
+@media (max-width: 760px) { .alert-form { grid-template-columns: 1fr; } }
+.toolbar .filters { flex-wrap: nowrap; }
+.toolbar .filters .county { width: 180px; }
+@media (max-width: 900px) { .toolbar .filters { flex-wrap: wrap; width: 100%; } .toolbar .filters .search { flex: 1; } }

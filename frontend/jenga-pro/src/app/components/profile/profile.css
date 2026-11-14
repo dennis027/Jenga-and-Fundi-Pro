@@ -8,3 +8,4 @@
 .photo-actions label { cursor: pointer; }
 .danger-text { color: var(--danger) !important; }
 .small { font-size: .85rem; }
+.extras { margin-top: 22px; max-width: 760px; }

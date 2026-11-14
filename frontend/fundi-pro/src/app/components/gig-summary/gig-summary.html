@@ -4,7 +4,7 @@
       <h1>{{ 'My gigs' | t }}</h1>
       <p>{{ "Log a gig, wait for the site's contractor to verify it, then mark it complete. Each step adds to your credit score." | t }}</p>
     </div>
-    <div class="actions"><a class="btn primary" routerLink="/main-menu/gigs"><span class="icon">add_task</span> {{ 'Log a gig' | t }}</a></div>
+    <div class="actions"><button class="btn outline" type="button" (click)="openStatement()"><span class="icon">receipt_long</span> {{ 'Statement' | t }}</button><a class="btn primary" routerLink="/main-menu/gigs"><span class="icon">add_task</span> {{ 'Log a gig' | t }}</a></div>
   </div>
 
   <ol class="steps">
@@ -55,6 +55,13 @@
                 </td>
                 <td>
                   <div class="row-actions">
+                    @if (tab() === 'completed') {
+                      @if (siteRatingFor(g.id); as r) {
+                        <span class="rated" [title]="'You rated this site' | t"><span class="icon fill">star</span> {{ r.stars }}</span>
+                      } @else if (g.organization) {
+                        <button class="btn outline sm" type="button" (click)="openRate(g)"><span class="icon">star</span> {{ 'Rate site' | t }}</button>
+                      }
+                    }
                     @if (tab() === 'ready') {
                       <button class="btn primary sm" type="button" (click)="complete(g)" [disabled]="completing() === g.id"><span class="icon">done</span> {{ 'Complete' | t }}</button>
                     }
@@ -91,4 +98,61 @@
       <button class="btn primary" type="button" (click)="sendDispute()" [disabled]="reason().trim().length < 10 || sending()">{{ (sending() ? 'Sending…' : 'Send') | t }}</button>
     </div>
   }
+</dialog>
+
+<dialog class="modal" #rateDialog>
+  @if (rating(); as g) {
+    <div class="modal-head">
+      <div><h2>{{ 'Rate this site' | t }}</h2><p>{{ g.organization_name }} · {{ g.job_type_name }}</p></div>
+      <button class="icon-btn" type="button" (click)="rateDialog.close()" [attr.aria-label]="'Close' | t"><span class="icon">close</span></button>
+    </div>
+    <div class="modal-body">
+      <p class="muted">{{ 'Other fundis see the average rating on this site’s job posts. The contractor sees your rating and name.' | t }}</p>
+      <div class="stars-pick">
+        @for (n of [1,2,3,4,5]; track n) {
+          <button type="button" (click)="stars.set(n)" [attr.aria-label]="n + ' ★'"><span class="icon" [class.fill]="n <= stars()">star</span></button>
+        }
+      </div>
+      <div class="field">
+        <label>{{ 'Were you paid on time?' | t }}</label>
+        <div class="seg">
+          <button type="button" [class.on]="paidOnTime() === true" (click)="paidOnTime.set(true)">{{ 'Yes' | t }}</button>
+          <button type="button" [class.on]="paidOnTime() === false" (click)="paidOnTime.set(false)">{{ 'No' | t }}</button>
+          <button type="button" [class.on]="paidOnTime() === null" (click)="paidOnTime.set(null)">{{ 'Skip' | t }}</button>
+        </div>
+      </div>
+      <div class="field">
+        <label for="rate-comment">{{ 'Comment (optional)' | t }}</label>
+        <textarea id="rate-comment" class="input" rows="2" maxlength="300" [ngModel]="comment()" (ngModelChange)="comment.set($event)"></textarea>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn ghost" type="button" (click)="rateDialog.close()">{{ 'Cancel' | t }}</button>
+      <button class="btn primary" type="button" (click)="sendRating(rateDialog)" [disabled]="!stars() || sending()">{{ 'Send rating' | t }}</button>
+    </div>
+  }
+</dialog>
+
+<dialog class="modal" #statementDialog>
+  <div class="modal-head">
+    <div><h2>{{ 'Earnings statement' | t }}</h2><p>{{ 'Your verified work and agreed pay for a period. Share it with a SACCO, lender or landlord.' | t }}</p></div>
+    <button class="icon-btn" type="button" (click)="statementDialog.close()" [attr.aria-label]="'Close' | t"><span class="icon">close</span></button>
+  </div>
+  <div class="modal-body">
+    <div class="form-grid">
+      <div class="field"><label for="st-from">{{ 'From' | t }}</label><input id="st-from" class="input" type="date" [ngModel]="stFrom()" (ngModelChange)="stFrom.set($event)"></div>
+      <div class="field"><label for="st-to">{{ 'To' | t }}</label><input id="st-to" class="input" type="date" [ngModel]="stTo()" (ngModelChange)="stTo.set($event)"></div>
+    </div>
+    @if (statement(); as st) {
+      <div class="st-sum">
+        <div><strong>{{ st.summary.verified_gigs }}</strong><small>{{ 'Verified gigs' | t }}</small></div>
+        <div><strong>{{ st.summary.verified_days }}</strong><small>{{ 'Verified days' | t }}</small></div>
+        <div><strong>KSh {{ +st.summary.verified_pay | number: '1.0-0' }}</strong><small>{{ 'Agreed pay' | t }}</small></div>
+      </div>
+    }
+  </div>
+  <div class="modal-foot">
+    <button class="btn ghost" type="button" (click)="previewStatement()">{{ 'Preview' | t }}</button>
+    <button class="btn primary" type="button" (click)="downloadStatement()"><span class="icon">download</span> {{ 'Download CSV' | t }}</button>
+  </div>
 </dialog>

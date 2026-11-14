@@ -294,12 +294,41 @@ OTP step yet.
 | **Gig ratings** (1–5 stars) | `POST /api/gig-history/<id>/rate/` | Contractor who owns the site |
 | **Disputes** | `GET/POST /api/disputes/`, `POST /api/disputes/<id>/resolve/` | Worker / site contractor raise; staff resolve |
 | **USSD menu** (score, recent gigs, ID status) | `POST /ussd/?token=…` (Africa's Talking callback) | Fundis without smartphones |
+| **Notifications inbox** | `GET /api/notifications/`, `POST /api/notifications/read/` | Everyone (the bell's “Recent” list) |
+| **Work profile & availability** | `GET/PATCH /api/me/work-profile/` | Fundi (trades, years, day rate, bio, available / busy until) |
+| **Find workers by trade** | `GET /api/workers/available/?trade=&county=&available=1` | Contractor |
+| **Job alerts** | `GET/POST /api/job-alerts/`, `DELETE /api/job-alerts/<id>/` | Fundi (in-app, optional SMS) |
+| **Saved jobs** | `POST /api/gigs-available/<id>/save/` (toggle), `GET /api/saved-posts/` | Fundi |
+| **Withdraw an application** | `POST /api/applications/<id>/withdraw/` | Fundi (pending only) |
+| **Invite a worker** | `POST /api/gigs-available/<id>/invite/`, `POST /api/applications/<id>/respond/` | Contractor invites; fundi accepts or declines |
+| **Places & auto-close** | `positions` on job posts; `POST /api/gigs-available/<id>/toggle/` | Post closes when enough workers are accepted |
+| **Reject a gig with a reason** | `POST /api/gigs/<id>/reject/` | Site's contractor (unverified gigs only) |
+| **Bulk verify** | `POST /api/gigs/verify-bulk/` (up to 100 ids) | Site's contractor |
+| **My crew** | `GET/POST /api/crew/`, `DELETE /api/crew/<username>/` | Contractor |
+| **Workers rate sites** | `POST /api/gig-history/<id>/rate-site/`, `GET /api/fundi/completed/`, `GET /api/contractor/site-ratings/` | Fundi rates (stars, paid on time); shown on job posts |
+| **Safety incidents** | `GET/POST /api/incidents/`, `POST /api/incidents/<id>/resolve/` | Anyone working at the site reports; site's contractor resolves |
+| **Attendance register** | `GET /api/contractor/attendance/?from=&to=&org=[&csv=1]` | Contractor |
+| **Payroll** | `GET /api/contractor/payroll/?from=&to=&org=[&csv=1]` | Contractor (agreed pay, gig days, days checked in) |
+| **Site labour budgets** | `GET/POST /api/contractor/budgets/` | Contractor |
+| **Activity log** | `GET /api/activity/?org=` | Contractor |
+| **Earnings statement** | `GET /api/fundi/statement/?from=&to=[&csv=1]` | Fundi (for SACCOs, lenders, landlords) |
+| **Your data** | `GET /api/account/export/` (JSON), `POST /api/account/delete/` (password) | Everyone (Data Protection Act) |
 | **API reference** | `/api/docs/` (Swagger UI), `/api/schema/` (OpenAPI) | Developers, Flutter app |
 
 The certificate shows only platform-verified facts (contractor-verified gigs, days worked,
 trades, sites, ratings, credit score, identity status). It never shows phone numbers, national
 IDs or client details. Links expire after `CERTIFICATE_MAX_AGE_DAYS` (90). In Fundi Pro, the
 **Share my certificate** button is on the credit score page.
+
+Where they are in the portals: **Fundi Pro** — Find work (saved jobs, applications, invitations,
+job alerts), My gigs (rate site, *Statement*), Site safety, My profile (work profile, your data).
+**Jenga Pro** — Verify gigs (bulk verify, reject), Workers (my crew, find by trade, invite), Job
+posts (places, close/reopen, invite crew), Payroll & attendance (payroll, attendance, budgets, site
+ratings), Site safety, Activity, My profile (your data).
+
+Deleting an account erases the person's name, phone, ID number, photo and work profile and
+signs them out everywhere. Verified work stays on contractors' records as “Deleted user” so
+their payroll and history still add up.
 
 ### Trust rules (enforced by the API, covered by tests)
 
@@ -349,10 +378,12 @@ On Render free there's no shell, so run it from your machine against the product
 docker compose run --rm --no-deps -v ./backend:/app -e RUN_MIGRATIONS=0 backend python manage.py test app
 ```
 
-59 tests cover the trust rules above, plus:
+90 tests cover the trust rules above, plus:
 - OTP and phone tokens, and M-Pesa callbacks and the token cache;
 - private media and the source-file exposure regression;
 - the certificate, ratings, disputes, USSD and admin review;
+- the workforce features: inbox, alerts, invitations, crew, site ratings, incidents,
+  reject / bulk verify, attendance, payroll, budgets, statements, data export and account deletion;
 - health checks and the API docs.
 
 [`.github/workflows/ci.yml`](.github/workflows/ci.yml) runs on every push and pull request:

@@ -20,10 +20,12 @@ interface Constituency {
   wards: string[];
 }
 
+import { YourData } from '../../shell/your-data';
+
 @Component({
   selector: 'app-profile',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule],
+  imports: [CommonModule, ReactiveFormsModule, YourData],
   templateUrl: './profile.html',
   styleUrl: './profile.css',
 })

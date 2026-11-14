@@ -11,6 +11,7 @@ import { ThemeService } from '../../services/theme';
 import { InstallService } from '../../services/install';
 import { I18nService, TPipe } from '../../services/i18n';
 import { SiteContextService } from '../../shell/site-context';
+import { InboxService } from '../../shell/inbox';
 import { SHELL_CONFIG } from '../../shell/shell-config';
 import { ShellDataService } from '../../shell/shell-data';
 import { QuickAction, ShellContext, ShellData, ShellNotification, ShellUser } from '../../shell/types';
@@ -32,6 +33,7 @@ export class Main implements OnInit, OnDestroy {
   installer = inject(InstallService);
   i18n = inject(I18nService);
   site = inject(SiteContextService);
+  private inbox = inject(InboxService);
   config = SHELL_CONFIG;
 
   collapsed = signal(false);
@@ -39,6 +41,7 @@ export class Main implements OnInit, OnDestroy {
   user = signal<ShellUser>({ name: '', subtitle: '' });
   badges = signal<Record<string, number>>({});
   notifications = signal<ShellNotification[]>([]);
+  recent = signal<ShellNotification[]>([]);
   contexts = signal<ShellContext[]>([]);
   menu = signal<'none' | 'user' | 'notes' | 'context'>('none');
   paletteOpen = signal(false);
@@ -47,7 +50,8 @@ export class Main implements OnInit, OnDestroy {
   @ViewChild('paletteInput') paletteInput?: ElementRef<HTMLInputElement>;
 
   initials = computed(() => (this.user().name || '?').split(/\s+/).map((p) => p[0]).slice(0, 2).join('').toUpperCase());
-  noteCount = computed(() => this.notifications().length);
+  unread = computed(() => this.recent().filter((n) => n.unread).length);
+  noteCount = computed(() => this.notifications().length + this.unread());
   results = computed<QuickAction[]>(() => {
     const q = this.query().trim().toLowerCase();
     const nav: QuickAction[] = this.config.sections.flatMap((s) => s.items.map((i) => ({ label: i.label, icon: i.icon, route: i.route, hint: s.title })));
@@ -82,6 +86,12 @@ export class Main implements OnInit, OnDestroy {
   loadBadges() {
     this.subs.add(this.data.badges().subscribe({ next: (b) => this.badges.set(b), error: () => {} }));
     this.subs.add(this.data.notifications().subscribe({ next: (n) => this.notifications.set(n), error: () => {} }));
+    this.subs.add(this.inbox.recent().subscribe((n) => this.recent.set(n)));
+  }
+
+  markAllRead() {
+    this.recent.update((r) => r.map((n) => ({ ...n, unread: false })));
+    this.subs.add(this.inbox.markAllRead().subscribe());
   }
 
   get contextLabel() { return this.data.contextLabel || 'Context'; }
@@ -111,7 +121,7 @@ export class Main implements OnInit, OnDestroy {
   go(a: QuickAction | ShellNotification) {
     this.paletteOpen.set(false);
     this.menu.set('none');
-    this.router.navigateByUrl(a.route);
+    if (a.route) this.router.navigateByUrl(a.route);
   }
 
   paletteKey(ev: KeyboardEvent) {

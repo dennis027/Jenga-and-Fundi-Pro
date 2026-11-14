@@ -19,6 +19,9 @@ for app in fundi-pro jenga-pro; do
     "$DS/shell/types.ts:$A/app/shell/types.ts" \
     "$DS/shell/site-context.ts:$A/app/shell/site-context.ts" \
     "$DS/shell/ui.ts:$A/app/shell/ui.ts" \
+    "$DS/shell/inbox.ts:$A/app/shell/inbox.ts" \
+    "$DS/shell/your-data.ts:$A/app/shell/your-data.ts" \
+    "$DS/pages/safety.ts:$A/app/components/safety/safety.ts" \
     "$DS/shell/main.ts:$A/app/components/main/main.ts" \
     "$DS/shell/main.html:$A/app/components/main/main.html" \
     "$DS/shell/main.css:$A/app/components/main/main.css"

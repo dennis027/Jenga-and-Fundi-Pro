@@ -9,6 +9,8 @@ import { UserService } from '../../services/user-service';
 import regionsData from '../../../assets/JSON-Files/regions.json';
 import {environment} from '../../../environments/environment';
 import { MatSnackBar } from '@angular/material/snack-bar';
+import { WorkProfile } from '../work-profile/work-profile';
+import { YourData } from '../../shell/your-data';
 
 interface County {
   county_code: number;
@@ -24,7 +26,7 @@ interface Constituency {
 @Component({
   selector: 'app-profile',
   standalone: true,
-  imports: [TPipe, CommonModule, ReactiveFormsModule],
+  imports: [TPipe, CommonModule, ReactiveFormsModule, WorkProfile, YourData],
   templateUrl: './profile.html',
   styleUrl: './profile.css',
 })

@@ -12,6 +12,7 @@ export const SHELL_CONFIG: ShellConfig = {
         { label: 'Verify gigs', icon: 'fact_check', route: '/main-menu/verify-gigs', badge: 'pending' },
         { label: 'All gigs', icon: 'work_history', route: '/main-menu/all-gigs' },
         { label: 'Workers', icon: 'engineering', route: '/main-menu/manage-workers' },
+        { label: 'Site safety', icon: 'health_and_safety', route: '/main-menu/safety' },
       ],
     },
     {
@@ -22,8 +23,14 @@ export const SHELL_CONFIG: ShellConfig = {
         { label: 'Job posts', icon: 'campaign', route: '/main-menu/job-posts' },
       ],
     },
-    { title: 'Money', items: [{ label: 'M-Pesa payments', icon: 'payments', route: '/main-menu/MPESA-Payments' }] },
-    { title: 'Insights', items: [{ label: 'Analytics', icon: 'monitoring', route: '/main-menu/analytics' }] },
+    { title: 'Money', items: [
+      { label: 'Payroll & attendance', icon: 'request_quote', route: '/main-menu/workforce' },
+      { label: 'M-Pesa payments', icon: 'payments', route: '/main-menu/MPESA-Payments' },
+    ] },
+    { title: 'Insights', items: [
+      { label: 'Analytics', icon: 'monitoring', route: '/main-menu/analytics' },
+      { label: 'Activity', icon: 'history', route: '/main-menu/activity' },
+    ] },
   ],
   quickActions: [
     { label: 'Verify pending gigs', icon: 'fact_check', route: '/main-menu/verify-gigs' },
@@ -31,6 +38,11 @@ export const SHELL_CONFIG: ShellConfig = {
     { label: 'Find a worker', icon: 'person_search', route: '/main-menu/manage-workers' },
     { label: 'Post a job', icon: 'campaign', route: '/main-menu/job-posts?new=1' },
     { label: 'Pay with M-Pesa', icon: 'payments', route: '/main-menu/MPESA-Payments' },
+    { label: 'Weekly payroll', icon: 'request_quote', route: '/main-menu/workforce' },
+    { label: 'Attendance register', icon: 'location_on', route: '/main-menu/workforce?tab=attendance' },
+    { label: 'Site budgets', icon: 'savings', route: '/main-menu/workforce?tab=budgets' },
+    { label: 'My crew', icon: 'star', route: '/main-menu/manage-workers' },
+    { label: 'Safety incidents', icon: 'health_and_safety', route: '/main-menu/safety' },
     { label: 'My profile', icon: 'person', route: '/main-menu/profile' },
   ],
   searchAction: (q) => ({ label: `Find worker “${q}”`, icon: 'person_search', hint: 'Workers',

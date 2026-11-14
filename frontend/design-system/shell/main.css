@@ -121,3 +121,9 @@ kbd { font: 500 .72rem var(--font); padding: 3px 7px; border-radius: 6px; border
   .topbar-title { font-size: 1.02rem; overflow: hidden; text-overflow: ellipsis; }
 }
 @media (max-width: 520px) { .search-trigger { display: none; } .context-btn { padding: 0 10px; } }
+
+.notes-head { display: flex; align-items: center; justify-content: space-between; margin-top: 6px; border-top: 1px solid var(--border); padding-top: 10px; }
+.link-btn { border: 0; background: none; color: var(--primary); font: inherit; font-size: .78rem; font-weight: 600; cursor: pointer; text-transform: none; letter-spacing: 0; }
+.note.unread { background: var(--primary-soft); }
+.note.unread:hover { background: var(--surface-2); }
+.note-time { margin-left: auto; flex: none; color: var(--muted); font-size: .72rem; padding-top: 2px; }

@@ -16,6 +16,7 @@ import { EmailVerification } from './components/auth/email-verification/email-ve
 import { Dash404 } from './components/dash-404/dash-404';
 import { Verification } from './components/verification/verification';
 import { Analytics } from './components/analytics/analytics';
+import { Safety } from './components/safety/safety';
 
 export const routes: Routes = [
   {path:'home',component:Home},
@@ -36,6 +37,7 @@ export const routes: Routes = [
         {path:'credit-score',canActivate: [AuthGuard],component:CreditScore,},
         {path:'verification-status',canActivate: [AuthGuard],component:Verification,},
         {path:'analytics',canActivate: [AuthGuard],component:Analytics,},
+        {path:'safety',canActivate: [AuthGuard],component:Safety},
 
 
         { path: '404', component: Dash404 },

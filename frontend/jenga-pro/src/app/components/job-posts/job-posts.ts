@@ -38,7 +38,13 @@ export class JobPosts implements OnInit {
   posts = signal<any[]>([]);
   sites = signal<any[]>([]);
   saving = signal(false);
-  form = { organization: null as number | null, title: '', description: '' };
+  form = { organization: null as number | null, title: '', description: '', positions: 1 };
+  crew = signal<any[]>([]);
+  inviting = signal<string | null>(null);
+  invitable = computed(() => {
+    const taken = new Set(this.applicants().map((a) => a.worker.username));
+    return this.crew().filter((c) => !taken.has(c.username));
+  });
 
   shown = computed(() => this.posts().filter((p) => this.ctx.id() === null || p.organization === this.ctx.id()));
 
@@ -58,7 +64,7 @@ export class JobPosts implements OnInit {
   }
 
   openNew() {
-    this.form = { organization: this.ctx.id() ?? this.sites()[0]?.id ?? null, title: '', description: '' };
+    this.form = { organization: this.ctx.id() ?? this.sites()[0]?.id ?? null, title: '', description: '', positions: 1 };
     this.dialog?.nativeElement.showModal();
   }
   close() { this.dialog?.nativeElement.close(); }
@@ -68,7 +74,7 @@ export class JobPosts implements OnInit {
     if (!site || !this.form.title.trim()) return;
     this.saving.set(true);
     this.http.post<any>(API + 'gigs-available/', {
-      organization: site.id, title: this.form.title.trim(), description: this.form.description.trim(),
+      organization: site.id, title: this.form.title.trim(), description: this.form.description.trim(), positions: Math.max(1, Math.min(50, +this.form.positions || 1)),
       county: site.county, constituency: site.constituency, ward: site.ward,
     }).subscribe({
       next: (p) => { this.saving.set(false); this.close(); this.posts.update((l) => [{ ...p, organization_name: site.name }, ...l]);
@@ -83,6 +89,7 @@ export class JobPosts implements OnInit {
     this.http.get<any[]>(API + `gigs-available/${p.id}/applications/`).subscribe({
       next: (a) => { this.applicants.set(a); this.appsLoading.set(false); }, error: () => this.appsLoading.set(false),
     });
+    this.http.get<any[]>(API + 'crew/').pipe(catchError(() => of([]))).subscribe((c) => this.crew.set(c));
   }
   closeApplicants() { this.appsDialog?.nativeElement.close(); }
 
@@ -90,11 +97,35 @@ export class JobPosts implements OnInit {
     this.http.post<any>(API + `applications/${a.id}/decide/`, { status }).subscribe({
       next: (r) => {
         this.applicants.update((l) => l.map((x) => (x.id === a.id ? r : x)));
-        const pending = this.applicants().filter((x) => x.status === 'pending').length;
-        this.posts.update((l) => l.map((p) => (p.id === this.viewing()?.id ? { ...p, applications_count: pending } : p)));
+        this.syncPost();
         this.snack.open(status === 'accepted' ? `${a.worker.name} accepted. Call them to agree the start.` : 'Declined.', 'OK', { duration: 3000, panelClass: status === 'accepted' ? 'success-snackbar' : '' });
       },
       error: () => this.snack.open('Could not save your decision.', 'OK', { duration: 4000, panelClass: 'error-snackbar' }),
+    });
+  }
+
+  private syncPost() {
+    const pending = this.applicants().filter((x) => x.status === 'pending').length;
+    const filled = this.applicants().filter((x) => x.status === 'accepted').length;
+    this.posts.update((l) => l.map((p) => (p.id === this.viewing()?.id
+      ? { ...p, applications_count: pending, filled, is_open: p.is_open && filled < p.positions } : p)));
+  }
+
+  invite(c: any) {
+    const p = this.viewing(); if (!p) return;
+    this.inviting.set(c.username);
+    this.http.post<any>(API + `gigs-available/${p.id}/invite/`, { username: c.username }).subscribe({
+      next: (a) => { this.inviting.set(null); this.applicants.update((l) => [a, ...l]);
+        this.snack.open(`Invitation sent to ${c.name}.`, 'OK', { duration: 3000, panelClass: 'success-snackbar' }); },
+      error: (e) => { this.inviting.set(null); this.snack.open(e?.error?.detail || 'Could not invite.', 'OK', { duration: 4000, panelClass: 'error-snackbar' }); },
+    });
+  }
+
+  toggleOpen(p: any) {
+    this.http.post<any>(API + `gigs-available/${p.id}/toggle/`, { is_open: !p.is_open }).subscribe({
+      next: (r) => { this.posts.update((l) => l.map((x) => (x.id === p.id ? { ...x, ...r, organization_name: x.organization_name } : x)));
+        this.snack.open(r.is_open ? 'Post reopened. Fundis can apply again.' : 'Post closed. It no longer shows under Find work.', 'OK', { duration: 3000 }); },
+      error: (e) => this.snack.open(e?.error?.detail || 'Could not update the post.', 'OK', { duration: 4000, panelClass: 'error-snackbar' }),
     });
   }
 

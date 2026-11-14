@@ -48,7 +48,9 @@
                 <td><div class="cell-main">{{ g.organization_name }}</div><div class="cell-sub">{{ g.ward }}</div></td>
                 <td><div>{{ g.start_date | date: 'd MMM y' }}</div><div class="cell-sub">{{ duration(g.duration_value, g.duration_unit) }} · logged {{ daysAgo(g.created_at) }}</div></td>
                 <td class="right num">{{ +g.amount_paid | number: '1.2-2' }}</td>
-                <td><div class="row-actions"><button class="btn primary sm" type="button" (click)="verify([g.id])" [disabled]="busy()"><span class="icon">check</span> Verify</button></div></td>
+                <td><div class="row-actions">
+                  <button class="btn ghost sm" type="button" (click)="openReject(g)" [disabled]="busy()" title="Not done at your site? Reject it with a reason."><span class="icon">block</span> Reject</button>
+                  <button class="btn primary sm" type="button" (click)="verify([g.id])" [disabled]="busy()"><span class="icon">check</span> Verify</button></div></td>
               </tr>
             }
           </tbody>
@@ -57,3 +59,24 @@
     }
   </div>
 </div>
+
+<dialog class="modal" #rejectDialog>
+  @if (rejecting(); as g) {
+    <div class="modal-head">
+      <div><h2>Reject this gig</h2><p>{{ g.worker_name }} · {{ g.job_type_name }} at {{ g.organization_name }}</p></div>
+      <button class="icon-btn" type="button" (click)="rejectDialog.close()" aria-label="Close"><span class="icon">close</span></button>
+    </div>
+    <div class="modal-body">
+      <p class="muted">The gig is removed and the worker gets your reason by notification (and SMS). They can raise a dispute if they disagree.</p>
+      <div class="field">
+        <label for="reject-reason">Reason</label>
+        <textarea id="reject-reason" class="input" rows="3" maxlength="240" placeholder="e.g. Not on site these dates / wrong site / duration is wrong, please log 3 days"
+                  [ngModel]="reason()" (ngModelChange)="reason.set($event)"></textarea>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn ghost" type="button" (click)="rejectDialog.close()">Cancel</button>
+      <button class="btn primary danger-btn" type="button" (click)="reject(rejectDialog)" [disabled]="reason().trim().length < 5 || busy()"><span class="icon">block</span> Reject gig</button>
+    </div>
+  }
+</dialog>

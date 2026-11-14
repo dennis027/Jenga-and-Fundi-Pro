@@ -31,8 +31,8 @@ export class ShellDataService implements ShellData {
       apps: this.http.get<any[]>(API + 'my-applications/').pipe(catchError(() => of([]))),
     }).pipe(map(({ gigs, me, apps }) => {
       const out: ShellNotification[] = [];
-      apps.filter((a: any) => a.status === 'accepted').forEach((a: any) => out.push({ icon: 'celebration', tone: 'ok',
-        title: this.i18n.t('{0} accepted you', a.site), sub: this.i18n.t('For “{0}”. Call them to agree the start', a.post_title), route: '/main-menu/search-gigs' }));
+      apps.filter((a: any) => a.status === 'invited').forEach((a: any) => out.push({ icon: 'mail', tone: 'info',
+        title: this.i18n.t('{0} invited you', a.site), sub: this.i18n.t('For “{0}”. Accept or decline.', a.post_title), route: '/main-menu/search-gigs' }));
       const ready = gigs.filter((g) => g.is_verified);
       const waiting = gigs.filter((g) => !g.is_verified);
       ready.forEach((g) => out.push({ icon: 'task_alt', tone: 'ok', title: this.i18n.t('{0} at {1} was verified', g.job_type_name || 'Gig', g.organization_name || g.client_name),

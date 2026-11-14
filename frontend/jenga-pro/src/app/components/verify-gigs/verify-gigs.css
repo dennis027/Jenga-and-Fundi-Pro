@@ -3,3 +3,4 @@
 .check { width: 18px; height: 18px; accent-color: var(--primary); cursor: pointer; }
 tr.sel td { background: var(--primary-soft); }
 .cur { font-size: .85rem; color: var(--muted); margin: 0 4px 0 0 !important; }
+.danger-btn { background: var(--danger) !important; border-color: var(--danger) !important; }

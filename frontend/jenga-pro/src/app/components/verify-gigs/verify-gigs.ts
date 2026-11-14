@@ -1,6 +1,6 @@
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
-import { Component, OnDestroy, OnInit, PLATFORM_ID, computed, inject, signal } from '@angular/core';
+import { Component, ElementRef, OnDestroy, OnInit, PLATFORM_ID, ViewChild, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { environment } from '../../../environments/environment';
@@ -36,6 +36,9 @@ export class VerifyGigs implements OnInit, OnDestroy {
   q = signal('');
   selected = signal<Set<number>>(new Set());
   busy = signal(false);
+  rejecting = signal<Gig | null>(null);
+  reason = signal('');
+  @ViewChild('rejectDialog') rejectRef?: ElementRef<HTMLDialogElement>;
 
   pending = computed(() => {
     const q = this.q().toLowerCase();
@@ -78,17 +81,32 @@ export class VerifyGigs implements OnInit, OnDestroy {
   verify(ids: number[]) {
     if (!ids.length) return;
     this.busy.set(true);
-    let done = 0, failed = 0;
-    ids.forEach((id) => this.http.post(API + `gigs/verify/${id}/`, {}).subscribe({
-      next: () => { done++; this.gigs.update((list) => list.map((g) => (g.id === id ? { ...g, is_verified: true } : g))); finish(); },
-      error: () => { failed++; finish(); },
-    }));
-    const finish = () => {
-      if (done + failed < ids.length) return;
-      this.busy.set(false);
-      this.selected.set(new Set());
-      this.snack.open(failed ? `${done} verified, ${failed} failed.` : `${done} gig${done > 1 ? 's' : ''} verified. Workers earned +5 each.`,
-        'OK', { duration: 3500, panelClass: failed ? 'error-snackbar' : 'success-snackbar' });
-    };
+    this.http.post<{ verified: number; results: { id: number; ok: boolean; detail: string }[] }>(API + 'gigs/verify-bulk/', { ids }).subscribe({
+      next: (r) => {
+        const ok = new Set(r.results.filter((x) => x.ok).map((x) => x.id));
+        this.gigs.update((list) => list.map((g) => (ok.has(g.id) ? { ...g, is_verified: true } : g)));
+        const failed = ids.length - ok.size;
+        this.busy.set(false);
+        this.selected.set(new Set());
+        this.snack.open(failed ? `${ok.size} verified, ${failed} failed: ${r.results.find((x) => !x.ok)?.detail}` : `${ok.size} gig${ok.size > 1 ? 's' : ''} verified. Workers earned +5 each.`,
+          'OK', { duration: 4000, panelClass: failed ? 'error-snackbar' : 'success-snackbar' });
+      },
+      error: (e) => { this.busy.set(false); this.snack.open(e?.error?.detail || 'Could not verify.', 'OK', { duration: 4000, panelClass: 'error-snackbar' }); },
+    });
+  }
+
+  openReject(g: Gig) { this.rejecting.set(g); this.reason.set(''); this.rejectRef?.nativeElement.showModal(); }
+
+  reject(dlg: HTMLDialogElement) {
+    const g = this.rejecting(); if (!g) return;
+    this.busy.set(true);
+    this.http.post(API + `gigs/${g.id}/reject/`, { reason: this.reason().trim() }).subscribe({
+      next: () => {
+        this.busy.set(false); dlg.close();
+        this.gigs.update((l) => l.filter((x) => x.id !== g.id));
+        this.snack.open(`Rejected. ${g.worker_name} was told why.`, 'OK', { duration: 3500, panelClass: 'success-snackbar' });
+      },
+      error: (e) => { this.busy.set(false); this.snack.open(e?.error?.detail || 'Could not reject.', 'OK', { duration: 4000, panelClass: 'error-snackbar' }); },
+    });
   }
 }
