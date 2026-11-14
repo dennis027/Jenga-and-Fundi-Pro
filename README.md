@@ -81,6 +81,13 @@ resets the passwords. Run it again after `docker compose down -v`, which wipes t
 > These credentials are public. The command refuses to run in HTTPS production mode
 > (`docker-compose.prod.yml`) unless you pass `--force`. Never seed them on a real deployment.
 
+### Install as an app (PWA)
+
+Both portals are installable progressive web apps. On Android/Chrome use *Install app* (user menu or
+browser prompt); on iPhone use *Share → Add to Home Screen*. The service worker caches only the app's
+own files (code, styles, icons, fonts), never API data, so shared phones don't keep anyone's
+records. It's active in production builds only.
+
 ### Demo data (local only)
 
 To see the portals with realistic content (2 sites, 6 fundis, ~15 gigs, ratings, job posts,
@@ -327,6 +334,7 @@ On Render free there's no shell, so run it from your machine against the product
 | Object storage for uploads | `AWS_STORAGE_BUCKET_NAME`, `AWS_S3_ENDPOINT_URL`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` | Needed on Render free (no disk). Cloudflare R2 has a free 10 GB tier. The bucket stays private, with signed URLs. |
 | Error monitoring | `SENTRY_DSN` | Sentry free tier; no personal data sent. |
 | USSD | `USSD_CALLBACK_TOKEN` | Set the Africa's Talking USSD callback to `https://<api>/ussd/?token=<value>`. |
+| SMS alerts | `SMS_NOTIFICATIONS=True` | Sends an SMS via Africa's Talking when a gig is verified, an application is accepted, or an ID is approved or rejected. Each SMS costs money. Off by default. |
 | Live M-Pesa | `MPESA_BASE_URL=https://api.safaricom.co.ke` + production `MPESA_*` credentials | Go live on the Daraja portal first. Set `MPESA_CALLBACK_TOKEN` and `MPESA_ACCOUNT_REFERENCE`. |
 
 ## Tests & CI

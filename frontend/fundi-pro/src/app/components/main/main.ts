@@ -8,6 +8,7 @@ import { Subscription, filter } from 'rxjs';
 import { AuthService } from '../../services/auth';
 import { AppBarService } from '../../services/app-bar-service';
 import { ThemeService } from '../../services/theme';
+import { InstallService } from '../../services/install';
 import { SiteContextService } from '../../shell/site-context';
 import { SHELL_CONFIG } from '../../shell/shell-config';
 import { ShellDataService } from '../../shell/shell-data';
@@ -27,6 +28,7 @@ export class Main implements OnInit, OnDestroy {
   private browser = isPlatformBrowser(inject(PLATFORM_ID));
   appBar = inject(AppBarService);
   theme = inject(ThemeService);
+  installer = inject(InstallService);
   site = inject(SiteContextService);
   config = SHELL_CONFIG;
 

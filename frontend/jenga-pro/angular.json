@@ -59,7 +59,8 @@
                   "inlineCritical": true
                 },
                 "fonts": false
-              }
+              },
+              "serviceWorker": "ngsw-config.json"
             },
             "development": {
               "optimization": false,

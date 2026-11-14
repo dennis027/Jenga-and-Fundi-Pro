@@ -116,6 +116,9 @@
               <button class="menu-item" type="button" (click)="theme.toggle()">
                 <span class="icon">{{ theme.dark() ? 'light_mode' : 'dark_mode' }}</span> {{ theme.dark() ? 'Light mode' : 'Dark mode' }}
               </button>
+              @if (installer.canInstall()) {
+                <button class="menu-item" type="button" (click)="installer.install()"><span class="icon">install_mobile</span> Install app</button>
+              }
               <div class="menu-sep"></div>
               <button class="menu-item danger" type="button" (click)="logOut()"><span class="icon">logout</span> Sign out</button>
             </div>

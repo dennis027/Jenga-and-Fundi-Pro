@@ -1,3 +1,5 @@
+import { isDevMode } from '@angular/core';
+import { provideServiceWorker } from '@angular/service-worker';
 // src/app/app.config.ts
 import { ApplicationConfig, provideBrowserGlobalErrorListeners, provideZonelessChangeDetection, inject, PLATFORM_ID } from '@angular/core';
 import { provideRouter } from '@angular/router';
@@ -8,6 +10,8 @@ import { isPlatformBrowser } from '@angular/common';
 
 export const appConfig: ApplicationConfig = {
   providers: [
+    // Installable app + cached app shell (no API data is cached). Production builds only.
+    provideServiceWorker('ngsw-worker.js', { enabled: !isDevMode(), registrationStrategy: 'registerWhenStable:30000' }),
     provideBrowserGlobalErrorListeners(),
     provideZonelessChangeDetection(),
     provideRouter(routes),
