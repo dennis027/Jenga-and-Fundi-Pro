@@ -136,7 +136,8 @@ class UserProfileSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ['username', 'email', 'phone', 'full_name', 'national_id',   'county', 'constituency', 'ward', 'profile_pic','is_verified','credit_score','current_verification', 'id_verified']
+        fields = ['username', 'email', 'phone', 'full_name', 'national_id',   'county', 'constituency', 'ward', 'profile_pic','is_verified','credit_score','current_verification', 'id_verified',
+                  'skills', 'years_experience', 'day_rate', 'bio', 'is_available', 'available_from']
         # Trust fields are only changed by the platform (scoring / ID verification).
         read_only_fields = ['username', 'is_verified', 'credit_score', 'current_verification']
 
@@ -277,8 +278,30 @@ class GigsAvailableSerializer(serializers.ModelSerializer):
     class Meta:
         model = GigsAvailable
         fields = ['id', 'title', 'description', 'county', 'constituency', 'ward', 'created_at', 'organization',
-                  'organization_name', 'organization_phone', 'worker', 'applications_count', 'my_application']
-        read_only_fields = ['id', 'created_at', 'organization', 'worker']
+                  'organization_name', 'organization_phone', 'worker', 'applications_count', 'my_application',
+                  'positions', 'is_open', 'filled', 'site_rating', 'saved']
+        read_only_fields = ['id', 'created_at', 'organization', 'worker', 'is_open']
+
+    filled = serializers.SerializerMethodField()
+    site_rating = serializers.SerializerMethodField()
+    saved = serializers.SerializerMethodField()
+
+    def get_filled(self, obj):
+        return obj.applications.filter(status="accepted").count()
+
+    def get_site_rating(self, obj):
+        from django.db.models import Avg, Count
+        agg = obj.organization.site_ratings.aggregate(avg=Avg("stars"), n=Count("id"))
+        return {"avg": round(agg["avg"], 1), "count": agg["n"]} if agg["n"] else None
+
+    def get_saved(self, obj):
+        req = self.context.get("request")
+        return bool(req and req.user.is_authenticated and obj.saved_by.filter(user=req.user).exists())
+
+    def validate_positions(self, v):
+        if not 1 <= v <= 50:
+            raise serializers.ValidationError("Between 1 and 50.")
+        return v
 
     applications_count = serializers.SerializerMethodField()
     my_application = serializers.SerializerMethodField()

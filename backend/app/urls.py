@@ -173,6 +173,42 @@ urlpatterns = [
 
     # USSD (Africa's Talking)
     path('ussd/', views.ussd_callback, name='ussd'),
+
+    # inbox, work profile, your data
+    path('api/notifications/', views.NotificationListView.as_view(), name='notifications'),
+    path('api/notifications/read/', views.NotificationReadView.as_view(), name='notifications-read'),
+    path('api/me/work-profile/', views.WorkProfileView.as_view(), name='work-profile'),
+    path('api/account/export/', views.ExportMyDataView.as_view(), name='account-export'),
+    path('api/account/delete/', views.DeleteAccountView.as_view(), name='account-delete'),
+
+    # fundi: alerts, saved posts, applications, statement, rating sites
+    path('api/job-alerts/', views.JobAlertListCreateView.as_view(), name='job-alerts'),
+    path('api/job-alerts/<int:pk>/', views.JobAlertDeleteView.as_view(), name='job-alert-delete'),
+    path('api/gigs-available/<int:pk>/save/', views.SavePostView.as_view(), name='job-post-save'),
+    path('api/saved-posts/', views.SavedPostsView.as_view(), name='saved-posts'),
+    path('api/applications/<int:pk>/withdraw/', views.WithdrawApplicationView.as_view(), name='application-withdraw'),
+    path('api/applications/<int:pk>/respond/', views.RespondInvitationView.as_view(), name='invitation-respond'),
+    path('api/fundi/statement/', views.FundiStatementView.as_view(), name='fundi-statement'),
+    path('api/fundi/completed/', views.FundiCompletedView.as_view(), name='fundi-completed'),
+    path('api/gig-history/<int:history_id>/rate-site/', views.RateSiteView.as_view(), name='rate-site'),
+
+    # contractor: workforce
+    path('api/gigs/verify-bulk/', views.BulkVerifyView.as_view(), name='gigs-verify-bulk'),
+    path('api/gigs/<int:gig_id>/reject/', views.RejectGigView.as_view(), name='gig-reject'),
+    path('api/gigs-available/<int:pk>/invite/', views.InviteWorkerView.as_view(), name='job-post-invite'),
+    path('api/gigs-available/<int:pk>/toggle/', views.ToggleJobPostView.as_view(), name='job-post-toggle'),
+    path('api/workers/available/', views.AvailableWorkersView.as_view(), name='workers-available'),
+    path('api/crew/', views.CrewListView.as_view(), name='crew'),
+    path('api/crew/<str:username>/', views.CrewDeleteView.as_view(), name='crew-delete'),
+    path('api/contractor/attendance/', views.AttendanceView.as_view(), name='attendance'),
+    path('api/contractor/payroll/', views.PayrollView.as_view(), name='payroll'),
+    path('api/contractor/budgets/', views.BudgetsView.as_view(), name='budgets'),
+    path('api/contractor/site-ratings/', views.SiteRatingsView.as_view(), name='site-ratings'),
+    path('api/activity/', views.ActivityView.as_view(), name='activity'),
+
+    # safety
+    path('api/incidents/', views.IncidentListCreateView.as_view(), name='incidents'),
+    path('api/incidents/<int:pk>/resolve/', views.ResolveIncidentView.as_view(), name='incident-resolve'),
 ]
 
 if settings.SERVE_MEDIA:

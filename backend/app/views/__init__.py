@@ -124,3 +124,9 @@ from .ussd import ussd_callback  # noqa: F401
 from .gigs import GigsAvailableDeleteView  # noqa: F401
 from .hiring import (ApplyView, CheckInView, DecideApplicationView, MyApplicationsView,  # noqa: F401
                      MyCheckInsTodayView, OnSiteTodayView, PostApplicationsView)
+from .workforce import (ActivityView, AttendanceView, AvailableWorkersView, BudgetsView, BulkVerifyView,  # noqa: F401
+                        CrewDeleteView, CrewListView, DeleteAccountView, ExportMyDataView, FundiCompletedView,
+                        FundiStatementView, IncidentListCreateView, InviteWorkerView, JobAlertDeleteView,
+                        JobAlertListCreateView, NotificationListView, NotificationReadView, PayrollView, RateSiteView,
+                        RejectGigView, ResolveIncidentView, RespondInvitationView, SavedPostsView, SavePostView,
+                        SiteRatingsView, ToggleJobPostView, WithdrawApplicationView, WorkProfileView)

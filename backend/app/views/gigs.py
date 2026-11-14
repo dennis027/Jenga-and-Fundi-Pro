@@ -105,40 +105,41 @@ class LogGigView(APIView):
 
 
 # 2. Confirm/Verify a gig by peer or foreman  
+def verify_gig(user, gig_id):
+    """Verify one gig as `user`. Returns (http_status, body). Shared by single and bulk verify."""
+    with transaction.atomic():
+        gig = Gig.objects.select_for_update().select_related("organization", "job_type", "worker").filter(id=gig_id).first()
+        if not gig:
+            return status.HTTP_404_NOT_FOUND, {"detail": "Gig not found."}
+        if not owns_organization(user, gig.organization):
+            return status.HTTP_403_FORBIDDEN, {"detail": "Only the contractor who owns this site can verify its gigs."}
+        if user.id in (gig.logged_by_id, gig.worker_id):
+            return status.HTTP_403_FORBIDDEN, {"detail": "You cannot verify your own gig."}
+        if gig.is_verified:
+            return status.HTTP_200_OK, {"message": "Gig already verified.", "gig_status": "verified",
+                                        "gig": GigSerializer(gig).data}
+        gig.is_verified = True
+        gig.verified_by = user
+        gig.save(update_fields=["is_verified", "verified_by"])
+        new_score = apply_score_change(gig.worker, "verify_gig")
+
+    from ..inbox import log, push
+    trade = gig.job_type.name if gig.job_type_id else 'gig'
+    push(gig.worker, "gig_verified", f"{gig.organization.name} verified your {trade}",
+         f"+5 points, score now {new_score}. Mark it complete when done.", "/main-menu/gig-summary",
+         sms_text=f"{gig.organization.name} verified your {trade}. +5 points, score now {new_score}. Mark it complete when done.")
+    log(user, gig.organization, "gig_verified", f"Verified {gig.worker.full_name or gig.worker.username}'s {trade} gig")
+    return status.HTTP_200_OK, {"message": "Gig verified successfully.", "gig_status": "verified",
+                                "gig": GigSerializer(gig).data, "worker_credit_score": new_score}
+
+
 class VerifyGigView(APIView):
     """Only the contractor who owns the gig's site (or staff) can verify it."""
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request, gig_id):
-        with transaction.atomic():
-            try:
-                gig = Gig.objects.select_for_update().select_related("organization").get(id=gig_id)
-            except Gig.DoesNotExist:
-                return Response({"detail": "Gig not found."}, status=status.HTTP_404_NOT_FOUND)
-
-            if not owns_organization(request.user, gig.organization):
-                return Response({"detail": "Only the contractor who owns this site can verify its gigs."},
-                                status=status.HTTP_403_FORBIDDEN)
-            if request.user.id in (gig.logged_by_id, gig.worker_id):
-                return Response({"detail": "You cannot verify your own gig."}, status=status.HTTP_403_FORBIDDEN)
-            if gig.is_verified:
-                return Response({"message": "Gig already verified.", "gig_status": "verified",
-                                 "gig": GigSerializer(gig).data})
-
-            gig.is_verified = True
-            gig.verified_by = request.user
-            gig.save(update_fields=["is_verified", "verified_by"])
-            new_score = apply_score_change(gig.worker, "verify_gig")
-
-        from ..notify import sms
-        sms(gig.worker, f"{gig.organization.name} verified your {gig.job_type.name if gig.job_type_id else 'gig'}. "
-                        f"+5 points, score now {new_score}. Mark it complete when done.")
-        return Response({
-            "message": "Gig verified successfully.",
-            "gig_status": "verified",
-            "gig": GigSerializer(gig).data,
-            "worker_credit_score": new_score,
-        }, status=status.HTTP_200_OK)
+        code, body = verify_gig(request.user, gig_id)
+        return Response(body, status=code)
 
 
 @method_decorator(csrf_exempt, name='dispatch')
@@ -165,16 +166,20 @@ class CompleteGigAPIView(APIView):
                 start_date=gig.start_date,
                 duration_value=gig.duration_value,
                 duration_unit=gig.duration_unit,
-                client_name=gig.client_name,
-                client_phone=gig.client_phone,
+                client_name=gig.client_name or gig.organization.name,
+                client_phone=gig.client_phone or "",
                 county=gig.county,
                 constituency=gig.constituency,
                 ward=gig.ward,
                 is_verified=gig.is_verified,
                 organization=gig.organization,
+                amount_paid=gig.amount_paid,
             )
             new_score = apply_score_change(gig.worker, "complete_gig")
             gig.delete()
+        from ..inbox import log
+        log(request.user, gig_history.organization, "gig_completed",
+            f"{gig_history.worker.full_name or gig_history.worker.username} completed {gig_history.job_type.name}")
 
         return Response({
             "message": "Gig moved to history successfully",
@@ -244,7 +249,7 @@ class GigsAvailableListCreateView(generics.ListCreateAPIView):
         qs = GigsAvailable.objects.select_related("organization").order_by('-created_at')
         if self.request.query_params.get("mine"):
             return qs.filter(organization__owner=self.request.user)
-        return qs.filter(organization__is_active=True)
+        return qs.filter(organization__is_active=True, is_open=True)
 
     def perform_create(self, serializer):
         org_id = self.request.data.get("organization")
@@ -253,7 +258,10 @@ class GigsAvailableListCreateView(generics.ListCreateAPIView):
         except Organization.DoesNotExist:
             raise PermissionDenied("You do not own this organization or it does not exist.")
         
-        serializer.save(organization=organization)
+        post = serializer.save(organization=organization)
+        from ..inbox import job_post_alerts, log
+        log(self.request.user, organization, "job_posted", f"Posted job '{post.title}'")
+        job_post_alerts(post)
 
 class UserOrganizationGigListView(APIView):
     permission_classes = [IsAuthenticated]
@@ -450,6 +458,10 @@ class WorkerSearchAPIView(APIView):
         data["completed_gigs"] = GigHistory.objects.filter(worker=user, is_verified=True).count()
         data["rating_avg"] = round(agg["avg"], 1) if agg["avg"] else None
         data["ratings_count"] = agg["n"]
+        from .workforce import _worker_card
+        card = _worker_card(user, request.user)
+        for k in ("skills", "years_experience", "day_rate", "bio", "is_available", "available_from", "in_crew"):
+            data[k] = card[k]
         return Response(data, status=status.HTTP_200_OK)
 
 

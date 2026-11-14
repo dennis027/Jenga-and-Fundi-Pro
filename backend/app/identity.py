@@ -16,8 +16,9 @@ def approve(verification):
         if first:
             apply_score_change(user, "approve_verification")
     if first:
-        from .notify import sms
-        sms(verification.user, "Your ID is verified. +20 points added to your credit score.")
+        from .inbox import push
+        push(verification.user, "id_approved", "Your ID is verified", "+20 points added to your credit score.",
+             "/main-menu/credit-score", sms_text="Your ID is verified. +20 points added to your credit score.")
     return first
 
 
@@ -31,5 +32,6 @@ def reject(verification, reason=""):
         if user.current_verification_id == verification.id:
             user.current_verification = None
             user.save(update_fields=["current_verification"])
-    from .notify import sms
-    sms(verification.user, "We could not verify your ID. Please upload clearer photos in the app.")
+    from .inbox import push
+    push(verification.user, "id_rejected", "We could not verify your ID", "Please upload clearer photos.",
+         "/main-menu/verification-status", sms_text="We could not verify your ID. Please upload clearer photos in the app.")

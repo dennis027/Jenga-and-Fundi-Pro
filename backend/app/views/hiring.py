@@ -29,11 +29,20 @@ class ApplyView(APIView):
     def post(self, request, pk):
         if request.user.account_type != FUNDI:
             return Response({"detail": "Only fundi accounts can apply."}, status=status.HTTP_403_FORBIDDEN)
-        post = GigsAvailable.objects.select_related("organization").filter(pk=pk, organization__is_active=True).first()
+        post = GigsAvailable.objects.select_related("organization").filter(
+            pk=pk, organization__is_active=True, is_open=True).first()
         if not post:
             return Response({"detail": "This job is no longer open."}, status=status.HTTP_404_NOT_FOUND)
-        app, created = JobApplication.objects.get_or_create(
-            post=post, worker=request.user, defaults={"message": (request.data.get("message") or "")[:300]})
+        message = (request.data.get("message") or "")[:300]
+        app, created = JobApplication.objects.get_or_create(post=post, worker=request.user, defaults={"message": message})
+        if not created and app.status in ("withdrawn", "invited"):
+            app.status, app.message = "pending", message or app.message
+            app.save(update_fields=["status", "message"])
+            created = True
+        if created:
+            from ..inbox import push
+            push(post.organization.owner, "new_applicant",
+                 f"{request.user.full_name or request.user.username} applied", f"For '{post.title[:80]}'", "/main-menu/job-posts")
         return Response(_app_row(app), status=status.HTTP_201_CREATED if created else status.HTTP_200_OK)
 
 
@@ -68,14 +77,34 @@ class DecideApplicationView(APIView):
         new = request.data.get("status")
         if new not in ("accepted", "declined"):
             return Response({"detail": "status must be accepted or declined"}, status=status.HTTP_400_BAD_REQUEST)
+        if app.status not in ("pending", "invited") and app.status != new:
+            return Response({"detail": f"This application is {app.status}."}, status=status.HTTP_400_BAD_REQUEST)
         app.status, app.decided_at = new, timezone.now()
         app.save(update_fields=["status", "decided_at"])
+        from ..inbox import log, push
+        who = app.worker.full_name or app.worker.username
         if new == "accepted":
-            from ..notify import sms
             phone = app.post.organization.phone_number or (app.post.organization.owner.phone or "")
-            sms(app.worker, f"{app.post.organization.name} accepted you for '{app.post.title[:60]}'."
-                            + (f" Call {phone} to agree the start." if phone else ""))
+            push(app.worker, "application_accepted", f"{app.post.organization.name} accepted you",
+                 f"For '{app.post.title[:80]}'." + (f" Call {phone} to agree the start." if phone else ""),
+                 "/main-menu/search-gigs",
+                 sms_text=f"{app.post.organization.name} accepted you for '{app.post.title[:60]}'."
+                          + (f" Call {phone} to agree the start." if phone else ""))
+            log(request.user, app.post.organization, "hired", f"Hired {who} for '{app.post.title}'")
+            close_if_filled(app.post)
+        else:
+            push(app.worker, "application_declined", f"{app.post.organization.name} chose someone else",
+                 f"For '{app.post.title[:80]}'. Keep applying.", "/main-menu/search-gigs")
         return Response(_app_row(app, with_worker=True))
+
+
+def close_if_filled(post):
+    """Close a job post once its positions are filled. Returns True if it was closed now."""
+    if post.is_open and post.applications.filter(status="accepted").count() >= post.positions:
+        post.is_open = False
+        post.save(update_fields=["is_open"])
+        return True
+    return False
 
 
 class CheckInView(APIView):

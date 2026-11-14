@@ -32,6 +32,13 @@ class User(AbstractUser):
         null=True,
         related_name="active_for_user"
     )
+    # Work profile (fundis): shown to contractors and on the certificate.
+    skills = models.CharField(max_length=300, blank=True, help_text="Comma-separated trades, e.g. 'Masonry, Tiling'")
+    years_experience = models.PositiveSmallIntegerField(null=True, blank=True)
+    day_rate = models.PositiveIntegerField(null=True, blank=True, help_text="Usual day rate in KSh")
+    bio = models.CharField(max_length=500, blank=True)
+    is_available = models.BooleanField(default=True)
+    available_from = models.DateField(null=True, blank=True, help_text="Busy until this date (when not available)")
     
 
     def increase_score(self, points, action="adjustment"):
@@ -205,6 +212,7 @@ class GigHistory(models.Model):
     is_verified = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     organization = models.ForeignKey('Organization', on_delete=models.CASCADE, related_name="gig_histories", null=True, blank=True)
+    amount_paid = models.DecimalField(max_digits=10, decimal_places=2, default=0)
 
     def __str__(self):
         return f"{self.worker.username} - {self.job_type.name} on {self.start_date}"
@@ -228,6 +236,8 @@ class GigsAvailable(models.Model):
         null=True, blank=True,
         related_name='gigs_taken'
     )
+    positions = models.PositiveSmallIntegerField(default=1)
+    is_open = models.BooleanField(default=True)
 
     def __str__(self):
         return f"{self.title} - {self.organization.name}"
@@ -254,6 +264,7 @@ class Organization(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     phone_number = models.CharField(max_length=20, blank=True, null=True)
     is_active = models.BooleanField(default=True)
+    labour_budget = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
 
     def __str__(self):
         return f"{self.name} ({self.owner.username})"
@@ -334,7 +345,8 @@ class GigDispute(models.Model):
 
 class JobApplication(models.Model):
     """A fundi's interest in a contractor's job post."""
-    STATUS = [("pending", "Pending"), ("accepted", "Accepted"), ("declined", "Declined")]
+    STATUS = [("pending", "Pending"), ("accepted", "Accepted"), ("declined", "Declined"),
+              ("invited", "Invited"), ("withdrawn", "Withdrawn")]
 
     post = models.ForeignKey(GigsAvailable, on_delete=models.CASCADE, related_name="applications")
     worker = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="job_applications")
@@ -358,3 +370,94 @@ class SiteCheckIn(models.Model):
     class Meta:
         unique_together = ("gig", "date")
         ordering = ["-checked_in_at"]
+
+
+class Notification(models.Model):
+    """An in-app notification (the bell). Created by app.inbox.push()."""
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="notifications")
+    kind = models.CharField(max_length=30)
+    title = models.CharField(max_length=200)
+    body = models.CharField(max_length=300, blank=True)
+    link = models.CharField(max_length=200, blank=True)
+    is_read = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        indexes = [models.Index(fields=["user", "is_read"])]
+
+
+class ActivityLog(models.Model):
+    """What happened at a contractor's sites (verifications, rejections, hires...)."""
+    actor = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name="activity")
+    organization = models.ForeignKey(Organization, on_delete=models.CASCADE, null=True, blank=True, related_name="activity")
+    action = models.CharField(max_length=40)
+    summary = models.CharField(max_length=300)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+
+class JobAlert(models.Model):
+    """A fundi's saved search: notify me when a matching job is posted."""
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="job_alerts")
+    keyword = models.CharField(max_length=60, blank=True)
+    county = models.CharField(max_length=100, blank=True)
+    sms = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+
+class SavedPost(models.Model):
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="saved_posts")
+    post = models.ForeignKey(GigsAvailable, on_delete=models.CASCADE, related_name="saved_by")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ("user", "post")
+        ordering = ["-created_at"]
+
+
+class SiteRating(models.Model):
+    """A fundi's rating of the site they worked at (two-way trust)."""
+    history = models.OneToOneField(GigHistory, on_delete=models.CASCADE, related_name="site_rating")
+    organization = models.ForeignKey(Organization, on_delete=models.CASCADE, related_name="site_ratings")
+    rated_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="site_ratings_given")
+    stars = models.PositiveSmallIntegerField(validators=[MinValueValidator(1), MaxValueValidator(5)])
+    paid_on_time = models.BooleanField(null=True)
+    comment = models.CharField(max_length=300, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+
+class CrewMember(models.Model):
+    """A worker a contractor wants to hire again ("My crew")."""
+    contractor = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="crew")
+    worker = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="in_crews")
+    note = models.CharField(max_length=200, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ("contractor", "worker")
+        ordering = ["-created_at"]
+
+
+class SafetyIncident(models.Model):
+    """An injury, near miss or hazard reported at a site."""
+    KINDS = [("injury", "Injury"), ("near_miss", "Near miss"), ("hazard", "Hazard"), ("other", "Other")]
+    SEVERITY = [("low", "Low"), ("medium", "Medium"), ("high", "High")]
+    organization = models.ForeignKey(Organization, on_delete=models.CASCADE, related_name="incidents")
+    reported_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="incidents_reported")
+    kind = models.CharField(max_length=12, choices=KINDS)
+    severity = models.CharField(max_length=8, choices=SEVERITY, default="low")
+    description = models.TextField(max_length=1000)
+    occurred_on = models.DateField()
+    is_resolved = models.BooleanField(default=False)
+    resolution = models.CharField(max_length=500, blank=True)
+    resolved_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
