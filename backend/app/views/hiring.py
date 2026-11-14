@@ -70,6 +70,11 @@ class DecideApplicationView(APIView):
             return Response({"detail": "status must be accepted or declined"}, status=status.HTTP_400_BAD_REQUEST)
         app.status, app.decided_at = new, timezone.now()
         app.save(update_fields=["status", "decided_at"])
+        if new == "accepted":
+            from ..notify import sms
+            phone = app.post.organization.phone_number or (app.post.organization.owner.phone or "")
+            sms(app.worker, f"{app.post.organization.name} accepted you for '{app.post.title[:60]}'."
+                            + (f" Call {phone} to agree the start." if phone else ""))
         return Response(_app_row(app, with_worker=True))
 
 

@@ -188,3 +188,28 @@ class CheckInTests(FeatureBase):
         rows = self.api(self.boss).get("/api/contractor/on-site-today/").json()
         self.assertEqual((len(rows), rows[0]["worker_name"]), (1, "Wanjiku Mason"))
         self.assertEqual(self.api(self.rival).get("/api/contractor/on-site-today/").json(), [])
+
+
+@override_settings(SMS_NOTIFICATIONS=True, EMAIL_ASYNC=False)
+class SmsAlertTests(FeatureBase):
+    def test_alerts_sent_only_when_enabled_and_phone_valid(self):
+        from unittest import mock
+        from app.models import Gig
+        gig = Gig.objects.create(worker=self.fundi, logged_by=self.fundi, organization=self.org, job_type=self.job,
+                                 duration_value=1, duration_unit="days", county="N", constituency="W", ward="P")
+        with mock.patch("app.notify._gateway") as gw:
+            send = gw.return_value.send
+            self.api(self.boss).post(f"/api/gigs/verify/{gig.id}/")
+            self.assertEqual(send.call_count, 1)
+            text, to = send.call_args.args
+            self.assertEqual(to, ["+254711222333"])
+            self.assertIn("verified your Masonry X", text)
+            with self.settings(SMS_NOTIFICATIONS=False):
+                vr = VerificationRequest.objects.create(user=self.fundi, status="pending", id_front="MEDIA/x.jpg")
+                self.api(self.staff).post(f"/api/verification/{vr.id}/action/", {"action": "approve"}, format="json")
+            self.assertEqual(send.call_count, 1)  # disabled -> nothing sent
+
+    def test_no_phone_no_sms(self):
+        from app.notify import sms
+        self.fundi.phone = ""
+        self.assertFalse(sms(self.fundi, "hi"))

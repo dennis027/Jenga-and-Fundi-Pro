@@ -130,6 +130,9 @@ class VerifyGigView(APIView):
             gig.save(update_fields=["is_verified", "verified_by"])
             new_score = apply_score_change(gig.worker, "verify_gig")
 
+        from ..notify import sms
+        sms(gig.worker, f"{gig.organization.name} verified your {gig.job_type.name if gig.job_type_id else 'gig'}. "
+                        f"+5 points, score now {new_score}. Mark it complete when done.")
         return Response({
             "message": "Gig verified successfully.",
             "gig_status": "verified",
