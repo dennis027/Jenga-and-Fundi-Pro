@@ -68,6 +68,15 @@ jobs:
       - name: Tests
         run: python manage.py test app -v 2
 
+  design-system:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Portals use the current shared design system
+        run: sh scripts/sync-design.sh --check
+      - name: Icon font subset includes every icon used
+        run: python3 scripts/icons.py --check
+
   frontend:
     runs-on: ubuntu-latest
     strategy:
@@ -97,7 +106,7 @@ jobs:
         run: docker build -t fundi-jenga-pro/backend:ci backend
 
   deploy:
-    needs: [backend, frontend, docker]
+    needs: [backend, design-system, frontend, docker]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     env:

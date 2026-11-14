@@ -1,0 +1,41 @@
+// Angular Material mapped onto the design-system tokens (styles.css).
+// Canonical copy: frontend/design-system/  (scripts/sync-design.sh)
+@use '@angular/material' as mat;
+
+html {
+  @include mat.theme((
+    color: (
+      primary: mat.$blue-palette,
+      tertiary: mat.$violet-palette,
+      theme-type: color-scheme,
+    ),
+    typography: (plain-family: "Outfit", brand-family: "Outfit"),
+    density: 0,
+  ));
+
+  // Follow our tokens so Material components match the rest of the UI in both themes.
+  --mat-sys-primary: var(--primary);
+  --mat-sys-on-primary: #fff;
+  --mat-sys-primary-container: var(--primary-soft);
+  --mat-sys-on-primary-container: var(--primary-ink);
+  --mat-sys-surface: var(--surface);
+  --mat-sys-surface-container: var(--surface);
+  --mat-sys-surface-container-low: var(--surface);
+  --mat-sys-surface-container-high: var(--surface-2);
+  --mat-sys-surface-container-highest: var(--surface-2);
+  --mat-sys-on-surface: var(--text);
+  --mat-sys-on-surface-variant: var(--muted);
+  --mat-sys-outline: var(--border-strong);
+  --mat-sys-outline-variant: var(--border);
+  --mat-sys-error: var(--danger);
+  --mat-sys-corner-extra-small: 8px;
+  --mat-sys-corner-small: 10px;
+  --mat-sys-corner-medium: 12px;
+  --mat-sys-corner-large: 16px;
+  --mat-sys-corner-extra-large: 18px;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+}

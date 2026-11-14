@@ -1,232 +1,45 @@
-// search-gigs.component.ts
-
-import { afterNextRender, Component, inject, signal, OnInit, OnDestroy, PLATFORM_ID } from '@angular/core';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
+import { HttpClient } from '@angular/common/http';
+import { Component, OnInit, PLATFORM_ID, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { MatIconModule } from '@angular/material/icon';
-import { MatButtonModule } from '@angular/material/button';
+import { RouterModule } from '@angular/router';
+import { environment } from '../../../environments/environment';
 import { AppBarService } from '../../services/app-bar-service';
-import { GigServices } from '../../services/gig-services';
-import RegionsData from '../../../assets/JSON-Files/regions.json';
-import { Router } from '@angular/router';
+import { daysAgo } from '../../shell/ui';
 
-interface JobType {
-  id: number;
-  name: string;
-}
-
-interface Gig {
-  id: number;
-  job_type: string;
-  client_name: string;
-  county: string;
-  constituency: string;
-  ward: string;
-  is_verified: boolean;
-}
-
-interface Region {
-  county_name: string;
-  constituencies: Constituency[];
-}
-
-interface Constituency {
-  constituency_name: string;
-  wards: string[];
-}
+const API = environment.apiUrl + 'api/';
+interface Post { id: number; title: string; description: string; county: string; constituency: string; ward: string; created_at: string; organization: number; organization_name: string; organization_phone: string | null; }
 
 @Component({
   selector: 'app-search-gigs',
   standalone: true,
-  imports: [
-    CommonModule,
-    FormsModule,
-    MatIconModule,
-    MatButtonModule
-  ],
+  imports: [CommonModule, FormsModule, RouterModule],
   templateUrl: './search-gigs.html',
   styleUrl: './search-gigs.css',
 })
-export class SearchGigs implements OnInit, OnDestroy {
-  isMobile = signal(false);
-  isLoading = signal(false);
-  hasSearched = signal(false);
-  searchResults = signal<Gig[]>([]);
-  errorMessage = signal<string>('');
-
+export class SearchGigs implements OnInit {
+  private http = inject(HttpClient);
   private appBar = inject(AppBarService);
-  private gigServices = inject(GigServices);
-  private router = inject(Router);
-  private platformId = inject(PLATFORM_ID);
+  private browser = isPlatformBrowser(inject(PLATFORM_ID));
+  daysAgo = daysAgo;
 
-  // Form fields
-  selectedCounty: string = '';
-  selectedConstituency: string = '';
-  selectedWard: string = '';
-  selectedJobType: string = '';
-  clientName: string = '';
+  loading = signal(true);
+  posts = signal<Post[]>([]);
+  q = signal('');
+  county = signal('');
 
-  // Dropdown options
-  counties: string[] = [];
-  constituencies: string[] = [];
-  wards: string[] = [];
-  jobTypes: JobType[] = [];
-
-  // getting regions data
-  private regions: Region[] = RegionsData as Region[];
-
-  constructor() {
-    afterNextRender(() => {
-      this.checkScreen();
-      window.addEventListener('resize', () => this.checkScreen());
-    });
-  }
-
-  private checkScreen(): void {
-    this.isMobile.set(window.innerWidth < 992);
-  }
-
-  ngOnInit(): void {
-    this.appBar.setTitle('Search Gigs');
-    this.appBar.setBack(true);
-
-    this.loadRegions();
-    if (isPlatformBrowser(this.platformId)) {
-      this.getJobTypes();
-    }
-  }
-filterGigsFromAPI(): void {
-  if (this.isSearchDisabled() || this.isLoading()) return;
-
-  this.isLoading.set(true);
-  this.hasSearched.set(true);
-  this.errorMessage.set('');
-
-  const jobTypeId: any = this.selectedJobType ? parseInt(this.selectedJobType, 10) : '';
-  
-  console.log('Searching with filters:', {
-    county: this.selectedCounty,
-    constituency: this.selectedConstituency,
-    ward: this.selectedWard,
-    jobTypeId: jobTypeId,
-    clientName: this.clientName
+  counties = computed(() => [...new Set(this.posts().map((p) => p.county))].sort());
+  shown = computed(() => {
+    const q = this.q().toLowerCase();
+    return this.posts().filter((p) => (!this.county() || p.county === this.county())
+      && (!q || `${p.title} ${p.description} ${p.organization_name} ${p.ward} ${p.constituency}`.toLowerCase().includes(q)));
   });
 
-  this.gigServices.searchGigsByType(
-    this.selectedCounty,
-    this.selectedConstituency,
-    this.selectedWard,
-    jobTypeId,
-    this.clientName.trim()
-  ).subscribe({
-    next: (data) => {
-      console.log('Search results received:', data);
-      this.searchResults.set(data);
-      this.isLoading.set(false);
-      this.clearForm();
-    },
-    error: (error) => {
-      console.error('Error searching gigs:', error);
-      this.isLoading.set(false);
-
-      if (error.status === 401) {
-        this.errorMessage.set('Please login to continue');
-        this.router.navigate(['/login']);
-      } else if (error.status === 404) {
-        this.errorMessage.set('No gigs found matching your criteria');
-        this.searchResults.set([]);
-      } else if (error.status === 500) {
-        this.errorMessage.set('Server error. Please try again later.');
-        this.searchResults.set([]);
-      } else {
-        this.errorMessage.set('An error occurred while searching. Please try again.');
-        this.searchResults.set([]);
-      }
-    }
-  });
-}
-
-  getJobTypes(): void {
-    this.gigServices.getGigTypes().subscribe({
-      next: (data) => {
-        this.jobTypes = data;
-        console.log('Job types loaded:', this.jobTypes);
-      },
-      error: (error) => {
-        console.error('Error fetching job types:', error);
-        if (error.status === 401) {
-          this.router.navigate(['/login']);
-        }
-      }
-    });
-  }
-
-  ngOnDestroy(): void {
+  ngOnInit() {
+    this.appBar.setTitle('Find work');
     this.appBar.clearActions();
-  }
-
-  loadRegions(): void {
-    this.counties = this.regions.map(r => r.county_name);
-  }
-
-  onCountyChanged(): void {
-    this.selectedConstituency = '';
-    this.selectedWard = '';
-    this.wards = [];
-
-    if (!this.selectedCounty) {
-      this.constituencies = [];
-      return;
-    }
-
-    const selectedRegion = this.regions.find(r => r.county_name === this.selectedCounty);
-    if (selectedRegion) {
-      this.constituencies = selectedRegion.constituencies.map(c => c.constituency_name);
-    } else {
-      this.constituencies = [];
-    }
-  }
-
-  onConstituencyChanged(): void {
-    this.selectedWard = '';
-
-    if (!this.selectedConstituency) {
-      this.wards = [];
-      return;
-    }
-
-    const selectedRegion = this.regions.find(r => r.county_name === this.selectedCounty);
-    if (selectedRegion) {
-      const selectedConstituency = selectedRegion.constituencies.find(
-        c => c.constituency_name === this.selectedConstituency
-      );
-      if (selectedConstituency) {
-        this.wards = [...selectedConstituency.wards];
-      } else {
-        this.wards = [];
-      }
-    }
-  }
-
-  isSearchDisabled(): boolean {
-    return !this.selectedCounty &&
-           !this.selectedConstituency &&
-           !this.selectedWard &&
-           !this.selectedJobType &&
-           !this.clientName.trim();
-  }
-
-  searchGigs(): void {
-    this.filterGigsFromAPI();
-  }
-
-  clearForm(): void {
-    this.selectedCounty = '';
-    this.selectedConstituency = '';
-    this.selectedWard = '';
-    this.selectedJobType = '';
-    this.clientName = '';
-    this.constituencies = [];
-    this.wards = [];
+    if (this.browser) this.http.get<Post[]>(API + 'gigs-available/').subscribe({
+      next: (p) => { this.posts.set(p); this.loading.set(false); }, error: () => this.loading.set(false),
+    });
   }
 }

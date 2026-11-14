@@ -1,0 +1,58 @@
+<div class="page">
+  <div class="page-head">
+    <div>
+      <h1>Job posts</h1>
+      <p>Advertise open work at your sites. Fundis see your posts under “Find work” and can call the site directly.</p>
+    </div>
+    <div class="actions"><button class="btn primary" type="button" (click)="openNew()" [disabled]="!sites().length"><span class="icon">campaign</span> Post a job</button></div>
+  </div>
+
+  <div class="panel">
+    @if (loading()) {
+      <div class="panel-body"><div class="skeleton" style="height:160px"></div></div>
+    } @else if (!shown().length) {
+      <div class="empty"><span class="icon">campaign</span><h3>No open posts{{ ctx.id() !== null ? ' at ' + ctx.label() : '' }}</h3>
+        <p>{{ sites().length ? 'Post a job when you need more hands on site.' : 'Add an active site first.' }}</p>
+        @if (sites().length) { <button class="btn primary sm" type="button" (click)="openNew()"><span class="icon">add</span> Post a job</button> }</div>
+    } @else {
+      <div class="table-wrap">
+        <table class="tbl">
+          <thead><tr><th>Job</th><th>Site</th><th>Posted</th><th></th></tr></thead>
+          <tbody>
+            @for (p of shown(); track p.id) {
+              <tr>
+                <td><div class="cell-main">{{ p.title }}</div>@if (p.description) { <div class="cell-sub clamp">{{ p.description }}</div> }</td>
+                <td><div>{{ p.organization_name }}</div><div class="cell-sub">{{ p.ward }}, {{ p.county }}</div></td>
+                <td class="nowrap">{{ daysAgo(p.created_at) }}</td>
+                <td><div class="row-actions"><button class="btn danger-outline sm" type="button" (click)="remove(p)"><span class="icon">delete</span> Remove</button></div></td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  </div>
+</div>
+
+<dialog class="modal" #postDialog>
+  <form (ngSubmit)="save()">
+    <div class="modal-head">
+      <div><h2>Post a job</h2><p>Visible to all fundis on Fundi Pro until you remove it.</p></div>
+      <button class="icon-btn" type="button" (click)="close()" aria-label="Close"><span class="icon">close</span></button>
+    </div>
+    <div class="modal-body">
+      <div class="field"><label for="p-site">Site *</label>
+        <select id="p-site" name="organization" class="input" [(ngModel)]="form.organization" required>
+          @for (s of sites(); track s.id) { <option [ngValue]="s.id">{{ s.name }} · {{ s.ward }}</option> }
+        </select></div>
+      <div class="field"><label for="p-title">What do you need? *</label>
+        <input id="p-title" name="title" class="input" [(ngModel)]="form.title" maxlength="255" placeholder="e.g. 2 masons for block work, 3 weeks" required></div>
+      <div class="field"><label for="p-desc">Details</label>
+        <textarea id="p-desc" name="description" class="input" rows="3" [(ngModel)]="form.description" placeholder="Pay, start date, hours, what to bring"></textarea></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn ghost" type="button" (click)="close()">Cancel</button>
+      <button class="btn primary" type="submit" [disabled]="!form.title.trim() || !form.organization || saving()">{{ saving() ? 'Posting…' : 'Post job' }}</button>
+    </div>
+  </form>
+</dialog>

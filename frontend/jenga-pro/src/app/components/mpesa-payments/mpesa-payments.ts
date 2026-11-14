@@ -1,19 +1,13 @@
-import { Component, inject, OnInit, OnDestroy, PLATFORM_ID, ChangeDetectorRef } from '@angular/core';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
+import { HttpClient } from '@angular/common/http';
+import { Component, ElementRef, OnInit, PLATFORM_ID, ViewChild, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { AppBarService } from '../../services/app-bar-service';
-import { MpesaService } from '../../services/mpesa-service';
-import { Router } from '@angular/router';
 import { MatSnackBar } from '@angular/material/snack-bar';
+import { environment } from '../../../environments/environment';
+import { AppBarService } from '../../services/app-bar-service';
+import { downloadCsv } from '../../shell/ui';
 
-interface MpesaTransaction {
-  id: number;
-  amount: number;
-  mpesa_receipt_number: string;
-  transaction_date: string;
-  phone_number: string;
-  status: string;
-}
+const API = environment.apiUrl + 'api/';
 
 @Component({
   selector: 'app-mpesa-payments',
@@ -22,230 +16,74 @@ interface MpesaTransaction {
   templateUrl: './mpesa-payments.html',
   styleUrl: './mpesa-payments.css',
 })
-export class MpesaPayments implements OnInit, OnDestroy {
+export class MpesaPayments implements OnInit {
+  private http = inject(HttpClient);
+  private snack = inject(MatSnackBar);
   private appBar = inject(AppBarService);
-  private platformId = inject(PLATFORM_ID);
-  private mpesaService = inject(MpesaService);
-  private router = inject(Router);
-  private cdr = inject(ChangeDetectorRef);
-  private snackBar = inject(MatSnackBar);
+  private browser = isPlatformBrowser(inject(PLATFORM_ID));
+  @ViewChild('payDialog') dialog?: ElementRef<HTMLDialogElement>;
 
-  private showSuccess(message: string) {
-    this.snackBar.open(message, 'Close', {
-      duration: 3000,
-      panelClass: ['success-snackbar'],
-      horizontalPosition: 'right',
-      verticalPosition: 'top',
+  loading = signal(true);
+  tx = signal<any[]>([]);
+  tab = signal<'all' | 'ok' | 'failed'>('all');
+  q = signal('');
+  sending = signal(false);
+  sent = signal(false);
+  form = { phone: '', amount: '' as string | number };
+
+  ok = computed(() => this.tx().filter((t) => t.result_code === 0));
+  failed = computed(() => this.tx().filter((t) => t.result_code !== 0));
+  shown = computed(() => {
+    const base = this.tab() === 'ok' ? this.ok() : this.tab() === 'failed' ? this.failed() : this.tx();
+    const q = this.q().toLowerCase();
+    return base.filter((t) => !q || `${t.mpesa_receipt_number} ${t.phone_number} ${t.amount}`.toLowerCase().includes(q));
+  });
+  totalPaid = computed(() => this.ok().reduce((s, t) => s + Number(t.amount || 0), 0));
+  monthPaid = computed(() => {
+    const n = new Date();
+    return this.ok().filter((t) => { const d = new Date(t.transaction_date); return d.getMonth() === n.getMonth() && d.getFullYear() === n.getFullYear(); })
+      .reduce((s, t) => s + Number(t.amount || 0), 0);
+  });
+
+  ngOnInit() {
+    this.appBar.setTitle('M-Pesa payments');
+    this.appBar.setActions([{ id: 'refresh', icon: 'refresh', ariaLabel: 'Refresh', onClick: () => this.load() }]);
+    if (!this.browser) return;
+    this.load();
+    this.http.get<any>(API + 'user/').subscribe({ next: (u) => { if (u?.phone) this.form.phone = u.phone; } });
+  }
+
+  load() {
+    this.http.get<any>(API + 'single-messages/').subscribe({
+      next: (r) => { this.tx.set([...(r.transactions || [])].sort((a, b) => b.transaction_date.localeCompare(a.transaction_date))); this.loading.set(false); },
+      error: () => this.loading.set(false),
     });
   }
 
-  private showError(message: string) {
-    this.snackBar.open(message, 'Close', {
-      duration: 4000,
-      panelClass: ['error-snackbar'],
-      horizontalPosition: 'right',
-      verticalPosition: 'top',
+  normalise(p: string) {
+    const d = (p || '').replace(/\D/g, '');
+    return d.startsWith('254') ? d : d.startsWith('0') ? '254' + d.slice(1) : d.length === 9 ? '254' + d : d;
+  }
+  valid() { return /^2547\d{8}$|^2541\d{8}$/.test(this.normalise(this.form.phone)) && Number(this.form.amount) >= 1; }
+
+  open() { this.sent.set(false); this.dialog?.nativeElement.showModal(); }
+  close() { this.dialog?.nativeElement.close(); }
+
+  pay() {
+    if (!this.valid()) return;
+    this.sending.set(true);
+    this.http.post<any>(API + 'stk-new-push/', { phone_number: this.normalise(this.form.phone), amount: Number(this.form.amount) }).subscribe({
+      next: (r) => {
+        this.sending.set(false);
+        if (r?.ResponseCode === '0' || r?.CheckoutRequestID) { this.sent.set(true); setTimeout(() => this.load(), 20000); }
+        else this.snack.open(r?.errorMessage || r?.CustomerMessage || 'M-Pesa did not accept the request.', 'OK', { duration: 5000, panelClass: 'error-snackbar' });
+      },
+      error: () => { this.sending.set(false); this.snack.open('Could not reach M-Pesa. Try again in a moment.', 'OK', { duration: 5000, panelClass: 'error-snackbar' }); },
     });
   }
 
-
-  mpesaMessages: MpesaTransaction[] = [];
-  filteredMessages: MpesaTransaction[] = [];
-  isLoading = false;
-
-  // Filter properties
-  filterPhone: string = '';
-  filterStartDate: string = '';
-  filterEndDate: string = '';
-  filterAmount: string = '';
-  filterReceipt: string = '';
-
-  // Dialog states
-  showPaymentDialog = false;
-  showFilterDialog = false;
-
-  // Payment form
-  paymentPhone: string = '';
-  paymentAmount: number | null = null;
-
-  constructor() {}
-
-  ngOnInit(): void {
-    // Set AppBar configuration first
-    this.appBar.setTitle('Mpesa Payments');
-    this.appBar.setBack(true);
-    
-    // Set mobile action buttons
-    this.appBar.setActions([
-      { 
-        id: 'filter-payment',
-        icon: 'filter_list',
-        ariaLabel: 'Filter',
-        onClick: () => {
-          this.openFilterDialog();
-        }
-      },
-      { 
-        id: 'refresh-payments',
-        icon: 'refresh',
-        ariaLabel: 'Refresh',
-        onClick: () => {
-          this.refresh();
-        },
-      }
-    ]);
-
-    // Fetch messages after AppBar setup
-    if (isPlatformBrowser(this.platformId)) {
-      // Use setTimeout to avoid ExpressionChangedAfterItHasBeenCheckedError
-      setTimeout(() => {
-        this.fetchMpesaMessages();
-      }, 0);
-    }
-  }
-
-  ngOnDestroy(): void {
-    // Clean up AppBar state
-    this.appBar.setActions([]);
-    this.appBar.setBack(false);
-  }
-
-  fetchMpesaMessages(): void {
-    this.isLoading = true;
-    this.cdr.detectChanges();
-
-    this.mpesaService.getSingleMessages().subscribe({
-      next: (data) => {
-        this.mpesaMessages = data.transactions;
-        this.filteredMessages = [...this.mpesaMessages];
-        this.isLoading = false;
-        this.cdr.detectChanges();
-        console.log('Fetched Mpesa messages:', this.mpesaMessages);
-      },
-      error: (err) => {
-        console.error('Error fetching Mpesa messages:', err);
-        this.isLoading = false;
-        this.cdr.detectChanges();
-        if (err.status === 401) {
-          this.router.navigate(['/login']);
-        }
-      }
-    }); 
-  }
-
-  applyFilters(): void {
-    this.filteredMessages = this.mpesaMessages.filter(msg => {
-      let matches = true;
-
-      if (this.filterPhone) {
-        matches = matches && msg.phone_number.includes(this.filterPhone.replace(/^0/, '254'));
-      }
-
-      if (this.filterAmount) {
-        matches = matches && msg.amount.toString().includes(this.filterAmount);
-      }
-
-      if (this.filterReceipt) {
-        matches = matches && msg.mpesa_receipt_number.toLowerCase().includes(this.filterReceipt.toLowerCase());
-      }
-
-      if (this.filterStartDate) {
-        matches = matches && new Date(msg.transaction_date) >= new Date(this.filterStartDate);
-      }
-
-      if (this.filterEndDate) {
-        matches = matches && new Date(msg.transaction_date) <= new Date(this.filterEndDate);
-      }
-
-      return matches;
-    });
-  }
-
-  openPaymentDialog(): void {
-    this.showPaymentDialog = true;
-    this.paymentPhone = '';
-    this.paymentAmount = null;
-  }
-
-  closePaymentDialog(): void {
-    this.showPaymentDialog = false;
-  }
-
-  sendStkPush(): void {
-    if (!this.paymentPhone || !this.paymentAmount || this.paymentAmount <= 0) {
-      return;
-    }
-
-    let phone = this.paymentPhone.trim();
-    if (phone.startsWith('0')) {
-      phone = '254' + phone.substring(1);
-    } else if (phone.startsWith('+254')) {
-      phone = '254' + phone.substring(4);
-    }
-
-    const data = {
-      phone_number: phone,
-      amount: this.paymentAmount
-    }
-
-    this.mpesaService.stkPush(data).subscribe({
-      next: (response) => {
-        console.log('STK Push initiated successfully:', response);
-        this.showSuccess('STK Push initiated. Please check your phone to complete the payment.');
-        this.closePaymentDialog();
-        this.fetchMpesaMessages();
-      },
-      error: (err) => {
-        console.error('Error initiating STK Push:', err);
-        this.showError('Failed to initiate STK Push. Please try again.');
-      }
-    }); 
-  }
-
-  openFilterDialog(): void {
-    this.showFilterDialog = true;
-  }
-
-  closeFilterDialog(): void {
-    this.showFilterDialog = false;
-  }
-
-  applyFilterDialog(): void {
-    this.applyFilters();
-    this.closeFilterDialog();
-  }
-
-  clearFilters(): void {
-    this.filterPhone = '';
-    this.filterStartDate = '';
-    this.filterEndDate = '';
-    this.filterAmount = '';
-    this.filterReceipt = '';
-    this.filteredMessages = [...this.mpesaMessages];
-    this.closeFilterDialog();
-  }
-
-  formatDate(dateStr: string): string {
-    const date = new Date(dateStr);
-    const options: Intl.DateTimeFormatOptions = {
-      day: '2-digit',
-      month: 'short',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: true
-    };
-    return date.toLocaleString('en-US', options);
-  }
-
-  formatPhone(phone: string): string {
-    if (phone.startsWith('254')) {
-      return '0' + phone.substring(3);
-    }
-    return phone;
-  }
-
-  refresh(): void {
-    this.fetchMpesaMessages();
+  exportCsv() {
+    downloadCsv('mpesa-payments.csv', this.shown().map((t) => ({ date: t.transaction_date, receipt: t.mpesa_receipt_number, phone: t.phone_number,
+      amount_ksh: t.amount, status: t.result_code === 0 ? 'successful' : 'failed', note: t.result_desc })));
   }
 }

@@ -1,3 +1,4 @@
+import { ThemeService } from '../../../services/theme';
 import {
   Component,
   signal,
@@ -27,6 +28,7 @@ import { MatSnackBar } from '@angular/material/snack-bar';
   styleUrls: ['./login.css'],
 })
 export class Login implements OnInit, OnDestroy {
+  theme = inject(ThemeService);
   private fb = inject(FormBuilder);
   private authService = inject(AuthService);
   private router = inject(Router);

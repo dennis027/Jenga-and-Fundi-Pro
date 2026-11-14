@@ -1,213 +1,84 @@
-// add-gig.component.ts
-
-import { afterNextRender, Component, inject, signal, OnInit, OnDestroy } from '@angular/core';
-import { CommonModule } from '@angular/common';
-import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
-import { MatIconModule } from '@angular/material/icon';
-import { MatButtonModule } from '@angular/material/button';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatInputModule } from '@angular/material/input';
-import { MatSelectModule } from '@angular/material/select';
-import { MatDatepickerModule } from '@angular/material/datepicker';
-import { MatNativeDateModule } from '@angular/material/core';
-import { MatAutocompleteModule } from '@angular/material/autocomplete';
-import { AppBarService } from '../../services/app-bar-service';
+import { CommonModule, isPlatformBrowser } from '@angular/common';
+import { HttpClient } from '@angular/common/http';
+import { Component, OnInit, PLATFORM_ID, computed, inject, signal } from '@angular/core';
+import { FormsModule } from '@angular/forms';
+import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { MatSnackBar } from '@angular/material/snack-bar';
+import { environment } from '../../../environments/environment';
+import { AppBarService } from '../../services/app-bar-service';
 
-interface JobType {
-  id: number;
-  name: string;
-}
-
-interface Organization {
-  id: number;
-  name: string;
-  county: string;
-  constituency: string;
-  ward: string;
-  phone_number?: string;
-}
+const API = environment.apiUrl + 'api/';
+interface Site { id: number; name: string; county: string; constituency: string; ward: string; is_active: boolean; }
+interface Trade { id: number; name: string; }
 
 @Component({
   selector: 'app-add-gig',
   standalone: true,
-  imports: [
-    CommonModule,
-    FormsModule,
-    ReactiveFormsModule,
-    MatIconModule,
-    MatButtonModule,
-    MatFormFieldModule,
-    MatInputModule,
-    MatSelectModule,
-    MatDatepickerModule,
-    MatNativeDateModule,
-    MatAutocompleteModule
-  ],
+  imports: [CommonModule, FormsModule, RouterModule],
   templateUrl: './add-gig.html',
-  styleUrls: ['./add-gig.css'],
+  styleUrl: './add-gig.css',
 })
-export class AddGig implements OnInit, OnDestroy {
-  // Signals for reactivity
-  isMobile = signal(false);
-  isLoading = signal(false);
-  selectedOrganization = signal<Organization | null>(null);
-
+export class AddGig implements OnInit {
+  private http = inject(HttpClient);
+  private snack = inject(MatSnackBar);
   private appBar = inject(AppBarService);
-  private fb = inject(FormBuilder);
-  private snackBar = inject(MatSnackBar);
+  private router = inject(Router);
+  private route = inject(ActivatedRoute);
+  private browser = isPlatformBrowser(inject(PLATFORM_ID));
 
-  private showSuccess(message: string) {
-    this.snackBar.open(message, 'Close', {
-      duration: 3000,
-      panelClass: ['success-snackbar'],
-      horizontalPosition: 'right',
-      verticalPosition: 'top',
-    });
-  }
+  sites = signal<Site[]>([]);
+  siteQ = signal('');
+  site = signal<Site | null>(null);
+  trades = signal<Trade[]>([]);
+  tradesLoading = signal(false);
+  saving = signal(false);
+  today = new Date().toISOString().slice(0, 10);
+  form = { job_type: null as number | null, start_date: this.today, duration_value: 1, duration_unit: 'days', amount_paid: '' as string | number };
 
-  private showError(message: string) {
-    this.snackBar.open(message, 'Close', {
-      duration: 4000,
-      panelClass: ['error-snackbar'],
-      horizontalPosition: 'right',
-      verticalPosition: 'top',
-    });
-  }
+  matches = computed(() => {
+    const q = this.siteQ().toLowerCase();
+    return this.sites().filter((s) => s.is_active && (!q || `${s.name} ${s.ward} ${s.constituency} ${s.county}`.toLowerCase().includes(q))).slice(0, 8);
+  });
 
-
-  // Form
-  gigForm!: FormGroup;
-
-  // Static data for demo
-  jobTypes: JobType[] = [
-    { id: 1, name: 'Plumbing' },
-    { id: 2, name: 'Electrical' },
-    { id: 3, name: 'Carpentry' },
-    { id: 4, name: 'Painting' },
-    { id: 5, name: 'Masonry' }
-  ];
-
-  organizations: Organization[] = [
-    {
-      id: 1,
-      name: 'Nairobi Hospital',
-      county: 'Nairobi',
-      constituency: 'Westlands',
-      ward: 'Parklands',
-      phone_number: '020-1234567'
-    },
-    {
-      id: 2,
-      name: 'KNH - Kenyatta National Hospital',
-      county: 'Nairobi',
-      constituency: 'Dagoretti North',
-      ward: 'Kilimani',
-      phone_number: '020-2726300'
-    },
-    {
-      id: 3,
-      name: 'Aga Khan University Hospital',
-      county: 'Nairobi',
-      constituency: 'Westlands',
-      ward: 'Parklands',
-      phone_number: '020-3662000'
-    },
-    {
-      id: 4,
-      name: 'MP Shah Hospital',
-      county: 'Nairobi',
-      constituency: 'Westlands',
-      ward: 'Parklands',
-      phone_number: '020-4285000'
-    }
-  ];
-
-  durationUnits = [
-    { value: 'days', label: 'Days' },
-    { value: 'weeks', label: 'Weeks' }
-  ];
-
-  constructor() {
-    afterNextRender(() => {
-      this.checkScreen();
-      window.addEventListener('resize', () => this.checkScreen());
-    });
-  }
-
-  private checkScreen(): void {
-    this.isMobile.set(window.innerWidth < 992);
-  }
-
-  ngOnInit(): void {
-    this.appBar.setTitle('Log Gig');
-    this.appBar.setBack(true);
-
-    this.appBar.setActions([
-      {
-        id: 'save',
-        icon: 'save',
-        ariaLabel: 'Save Draft',
-        onClick: () => {
-          console.log('Save draft clicked');
-        },
-      }
-    ]);
-
-    this.initForm();
-  }
-
-  ngOnDestroy(): void {
+  ngOnInit() {
+    this.appBar.setTitle('Log a gig');
     this.appBar.clearActions();
-  }
-
-  private initForm(): void {
-    this.gigForm = this.fb.group({
-      site: ['', Validators.required],
-      jobType: ['', Validators.required],
-      startDate: ['', Validators.required],
-      durationUnit: ['', Validators.required],
-      durationValue: ['', [Validators.required, Validators.min(1)]]
+    if (this.browser) this.http.get<Site[]>(API + 'organizations/').subscribe((s) => {
+      this.sites.set(s);
+      const pre = Number(this.route.snapshot.queryParamMap.get('site'));
+      const hit = pre ? s.find((x) => x.id === pre && x.is_active) : null;
+      if (hit) this.pickSite(hit);
     });
   }
 
-  onOrganizationSelected(organization: Organization): void {
-    this.selectedOrganization.set(organization);
-    this.gigForm.patchValue({ site: organization.name });
+  pickSite(s: Site) {
+    this.site.set(s);
+    this.form.job_type = null;
+    this.tradesLoading.set(true);
+    this.http.get<Trade[]>(API + 'job-types/', { params: { organization: s.id } }).subscribe({
+      next: (t) => { this.trades.set([...t].sort((a, b) => a.name.localeCompare(b.name))); this.tradesLoading.set(false); },
+      error: () => this.tradesLoading.set(false),
+    });
   }
+  clearSite() { this.site.set(null); this.trades.set([]); this.form.job_type = null; }
 
-  onSubmit(): void {
-    console.log('Submitting gig form', this.gigForm.value);
-    if (this.gigForm.invalid) {
-      this.gigForm.markAllAsTouched();
-      console.log('Form is invalid');
-      return;
-    }
+  valid() { return !!this.site() && !!this.form.job_type && !!this.form.start_date && this.form.duration_value >= 1 && this.form.start_date <= this.today; }
 
-    if (!this.selectedOrganization()) {
-      console.log('Please select a site');
-      return;
-    }
-
-    this.isLoading.set(true);
-
-    // Simulate API call
-    setTimeout(() => {
-      const gigData = {
-        ...this.gigForm.value,
-        organization: this.selectedOrganization()
-      };
-
-      console.log('Submitting gig:', gigData);
-      
-      this.isLoading.set(false);
-      
-      // Show success message
-      alert('Gig submitted successfully!');
-      
-      // Reset form
-      this.gigForm.reset();
-      this.selectedOrganization.set(null);
-    }, 2000);
+  submit() {
+    if (!this.valid()) return;
+    this.saving.set(true);
+    const payload = { ...this.form, organization: this.site()!.id, amount_paid: this.form.amount_paid === '' ? 0 : this.form.amount_paid };
+    this.http.post<any>(API + 'gigs/', payload).subscribe({
+      next: () => {
+        this.saving.set(false);
+        this.snack.open(`Logged. ${this.site()!.name}'s contractor will verify it.`, 'OK', { duration: 4000, panelClass: 'success-snackbar' });
+        this.router.navigate(['/main-menu/gig-summary'], { queryParams: { tab: 'waiting' } });
+      },
+      error: (e) => {
+        this.saving.set(false);
+        const msg = e?.error?.detail || Object.values(e?.error || {}).flat().join(' ') || 'Could not log the gig.';
+        this.snack.open(String(msg), 'OK', { duration: 5000, panelClass: 'error-snackbar' });
+      },
+    });
   }
 }

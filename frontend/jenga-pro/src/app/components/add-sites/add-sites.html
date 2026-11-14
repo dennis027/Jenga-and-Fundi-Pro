@@ -1,198 +1,88 @@
-<div class="sites-container">
-  <!-- Loading State -->
-  <div *ngIf="loading" class="loading-state">
-    <div class="spinner"></div>
-    <p>Loading sites...</p>
-  </div>
-
-  <!-- Error State -->
-  <div *ngIf="error && !loading" class="error-state">
-    <div class="error-icon">⚠️</div>
-    <p>{{ error }}</p>
-    <button class="retry-button" (click)="loadSites()">Retry</button>
-  </div>
-
-  <!-- Empty State -->
-  <div *ngIf="!loading && !error && sites.length === 0" class="empty-state">
-    <div class="empty-icon">🏢</div>
-    <h2>No Sites Yet</h2>
-    <p>Get started by adding your first site</p>
-    <button class="add-button" (click)="openAddDialog()">
-      <span class="material-icons">add</span>
-      Add Site
-    </button>
-  </div>
-
-  <!-- Sites List -->
-  <div *ngIf="!loading && !error && sites.length > 0" class="sites-list">
-    <div class="sites-header">
-      <h2>Your Sites</h2>
-      <div class="header-actions">
-        <span class="sites-count">{{ sites.length }} site{{ sites.length !== 1 ? 's' : '' }}</span>
-        <button class="add-site-button" (click)="openAddDialog()">
-          <span class="material-icons">add</span>
-          <span>Add Site</span>
-        </button>
-      </div>
+<div class="page">
+  <div class="page-head">
+    <div>
+      <h1>Sites</h1>
+      <p>The construction sites you run. Workers log gigs against a site, and you verify them.</p>
     </div>
-
-    <div class="sites-grid">
-      <div *ngFor="let site of sites" class="site-card">
-        <div class="site-card-header">
-          <div class="site-icon">
-            <span class="material-icons">business</span>
-          </div>
-          <div class="site-info">
-            <h3 class="site-name">{{ site.name }}</h3>
-            <p class="site-description" *ngIf="site.description">{{ site.description }}</p>
-          </div>
-          <div class="site-status" [class.active]="site.is_active">
-            <span class="status-dot"></span>
-            {{ site.is_active ? 'Active' : 'Inactive' }}
-          </div>
-        </div>
-
-        <div class="site-card-body">
-          <div class="site-detail" *ngIf="site.phone_number">
-            <span class="material-icons">phone</span>
-            <span>{{ site.phone_number }}</span>
-          </div>
-          <div class="site-detail" *ngIf="site.county">
-            <span class="material-icons">location_city</span>
-            <span>{{ site.county }}</span>
-          </div>
-          <div class="site-detail" *ngIf="site.constituency">
-            <span class="material-icons">account_balance</span>
-            <span>{{ site.constituency }}</span>
-          </div>
-          <div class="site-detail" *ngIf="site.ward">
-            <span class="material-icons">place</span>
-            <span>{{ site.ward }}</span>
-          </div>
-          <div class="site-detail" *ngIf="site.created_at">
-            <span class="material-icons">schedule</span>
-            <span>Created {{ formatDate(site.created_at) }}</span>
-          </div>
-        </div>
-
-        <div class="site-card-footer">
-          <button class="action-button edit" (click)="openEditDialog(site)" title="Edit site">
-            <span class="material-icons">edit</span>
-            <span class="button-text">Edit</span>
-          </button>
-          <button class="action-button delete" (click)="handleDeleteSite(site)" title="Delete site">
-            <span class="material-icons">delete</span>
-            <span class="button-text">Delete</span>
-          </button>
-        </div>
-      </div>
-    </div>
+    <div class="actions"><button class="btn primary" type="button" (click)="openNew()"><span class="icon">add</span> Add site</button></div>
   </div>
+
+  <div class="stat-grid">
+    <div class="stat"><span class="tile blue"><span class="icon">apartment</span></span><div><div class="label">Sites</div><div class="value">{{ totals().sites }}<small>{{ totals().active }} active</small></div></div></div>
+    <div class="stat"><span class="tile purple"><span class="icon">work</span></span><div><div class="label">Open gigs</div><div class="value">{{ totals().open }}</div></div></div>
+    <div class="stat"><span class="tile orange"><span class="icon">pending_actions</span></span><div><div class="label">Waiting for verification</div><div class="value">{{ totals().pending }}</div></div></div>
+  </div>
+
+  @if (loading()) {
+    <div class="cards"><div class="skeleton" style="height:240px"></div><div class="skeleton" style="height:240px"></div></div>
+  } @else if (!sites().length) {
+    <div class="panel"><div class="empty"><span class="icon">add_business</span><h3>Add your first site</h3>
+      <p>Create a site so fundis can log the work they do there.</p>
+      <button class="btn primary" type="button" (click)="openNew()"><span class="icon">add</span> Add site</button></div></div>
+  } @else {
+    <div class="cards">
+      @for (s of sites(); track s.id) {
+        <article class="panel site" [class.paused]="!s.is_active">
+          <div class="site-top">
+            <span class="site-mark"><span class="icon">apartment</span></span>
+            <div class="grow">
+              <h3>{{ s.name }}</h3>
+              <div class="loc"><span class="icon">location_on</span> {{ s.ward }}, {{ s.constituency }}, {{ s.county }}</div>
+            </div>
+            <span class="badge" [class.ok]="s.is_active">{{ s.is_active ? 'Active' : 'Paused' }}</span>
+          </div>
+          @if (s.description) { <p class="desc">{{ s.description.replace('[demo] ', '') }}</p> }
+          <div class="mini">
+            <div><span>Open gigs</span><strong>{{ stats()[s.id]?.open ?? 0 }}</strong></div>
+            <div><span>To verify</span><strong [class.warn]="(stats()[s.id]?.pending ?? 0) > 0">{{ stats()[s.id]?.pending ?? 0 }}</strong></div>
+            <div><span>Workers</span><strong>{{ stats()[s.id]?.workers ?? 0 }}</strong></div>
+          </div>
+          <div class="site-foot">
+            <button class="btn outline sm" type="button" (click)="workIn(s, 'all-gigs')">View gigs</button>
+            <button class="btn ghost sm" type="button" (click)="workIn(s, 'add-gig-type')">Job types</button>
+            <span class="spacer"></span>
+            <button class="icon-btn" type="button" (click)="openEdit(s)" aria-label="Edit site" title="Edit"><span class="icon">edit</span></button>
+            <button class="icon-btn" type="button" (click)="toggleActive(s)" [attr.aria-label]="s.is_active ? 'Pause site' : 'Activate site'" [title]="s.is_active ? 'Pause' : 'Activate'">
+              <span class="icon">{{ s.is_active ? 'pause_circle' : 'play_circle' }}</span>
+            </button>
+          </div>
+        </article>
+      }
+    </div>
+  }
 </div>
 
-<!-- Add/Edit Dialog -->
-<div class="dialog-overlay" *ngIf="showDialog" (click)="closeDialog()">
-  <div class="dialog" (click)="$event.stopPropagation()">
-    <div class="dialog-header">
-      <h2>{{ dialogMode === 'add' ? 'Add New Site' : 'Edit Site' }}</h2>
-      <button class="close-button" (click)="closeDialog()">
-        <span class="material-icons">close</span>
-      </button>
+<dialog class="modal" #siteDialog>
+  <form (ngSubmit)="save()">
+    <div class="modal-head">
+      <div><h2>{{ editing() ? 'Edit site' : 'Add a site' }}</h2><p>Where the work happens. Workers pick this site when they log a gig.</p></div>
+      <button class="icon-btn" type="button" (click)="close()" aria-label="Close"><span class="icon">close</span></button>
     </div>
-
-    <div class="dialog-body">
-      <form (ngSubmit)="saveSite()">
-        <div class="form-group">
-          <label for="name">Site Name *</label>
-          <input 
-            type="text" 
-            id="name" 
-            [(ngModel)]="formData.name" 
-            name="name"
-            placeholder="Enter site name"
-            required
-          />
-        </div>
-
-        <div class="form-group">
-          <label for="description">Description</label>
-          <textarea 
-            id="description" 
-            [(ngModel)]="formData.description" 
-            name="description"
-            placeholder="Enter site description"
-            rows="3"
-          ></textarea>
-        </div>
-
-        <div class="form-group">
-          <label for="phone_number">Phone Number *</label>
-          <input 
-            type="tel" 
-            id="phone_number" 
-            [(ngModel)]="formData.phone_number" 
-            name="phone_number"
-            placeholder="0712345678"
-            required
-          />
-        </div>
-
-        <div class="form-group">
-          <label for="county">County</label>
-          <select 
-            id="county" 
-            [(ngModel)]="formData.county" 
-            name="county"
-            (change)="onCountyChange()"
-          >
-            <option value="">Select County</option>
-            <option *ngFor="let county of counties" [value]="county.county_name">
-              {{ county.county_name }}
-            </option>
-          </select>
-        </div>
-
-        <div class="form-group">
-          <label for="constituency">Constituency</label>
-          <select 
-            id="constituency" 
-            [(ngModel)]="formData.constituency" 
-            name="constituency"
-            (change)="onConstituencyChange()"
-            [disabled]="!formData.county || availableConstituencies.length === 0"
-          >
-            <option value="">Select Constituency</option>
-            <option *ngFor="let constituency of availableConstituencies" [value]="constituency.constituency_name">
-              {{ constituency.constituency_name }}
-            </option>
-          </select>
-        </div>
-
-        <div class="form-group">
-          <label for="ward">Ward</label>
-          <select 
-            id="ward" 
-            [(ngModel)]="formData.ward" 
-            name="ward"
-            [disabled]="!formData.constituency || availableWards.length === 0"
-          >
-            <option value="">Select Ward</option>
-            <option *ngFor="let ward of availableWards" [value]="ward">
-              {{ ward }}
-            </option>
-          </select>
-        </div>
-
-        <div class="dialog-footer">
-          <button type="button" class="cancel-button" (click)="closeDialog()" [disabled]="saving">
-            Cancel
-          </button>
-          <button type="submit" class="save-button" [disabled]="saving">
-            <span *ngIf="!saving">{{ dialogMode === 'add' ? 'Add Site' : 'Update Site' }}</span>
-            <span *ngIf="saving">Saving...</span>
-          </button>
-        </div>
-      </form>
+    <div class="modal-body">
+      <div class="form-grid">
+        <div class="field full"><label for="s-name">Site name *</label><input id="s-name" name="name" class="input" [(ngModel)]="form.name" placeholder="e.g. Kilimani Heights" required></div>
+        <div class="field full"><label for="s-desc">Description</label><input id="s-desc" name="description" class="input" [(ngModel)]="form.description" placeholder="e.g. 8-storey residential block"></div>
+        <div class="field"><label for="s-county">County *</label>
+          <select id="s-county" name="county" class="input" [(ngModel)]="form.county" (ngModelChange)="countyChanged()" required>
+            <option value="" disabled>Select county</option>
+            @for (c of regions; track c.county_name) { <option [value]="c.county_name">{{ c.county_name }}</option> }
+          </select></div>
+        <div class="field"><label for="s-cons">Constituency *</label>
+          <select id="s-cons" name="constituency" class="input" [(ngModel)]="form.constituency" (ngModelChange)="constituencyChanged()" [disabled]="!form.county" required>
+            <option value="" disabled>Select constituency</option>
+            @for (c of constituencies; track c.constituency_name) { <option [value]="c.constituency_name">{{ c.constituency_name }}</option> }
+          </select></div>
+        <div class="field"><label for="s-ward">Ward *</label>
+          <select id="s-ward" name="ward" class="input" [(ngModel)]="form.ward" [disabled]="!form.constituency" required>
+            <option value="" disabled>Select ward</option>
+            @for (w of wards; track w) { <option [value]="w">{{ w }}</option> }
+          </select></div>
+        <div class="field"><label for="s-phone">Site phone</label><input id="s-phone" name="phone_number" class="input" [(ngModel)]="form.phone_number" placeholder="07…"></div>
+      </div>
     </div>
-  </div>
-</div>
+    <div class="modal-foot">
+      <button class="btn ghost" type="button" (click)="close()">Cancel</button>
+      <button class="btn primary" type="submit" [disabled]="!valid() || saving()">{{ saving() ? 'Saving…' : (editing() ? 'Save changes' : 'Add site') }}</button>
+    </div>
+  </form>
+</dialog>

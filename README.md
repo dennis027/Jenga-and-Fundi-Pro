@@ -81,6 +81,33 @@ resets the passwords. Run it again after `docker compose down -v`, which wipes t
 > These credentials are public. The command refuses to run in HTTPS production mode
 > (`docker-compose.prod.yml`) unless you pass `--force`. Never seed them on a real deployment.
 
+### Demo data (local only)
+
+To see the portals with realistic content (2 sites, 6 fundis, ~15 gigs, ratings, job posts,
+M-Pesa payments, a dispute), run:
+
+```bash
+docker compose exec backend python manage.py seed_demo_data --reset
+```
+
+It builds on the test accounts above. The other fundis' password is `DemoFundi2026!`. It refuses to
+run in production mode.
+
+### The two portals
+
+| Jenga Pro (contractors) | Fundi Pro (workers) |
+|---|---|
+| **Dashboard:** greeting, quick actions, verification queue with one-tap *Verify*, top workers, sites | **Dashboard:** credit score and level, *Mark complete (+5)*, ID prompt, recent work, certificate |
+| **Verify gigs:** queue with bulk verify · **All gigs:** tabs, CSV export, star ratings | **My gigs:** Waiting / Ready to complete / Completed, report a problem (dispute) |
+| **Workers:** everyone who worked at your sites, plus lookup of any fundi's verified record | **Log a gig:** pick site, then that site's trades · **Find work:** contractors' job posts |
+| **Sites**, **Job types**, **Job posts** (advertise open work) | **Credit score:** history, how to earn points, share the work certificate |
+| **M-Pesa payments:** STK prompt to your phone, history, CSV | **ID verification** (camera capture) · **Payments received** (M-Pesa proof with OCR) |
+
+Both share one design system (`frontend/design-system/`): a grouped sidebar, a top bar with
+**Ctrl K** search, notifications and the user menu, light and dark themes, and a phone layout.
+After editing it, run `scripts/sync-design.sh` (CI fails if a portal's copy differs). Icons come from a
+subset of Material Symbols. After using a new icon, run `scripts/icons.py`.
+
 ### Development mode (live reload)
 
 ```bash

@@ -1,35 +1,19 @@
-import { Component, inject, PLATFORM_ID, ChangeDetectorRef } from '@angular/core';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
+import { HttpClient } from '@angular/common/http';
+import { Component, ElementRef, OnInit, PLATFORM_ID, ViewChild, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { SitesService } from '../../services/sites-service';
-import { AppBarService } from '../../services/app-bar-service';
-import regionsData from '../../../assets/JSON-Files/regions.json';
-import { Router } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { MatSnackBar } from '@angular/material/snack-bar';
+import { catchError, forkJoin, of } from 'rxjs';
+import regionsData from '../../../assets/JSON-Files/regions.json';
+import { environment } from '../../../environments/environment';
+import { AppBarService } from '../../services/app-bar-service';
+import { SiteContextService } from '../../shell/site-context';
 
-interface Site {
-  id?: number;
-  name: string;
-  description: string;
-  county: string;
-  constituency: string;
-  ward: string;
-  phone_number: string;
-  created_at?: string;
-  is_active?: boolean;
-  owner?: number;
-}
-
-interface Constituency {
-  constituency_name: string;
-  wards: string[];
-}
-
-interface County {
-  county_code: number;
-  county_name: string;
-  constituencies: Constituency[];
-}
+const API = environment.apiUrl + 'api/';
+interface County { county_name: string; constituencies: { constituency_name: string; wards: string[] }[]; }
+interface Site { id: number; name: string; description: string | null; phone_number: string | null; county: string; constituency: string; ward: string; is_active: boolean; }
+interface SiteStats { open: number; pending: number; workers: number; }
 
 @Component({
   selector: 'app-add-sites',
@@ -38,222 +22,111 @@ interface County {
   templateUrl: './add-sites.html',
   styleUrl: './add-sites.css',
 })
-export class AddSites {
-  private siteService = inject(SitesService);
+export class AddSites implements OnInit {
+  private http = inject(HttpClient);
+  private snack = inject(MatSnackBar);
   private appBar = inject(AppBarService);
+  private route = inject(ActivatedRoute);
   private router = inject(Router);
-  private platformId = inject(PLATFORM_ID);
-  private cdr = inject(ChangeDetectorRef); 
-  private snackBar = inject(MatSnackBar);
+  private site = inject(SiteContextService);
+  private browser = isPlatformBrowser(inject(PLATFORM_ID));
+  @ViewChild('siteDialog') dialog?: ElementRef<HTMLDialogElement>;
 
-  private showSuccess(message: string) {
-    this.snackBar.open(message, 'Close', {
-      duration: 3000,
-      panelClass: ['success-snackbar'],
-      horizontalPosition: 'right',
-      verticalPosition: 'top',
-    });
-  }
+  regions = ((regionsData as any).counties || regionsData) as County[];
+  loading = signal(true);
+  sites = signal<Site[]>([]);
+  stats = signal<Record<number, SiteStats>>({});
+  editing = signal<Site | null>(null);
+  saving = signal(false);
+  form = { name: '', description: '', phone_number: '', county: '', constituency: '', ward: '' };
 
-  private showError(message: string) {
-    this.snackBar.open(message, 'Close', {
-      duration: 4000,
-      panelClass: ['error-snackbar'],
-      horizontalPosition: 'right',
-      verticalPosition: 'top',
-    });
-  }
+  totals = computed(() => {
+    const s = Object.values(this.stats());
+    return { sites: this.sites().length, active: this.sites().filter((x) => x.is_active).length,
+             open: s.reduce((a, b) => a + b.open, 0), pending: s.reduce((a, b) => a + b.pending, 0) };
+  });
 
-
-  sites: Site[] = [];
-  loading = true;
-  error: string | null = null;
-  
-  // Dialog state
-  showDialog = false;
-  dialogMode: 'add' | 'edit' = 'add';
-  saving = false;
-  
-  // Region data
-  counties: County[] = regionsData as County[];
-  availableConstituencies: Constituency[] = [];
-  availableWards: string[] = [];
-  
-  // Form data
-  formData: Site = {
-    name: '',
-    description: '',
-    phone_number: '',
-    county: '',
-    constituency: '',
-    ward: ''
-  };
-  
-  editingSiteId: number | null = null;
+  get constituencies() { return this.regions.find((c) => c.county_name === this.form.county)?.constituencies ?? []; }
+  get wards() { return this.constituencies.find((c) => c.constituency_name === this.form.constituency)?.wards ?? []; }
 
   ngOnInit() {
-    this.appBar.setTitle('Manage Sites');
-    this.appBar.setBack(true);
-
-    this.appBar.setActions([
-      {
-        id: 'refresh',
-        icon: 'refresh',
-        ariaLabel: 'Refresh Sites',
-        onClick: () => {
-          this.loadSites();
-        },
-      }
-    ]);
-
-    if (isPlatformBrowser(this.platformId)) {
-      this.loadSites();
-    }
+    this.appBar.setTitle('Sites');
+    this.appBar.clearActions();
+    if (!this.browser) return;
+    this.load();
+    this.route.queryParamMap.subscribe((p) => { if (p.get('new')) setTimeout(() => this.openNew()); });
   }
 
-  loadSites() {
-    this.loading = true;
-    this.error = null;
-    
-    // Explicitly trigger change detection because we are 
-    // changing 'loading' during the lifecycle check.
-    this.cdr.detectChanges();
-
-    this.siteService.getUserSites().subscribe({
-      next: (data) => {
-        this.sites = data;
-        this.loading = false;
-        this.cdr.detectChanges(); // Ensure UI updates when data arrives
-      },
-      error: (err) => {
-        console.error('Error loading sites:', err);
-        this.loading = false;
-        
-        if (err.status === 0) {
-          this.error = 'Network error: Please check your internet connection.';
-        } else if (err.status === 401) {
-          this.error = 'Unauthorized: Please log in again.';
-          this.router.navigate(['/login']);
-        } else {
-          this.error = 'Failed to load sites. Please try again.';
-        }
-        this.cdr.detectChanges();
-
-        this.showError(this.error);
-      }
+  load() {
+    forkJoin({
+      sites: this.http.get<Site[]>(API + 'user-organizations/').pipe(catchError(() => of([]))),
+      gigs: this.http.get<any[]>(API + 'org-gigs-list/').pipe(catchError(() => of([]))),
+    }).subscribe(({ sites, gigs }) => {
+      const st: Record<number, SiteStats> = {};
+      sites.forEach((s) => (st[s.id] = { open: 0, pending: 0, workers: 0 }));
+      const workers: Record<number, Set<number>> = {};
+      gigs.forEach((g) => {
+        const s = st[g.organization]; if (!s) return;
+        s.open++; if (!g.is_verified) s.pending++;
+        (workers[g.organization] ||= new Set()).add(g.worker);
+      });
+      Object.entries(workers).forEach(([id, w]) => (st[+id].workers = w.size));
+      this.sites.set(sites);
+      this.stats.set(st);
+      this.loading.set(false);
     });
   }
 
-  onCountyChange() {
-    this.formData.constituency = '';
-    this.formData.ward = '';
-    this.availableWards = [];
-    
-    const selectedCounty = this.counties.find(
-      county => county.county_name === this.formData.county
-    );
-    
-    this.availableConstituencies = selectedCounty ? selectedCounty.constituencies : [];
+  openNew() {
+    this.editing.set(null);
+    this.form = { name: '', description: '', phone_number: '', county: '', constituency: '', ward: '' };
+    this.dialog?.nativeElement.showModal();
   }
-
-  onConstituencyChange() {
-    this.formData.ward = '';
-    
-    const selectedConstituency = this.availableConstituencies.find(
-      constituency => constituency.constituency_name === this.formData.constituency
-    );
-    
-    this.availableWards = selectedConstituency ? selectedConstituency.wards : [];
+  openEdit(s: Site) {
+    this.editing.set(s);
+    this.form = { name: s.name, description: (s.description || '').replace(/^\[demo\]\s*/, ''), phone_number: s.phone_number || '',
+                  county: s.county, constituency: s.constituency, ward: s.ward };
+    this.dialog?.nativeElement.showModal();
   }
-
-  openAddDialog() {
-    this.dialogMode = 'add';
-    this.editingSiteId = null;
-    this.formData = {
-      name: '',
-      description: '',
-      phone_number: '',
-      county: '',
-      constituency: '',
-      ward: ''
-    };
-    this.availableConstituencies = [];
-    this.availableWards = [];
-    this.showDialog = true;
+  close() {
+    this.dialog?.nativeElement.close();
+    if (this.route.snapshot.queryParamMap.get('new')) this.router.navigate([], { queryParams: {} });
   }
+  countyChanged() { this.form.constituency = ''; this.form.ward = ''; }
+  constituencyChanged() { this.form.ward = ''; }
+  valid() { return this.form.name.trim() && this.form.county && this.form.constituency && this.form.ward; }
 
-  openEditDialog(site: Site) {
-    this.dialogMode = 'edit';
-    this.editingSiteId = site.id || null;
-    this.formData = { ...site }; // Shallow copy to avoid direct mutation
-    
-    const selectedCounty = this.counties.find(c => c.county_name === site.county);
-    if (selectedCounty) {
-      this.availableConstituencies = selectedCounty.constituencies;
-      const selectedConstituency = this.availableConstituencies.find(
-        c => c.constituency_name === site.constituency
-      );
-      if (selectedConstituency) {
-        this.availableWards = selectedConstituency.wards;
-      }
-    }
-    
-    this.showDialog = true;
-  }
-
-  closeDialog() {
-    this.showDialog = false;
-    this.editingSiteId = null;
-    this.cdr.detectChanges(); // Ensures the dialog DOM is cleaned up properly
-  }
-
-  saveSite() {
-    if (!this.formData.name.trim() || !this.formData.phone_number.trim()) {
-      alert('Please fill in all required fields');
-      return;
-    }
-
-    this.saving = true;
-    const payload = { ...this.formData };
-
-    const request = this.dialogMode === 'add' 
-      ? this.siteService.addSite(payload)
-      : this.siteService.updateSite(this.editingSiteId!, payload);
-
-    request.subscribe({
+  save() {
+    if (!this.valid()) return;
+    this.saving.set(true);
+    const e = this.editing();
+    const req = e ? this.http.put<Site>(API + `organizations/${e.id}/`, this.form) : this.http.post<Site>(API + 'organizations/', this.form);
+    req.subscribe({
       next: () => {
-        this.saving = false;
-        this.closeDialog();
-        this.loadSites();
-        this.showSuccess(`Site ${this.dialogMode === 'add' ? 'added' : 'updated'} successfully!`);
+        this.saving.set(false);
+        this.close();
+        this.snack.open(e ? 'Site updated.' : `${this.form.name} added. Workers can now log gigs there.`, 'OK', { duration: 3500, panelClass: 'success-snackbar' });
+        this.load();
       },
       error: (err) => {
-        console.error('Error saving site:', err);
-        alert('Failed to save site. Please try again.');
-        this.saving = false;
-        this.cdr.detectChanges();
-      }
+        this.saving.set(false);
+        this.snack.open(err?.error?.detail || 'Could not save the site.', 'OK', { duration: 4000, panelClass: 'error-snackbar' });
+      },
     });
   }
 
-  handleDeleteSite(site: Site) {
-    if (!site.id || !confirm(`Are you sure you want to delete "${site.name}"?`)) return;
-    
-    this.siteService.deleteSite(site.id).subscribe({
-      next: () => this.loadSites(),
-      error: (err) => {
-        console.error('Error deleting site:', err);
-        alert('Failed to delete site.');
-      }
+  toggleActive(s: Site) {
+    this.http.post<any>(API + `organizations/${s.id}/toggle-active/`, {}).subscribe({
+      next: () => {
+        this.sites.update((l) => l.map((x) => (x.id === s.id ? { ...x, is_active: !x.is_active } : x)));
+        this.snack.open(s.is_active ? `${s.name} paused. Workers can't log new gigs there.` : `${s.name} is active again.`, 'OK', { duration: 3500 });
+      },
+      error: () => this.snack.open('Could not change the site status.', 'OK', { duration: 4000, panelClass: 'error-snackbar' }),
     });
   }
 
-  formatDate(dateString: string): string {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', { 
-      year: 'numeric', 
-      month: 'short', 
-      day: 'numeric' 
-    });
+  workIn(s: Site, page: string) {
+    this.site.select(s.id, s.name);
+    this.router.navigate(['/main-menu', page]);
   }
 }

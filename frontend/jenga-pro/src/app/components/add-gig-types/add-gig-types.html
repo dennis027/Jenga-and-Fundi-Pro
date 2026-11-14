@@ -1,1 +1,47 @@
-<p>add-gig-types works!</p>
+<div class="page">
+  <div class="page-head">
+    <div>
+      <h1>Job types</h1>
+      <p>The trades workers can choose when they log a gig at a site. Each site has its own list.</p>
+    </div>
+  </div>
+
+  @if (!sites().length && !loading()) {
+    <div class="panel"><div class="empty"><span class="icon">category</span><h3>No sites yet</h3><p>Add a site first. It comes with a default list of trades.</p></div></div>
+  } @else {
+    <div class="panel">
+      <div class="toolbar">
+        <div class="field site-pick">
+          <select class="input" [ngModel]="siteId()" (ngModelChange)="pick($event)" aria-label="Site">
+            @for (s of sites(); track s.id) { <option [ngValue]="s.id">{{ s.name }}</option> }
+          </select>
+        </div>
+        <label class="search"><input type="search" placeholder="Filter trades" [ngModel]="q()" (ngModelChange)="q.set($event)"><span class="icon">filter_list</span></label>
+      </div>
+
+      <form class="add-row" (ngSubmit)="add()">
+        <div class="input-icon grow"><span class="icon">add</span>
+          <input class="input" name="newName" placeholder="Add a trade, e.g. Gypsum ceilings" [ngModel]="newName()" (ngModelChange)="newName.set($event)" maxlength="100"></div>
+        <button class="btn primary" type="submit" [disabled]="!newName().trim() || adding()">{{ adding() ? 'Adding…' : 'Add trade' }}</button>
+      </form>
+
+      @if (loading()) {
+        <div class="panel-body"><div class="skeleton" style="height:140px"></div></div>
+      } @else {
+        <div class="chips">
+          @for (t of shown(); track t.id) {
+            <div class="chip">
+              <span class="icon">handyman</span>
+              <span class="name">{{ t.name }}</span>
+              @if (usage()[t.id]) { <span class="badge info">{{ usage()[t.id] }} gig{{ usage()[t.id] === 1 ? '' : 's' }}</span> }
+              <button class="icon-btn danger" type="button" (click)="remove(t)" [attr.aria-label]="'Remove ' + t.name" title="Remove"><span class="icon">close</span></button>
+            </div>
+          } @empty {
+            <div class="empty"><span class="icon">category</span><p>{{ q() ? 'No trades match.' : 'No trades at ' + siteName() + ' yet.' }}</p></div>
+          }
+        </div>
+        <div class="panel-foot muted small">{{ types().length }} trade{{ types().length === 1 ? '' : 's' }} at {{ siteName() }}</div>
+      }
+    </div>
+  }
+</div>

@@ -1,245 +1,67 @@
-<br><br>
-
 <div class="page">
-  
-  <!-- Header Info Card -->
-  <div class="card header-card">
-    <div class="header-content">
-      <div class="header-icon">
-        <i class="material-icons">phone_android</i>
-      </div>
-      <div class="header-text">
-        <h2>M-Pesa Transactions</h2>
-        <p>View and manage your mobile money transactions</p>
-      </div>
+  <div class="page-head">
+    <div>
+      <h1>Payments received</h1>
+      <p>Upload the M-Pesa message for money you were paid for a gig. It becomes proof of your income.</p>
     </div>
+    <div class="actions"><button class="btn primary" type="button" (click)="open()"><span class="icon">upload</span> Add M-Pesa payment</button></div>
   </div>
 
-  <!-- Loading State -->
-  @if (isLoading()) {
-    <div class="loading-container">
-      <div class="spinner-large"></div>
-      <p>Loading transactions...</p>
-    </div>
-  }
+  <div class="stat-grid">
+    <div class="stat"><span class="tile green"><span class="icon">payments</span></span><div><div class="label">Total recorded</div><div class="value"><small class="cur">KSh</small>{{ total() | number: '1.0-0' }}</div></div></div>
+    <div class="stat"><span class="tile blue"><span class="icon">calendar_month</span></span><div><div class="label">This month</div><div class="value"><small class="cur">KSh</small>{{ thisMonth() | number: '1.0-0' }}</div></div></div>
+    <div class="stat"><span class="tile purple"><span class="icon">verified</span></span><div><div class="label">Confirmed</div><div class="value"><small class="cur">KSh</small>{{ confirmed() | number: '1.0-0' }}</div></div></div>
+  </div>
 
-  <!-- Empty State -->
-  @else if (mpesaMessages().length === 0) {
-    <div class="empty-state">
-      <div class="empty-icon">
-        <i class="material-icons">receipt_long</i>
+  <div class="panel">
+    @if (loading()) {
+      <div class="panel-body"><div class="skeleton" style="height:160px"></div></div>
+    } @else if (!payments().length) {
+      <div class="empty"><span class="icon">receipt_long</span><h3>No payments yet</h3><p>When a contractor pays you on M-Pesa, add the confirmation message here.</p>
+        <button class="btn primary sm" type="button" (click)="open()"><span class="icon">upload</span> Add M-Pesa payment</button></div>
+    } @else {
+      <div class="table-wrap">
+        <table class="tbl">
+          <thead><tr><th>Date</th><th>M-Pesa code</th><th class="right">Amount (KSh)</th><th>Status</th><th></th></tr></thead>
+          <tbody>
+            @for (p of payments(); track p.id) {
+              <tr>
+                <td class="nowrap">{{ p.payment_date | date: 'd MMM y' }}</td>
+                <td class="mono">{{ p.transaction_code }}</td>
+                <td class="right num cell-main">{{ +p.amount | number: '1.2-2' }}</td>
+                <td>@if (p.is_confirmed) { <span class="badge ok">Confirmed</span> } @else { <span class="badge warn">Under review</span> }</td>
+                <td><div class="row-actions">@if (p.screenshot) { <a class="btn ghost sm" [href]="p.screenshot" target="_blank" rel="noopener"><span class="icon">image</span> Screenshot</a> }</div></td>
+              </tr>
+            }
+          </tbody>
+        </table>
       </div>
-      <h3>No Transactions Found</h3>
-      <p>No M-Pesa transactions match your search criteria</p>
-    </div>
-  }
-
-  <!-- Transaction List -->
-  @else {
-    <div class="card">
-      <div class="card-title">
-        <i class="material-icons">list_alt</i>
-        <span>Transaction History ({{ mpesaMessages().length }})</span>
-      </div>
-
-      <div class="transactions-list">
-        @for (msg of mpesaMessages(); track msg.id; let i = $index) {
-          <div class="transaction-card">
-            <!-- Header with Amount -->
-            <div class="transaction-header">
-              <div class="amount-section">
-                <div class="mpesa-icon">
-                  <i class="material-icons">phone_android</i>
-                </div>
-                <span class="amount">KES {{ msg.amount }}</span>
-              </div>
-              <div class="status-badge completed">
-                <i class="material-icons">check_circle</i>
-                <span>Completed</span>
-              </div>
-            </div>
-
-            <!-- Transaction Details -->
-            <div class="detail-box blue">
-              <div class="detail-row">
-                <i class="material-icons">phone</i>
-                <span class="label">Phone:</span>
-                <span class="value">{{ formatPhone(msg.phone_number) }}</span>
-              </div>
-              <div class="detail-row">
-                <i class="material-icons">receipt_long</i>
-                <span class="label">Receipt:</span>
-                <span class="value">{{ msg.mpesa_receipt_number || 'N/A' }}</span>
-              </div>
-            </div>
-
-            <!-- Date Information -->
-            <div class="detail-box gray">
-              <div class="detail-row">
-                <i class="material-icons">access_time</i>
-                <span class="label">Date:</span>
-                <span class="value">{{ formatDate(msg.transaction_date) }}</span>
-              </div>
-            </div>
-          </div>
-        }
-      </div>
-    </div>
-  }
-
-  <!-- FAB for Desktop -->
-  @if (!isMobile()) {
-    <button class="fab-desktop" (click)="openPaymentDialog()">
-      <i class="material-icons">add</i>
-      <span>Add Payment</span>
-    </button>
-  }
-
-  <!-- FAB for Mobile -->
-  @if (isMobile()) {
-    <button class="fab-mobile" (click)="openPaymentDialog()">
-      <i class="material-icons">add</i>
-    </button>
-  }
-
-</div>
-
-<!-- Payment Dialog -->
-<div class="dialog-overlay" [class.active]="showPaymentDialog()" (click)="closePaymentDialog()">
-  <div class="dialog" (click)="$event.stopPropagation()">
-    <div class="dialog-header">
-      <div class="dialog-icon">
-        <i class="material-icons">payment</i>
-      </div>
-      <h3>Add New Payment</h3>
-      <button class="dialog-close" (click)="closePaymentDialog()">
-        <i class="material-icons">close</i>
-      </button>
-    </div>
-
-    <div class="dialog-content">
-      <div class="form-group">
-        <label for="payment-phone">Phone Number</label>
-        <div class="input-with-icon">
-          <i class="material-icons">phone</i>
-          <input 
-            type="tel" 
-            id="payment-phone" 
-            class="form-control"
-            placeholder="07XX XXX XXX"
-            [(ngModel)]="paymentPhone"
-          />
-        </div>
-      </div>
-
-      <div class="form-group">
-        <label for="payment-amount">Amount (KES)</label>
-        <div class="input-with-icon">
-          <i class="material-icons">money</i>
-          <input 
-            type="number" 
-            id="payment-amount" 
-            class="form-control"
-            placeholder="0.00"
-            [(ngModel)]="paymentAmount"
-          />
-        </div>
-      </div>
-    </div>
-
-    <div class="dialog-actions">
-      <button class="btn-secondary" (click)="closePaymentDialog()">
-        Cancel
-      </button>
-      <button class="btn-primary" (click)="sendStkPush()">
-        Send STK Push
-      </button>
-    </div>
+    }
   </div>
 </div>
 
-<!-- Filter Dialog -->
-<div class="dialog-overlay" [class.active]="showFilterDialog()" (click)="closeFilterDialog()">
-  <div class="dialog dialog-large" (click)="$event.stopPropagation()">
-    <div class="dialog-header">
-      <div class="dialog-icon">
-        <i class="material-icons">filter_list</i>
-      </div>
-      <h3>Filter Messages</h3>
-      <button class="dialog-close" (click)="closeFilterDialog()">
-        <i class="material-icons">close</i>
-      </button>
+<dialog class="modal" #uploadDialog>
+  <form (ngSubmit)="save()">
+    <div class="modal-head">
+      <div><h2>Add M-Pesa payment</h2><p>Upload a screenshot of the M-Pesa message, or type the details.</p></div>
+      <button class="icon-btn" type="button" (click)="close()" aria-label="Close"><span class="icon">close</span></button>
     </div>
-
-    <div class="dialog-content">
-      <div class="form-group">
-        <label for="filter-phone">Phone Number</label>
-        <div class="input-with-icon">
-          <i class="material-icons">phone</i>
-          <input 
-            type="tel" 
-            id="filter-phone" 
-            class="form-control"
-            [(ngModel)]="filterPhone"
-          />
-        </div>
-      </div>
-
-      <div class="form-group">
-        <label for="filter-amount">Amount</label>
-        <div class="input-with-icon">
-          <i class="material-icons">money</i>
-          <input 
-            type="number" 
-            id="filter-amount" 
-            class="form-control"
-            [(ngModel)]="filterAmount"
-          />
-        </div>
-      </div>
-
-      <div class="form-group">
-        <label for="filter-receipt">Receipt Number</label>
-        <div class="input-with-icon">
-          <i class="material-icons">receipt</i>
-          <input 
-            type="text" 
-            id="filter-receipt" 
-            class="form-control"
-            [(ngModel)]="filterReceipt"
-          />
-        </div>
-      </div>
-
-      <div class="form-row">
-        <div class="form-group">
-          <label for="filter-start-date">Start Date</label>
-          <input 
-            type="date" 
-            id="filter-start-date" 
-            class="form-control"
-            [(ngModel)]="filterStartDate"
-          />
-        </div>
-        <div class="form-group">
-          <label for="filter-end-date">End Date</label>
-          <input 
-            type="date" 
-            id="filter-end-date" 
-            class="form-control"
-            [(ngModel)]="filterEndDate"
-          />
-        </div>
+    <div class="modal-body">
+      <label class="drop" [class.filled]="preview()">
+        <input type="file" accept="image/*" (change)="pick($event)" hidden>
+        @if (preview()) { <img [src]="preview()" alt="Screenshot"> }
+        @else { <span class="icon">add_photo_alternate</span><strong>Choose screenshot</strong><small>We'll read the code and amount for you</small> }
+      </label>
+      @if (reading()) { <div class="notice"><span class="icon">hourglass_top</span> Reading your screenshot…</div> }
+      @else if (readNote()) { <div class="notice" [class.warn]="!form.transaction_code"><span class="icon">info</span> {{ readNote() }}</div> }
+      <div class="form-grid">
+        <div class="field"><label for="code">M-Pesa code *</label><input id="code" name="code" class="input mono" [(ngModel)]="form.transaction_code" placeholder="e.g. TJD4M7XK2P" maxlength="12"></div>
+        <div class="field"><label for="amount">Amount (KSh) *</label><input id="amount" name="amount" type="number" min="1" class="input" [(ngModel)]="form.amount" placeholder="e.g. 1500"></div>
       </div>
     </div>
-
-    <div class="dialog-actions">
-      <button class="btn-secondary" (click)="clearFilters()">
-        Clear All
-      </button>
-      <button class="btn-primary" (click)="applyFilters()">
-        Apply Filters
-      </button>
+    <div class="modal-foot">
+      <button class="btn ghost" type="button" (click)="close()">Cancel</button>
+      <button class="btn primary" type="submit" [disabled]="!valid() || saving() || reading()">{{ saving() ? 'Saving…' : 'Save payment' }}</button>
     </div>
-  </div>
-</div>
+  </form>
+</dialog>

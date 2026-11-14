@@ -1,88 +1,46 @@
-<div class="login-wrapper">
-  <div class="login-container">
-    <form [formGroup]="registerForm" (ngSubmit)="onSubmit()">
-
-      <h2>Create Account </h2>
-      <p class="subtitle">Join <strong>JengaPro</strong> today</p>
-
-      <!-- Username -->
-      <div class="form-group">
-        <label>Username</label>
-        <input
-          type="text"
-          formControlName="username"
-          placeholder="Choose a username"
-        />
-      </div>
-
-      <!-- Email -->
-      <div class="form-group">
-        <label>Email</label>
-        <input
-          type="email"
-          formControlName="email"
-          placeholder="Enter your email"
-        />
-      </div>
-
-      <!-- Password -->
-      <div class="form-group">
-        <label>Password</label>
-        <div class="password-wrapper">
-          <input
-            [type]="showPassword() ? 'text' : 'password'"
-            formControlName="password"
-            placeholder="Create a password"
-          />
-          <span
-            class="toggle-password material-symbols-outlined"
-            (click)="togglePassword()"
-          >
-            {{ showPassword() ? 'visibility_off' : 'visibility' }}
-          </span>
+<div class="auth">
+  <aside class="brand-side">
+    <div class="logo"><span class="logo-mark"><span class="icon fill">apartment</span></span><strong>Jenga Pro</strong></div>
+    <h1>Run your sites. Verify work. Pay with M-Pesa.</h1>
+    <ul class="points"><li><span class="icon">fact_check</span>Verify workers' gigs in one tap</li><li><span class="icon">engineering</span>See any fundi's verified record before hiring</li><li><span class="icon">apartment</span>All your sites in one place</li><li><span class="icon">payments</span>Pay workers with M-Pesa</li></ul>
+  </aside>
+  <main class="form-side">
+    <button class="icon-btn bordered theme-btn" type="button" (click)="theme.toggle()" [attr.aria-label]="theme.dark() ? 'Light mode' : 'Dark mode'">
+      <span class="icon">{{ theme.dark() ? 'light_mode' : 'dark_mode' }}</span>
+    </button>
+    <div class="card">
+      <h2>Create your account</h2>
+      <p class="sub">Join Jenga Pro as a contractor. It's free.</p>
+      <form [formGroup]="registerForm" (ngSubmit)="onSubmit()" novalidate>
+        <div class="field">
+          <label for="username">Username</label>
+          <div class="input-icon"><span class="icon">person</span><input id="username" class="input" formControlName="username" placeholder="e.g. wanjiku.k" autocomplete="username"></div>
         </div>
-      </div>
-
-      <!-- Confirm Password -->
-      <div class="form-group">
-        <label>Confirm Password</label>
-        <div class="password-wrapper">
-          <input
-            [type]="showConfirmPassword() ? 'text' : 'password'"
-            formControlName="confirm_password"
-            placeholder="Confirm your password"
-          />
-          <span
-            class="toggle-password material-symbols-outlined"
-            (click)="toggleConfirmPassword()"
-          >
-            {{ showConfirmPassword() ? 'visibility_off' : 'visibility' }}
-          </span>
+        <div class="field">
+          <label for="email">Email</label>
+          <div class="input-icon"><span class="icon">mail</span><input id="email" class="input" type="email" formControlName="email" placeholder="you@example.com" autocomplete="email"></div>
+          <span class="hint">We'll send a link to confirm it.</span>
         </div>
-
-        @if (registerForm.errors?.['passwordMismatch']) {
-          <small class="error-text">Passwords do not match</small>
-        }
-      </div>
-
-      <!-- Submit -->
-      <button type="submit" [disabled]="loading()">
-        @if (!loading()) {
-          Create Account
-        } @else {
-          <span class="loader"></span>
-        }
-      </button>
-
-      <div class="divider">
-        <span>OR</span>
-      </div>
-
-      <p class="register-text">
-        Already have an account?
-        <a routerLink="/login">Login here</a>
-      </p>
-
-    </form>
-  </div>
+        <div class="field">
+          <label for="password">Password</label>
+          <div class="input-icon"><span class="icon">lock</span>
+            <input id="password" class="input" [type]="showPassword() ? 'text' : 'password'" formControlName="password" placeholder="At least 8 characters" autocomplete="new-password">
+            <button class="icon-btn trail" type="button" (click)="togglePassword()" [attr.aria-label]="showPassword() ? 'Hide password' : 'Show password'"><span class="icon">{{ showPassword() ? 'visibility_off' : 'visibility' }}</span></button>
+          </div>
+        </div>
+        <div class="field">
+          <label for="confirm_password">Confirm password</label>
+          <div class="input-icon"><span class="icon">lock</span>
+            <input id="confirm_password" class="input" [type]="showConfirmPassword() ? 'text' : 'password'" formControlName="confirm_password" placeholder="Type it again" autocomplete="new-password">
+            <button class="icon-btn trail" type="button" (click)="toggleConfirmPassword()" [attr.aria-label]="showConfirmPassword() ? 'Hide password' : 'Show password'"><span class="icon">{{ showConfirmPassword() ? 'visibility_off' : 'visibility' }}</span></button>
+          </div>
+        </div>
+        @if (registerForm.errors?.['passwordMismatch']) { <span class="err">Passwords do not match.</span> }
+        <button class="btn primary lg block" type="submit" [disabled]="loading()">
+          @if (!loading()) { Create account } @else { <span class="spin"></span> Creating… }
+        </button>
+      </form>
+      <p class="foot">Already have an account? <a routerLink="/login">Sign in</a></p>
+    </div>
+  </main>
 </div>

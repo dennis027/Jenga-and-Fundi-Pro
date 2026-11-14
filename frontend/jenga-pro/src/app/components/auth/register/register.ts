@@ -1,3 +1,4 @@
+import { ThemeService } from '../../../services/theme';
 import {
   Component,
   signal,
@@ -28,6 +29,7 @@ import { SharedImports } from '../../../shared-imports/imports';
   styleUrls: ['./register.css'],
 })
 export class Register {
+  theme = inject(ThemeService);
   private fb = inject(FormBuilder);
   private authService = inject(AuthService);
   private router = inject(Router);

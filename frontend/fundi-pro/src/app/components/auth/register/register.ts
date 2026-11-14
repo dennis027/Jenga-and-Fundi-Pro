@@ -1,3 +1,4 @@
+import { ThemeService } from '../../../services/theme';
 import {
   Component,
   signal,
@@ -26,6 +27,7 @@ import { AuthService } from '../../../services/auth';
   styleUrls: ['./register.css'],
 })
 export class Register {
+  theme = inject(ThemeService);
   private fb = inject(FormBuilder);
   private authService = inject(AuthService);
   private router = inject(Router);

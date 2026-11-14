@@ -1,161 +1,83 @@
-<br><br>
 <div class="page">
-  <form class="gig-form"  [formGroup]="gigForm">
-    
-    <!-- Header Welcome Card -->
-    <div class="card header-card">
-      <div class="header-content">
-        <div class="header-icon">
-          <i class="material-icons">work_outline</i>
-        </div>
-        <div class="header-text">
-          <h2>Log New Gig</h2>
-          <p>Record your work to build your profile</p>
-        </div>
-      </div>
+  <div class="page-head">
+    <div>
+      <h1>Log a gig</h1>
+      <p>Record work you are doing at a site. The site's contractor verifies it, and it counts towards your credit score.</p>
     </div>
+  </div>
 
-    <!-- Site Selection Card -->
-    <div class="card">
-      <div class="card-title">
-        <i class="material-icons">location_city</i>
-        <span>Work Site</span>
+  <div class="layout">
+    <form class="panel" (ngSubmit)="submit()">
+      <div class="panel-body section">
+        <h2><span class="num-dot">1</span> Where are you working?</h2>
+        @if (site(); as s) {
+          <div class="picked">
+            <span class="site-mark"><span class="icon">apartment</span></span>
+            <div class="grow"><strong>{{ s.name }}</strong><small>{{ s.ward }}, {{ s.constituency }}, {{ s.county }}</small></div>
+            <button class="btn ghost sm" type="button" (click)="clearSite()">Change</button>
+          </div>
+        } @else {
+          <div class="input-icon"><span class="icon">search</span>
+            <input class="input" name="siteQ" placeholder="Search site name or area" [ngModel]="siteQ()" (ngModelChange)="siteQ.set($event)" autocomplete="off"></div>
+          <div class="site-list">
+            @for (s of matches(); track s.id) {
+              <button class="site-opt" type="button" (click)="pickSite(s)">
+                <span class="icon">apartment</span>
+                <span class="grow"><strong>{{ s.name }}</strong><small>{{ s.ward }}, {{ s.county }}</small></span>
+                <span class="icon chev">chevron_right</span>
+              </button>
+            } @empty {
+              <div class="muted small">No active site matches. Ask your contractor for the site name.</div>
+            }
+          </div>
+        }
       </div>
 
-      <div class="form-group">
-        <label for="site">Select Site *</label>
-        <input
-          type="text"
-          id="site"
-          class="form-control"
-          placeholder="Search for a site..."
-          list="sites-list"
-          formControlName="site"
-          
-        />
-        <datalist id="sites-list">
-          <option
-            *ngFor="let org of organizations"
-            [value]="org.name"
-          ></option>
-        </datalist>
-      </div>
-
-      <!-- Site Details -->
-      <div
-        class="site-details"
-        *ngIf="selectedOrganization()"
-      >
-        <div class="site-details-header">
-          <i class="material-icons">check_circle</i>
-          <span>Site Details</span>
-        </div>
-
-        <div class="location-info">
-          <div class="location-row">
-            <i class="material-icons">location_on</i>
-            <span class="label">County:</span>
-            <span class="value">
-              {{ selectedOrganization()?.county }}
-            </span>
+      <div class="panel-body section" [class.dim]="!site()">
+        <h2><span class="num-dot">2</span> What work?</h2>
+        <div class="form-grid">
+          <div class="field full">
+            <label for="trade">Trade *</label>
+            <select id="trade" name="job_type" class="input" [(ngModel)]="form.job_type" [disabled]="!site() || tradesLoading()" required>
+              <option [ngValue]="null" disabled>{{ tradesLoading() ? 'Loading trades…' : 'Select your trade' }}</option>
+              @for (t of trades(); track t.id) { <option [ngValue]="t.id">{{ t.name }}</option> }
+            </select>
           </div>
-
-          <div class="location-row">
-            <i class="material-icons">account_balance</i>
-            <span class="label">Constituency:</span>
-            <span class="value">
-              {{ selectedOrganization()?.constituency }}
-            </span>
+          <div class="field">
+            <label for="start">Start date *</label>
+            <input id="start" name="start_date" type="date" class="input" [(ngModel)]="form.start_date" [max]="today" [disabled]="!site()" required>
           </div>
-
-          <div class="location-row">
-            <i class="material-icons">place</i>
-            <span class="label">Ward:</span>
-            <span class="value">
-              {{ selectedOrganization()?.ward }}
-            </span>
+          <div class="field">
+            <label>Duration *</label>
+            <div class="duo">
+              <input name="duration_value" type="number" min="1" class="input" [(ngModel)]="form.duration_value" [disabled]="!site()" aria-label="Duration">
+              <select name="duration_unit" class="input" [(ngModel)]="form.duration_unit" [disabled]="!site()" aria-label="Unit">
+                <option value="days">days</option><option value="weeks">weeks</option>
+              </select>
+            </div>
+          </div>
+          <div class="field full">
+            <label for="pay">Agreed pay (KSh)</label>
+            <input id="pay" name="amount_paid" type="number" min="0" step="50" class="input" placeholder="e.g. 1500 per day × days" [(ngModel)]="form.amount_paid" [disabled]="!site()">
+            <span class="hint">Optional. Helps you prove your income later.</span>
           </div>
         </div>
       </div>
-    </div>
 
-    <!-- Job Details Card -->
-    <div class="card">
-      <div class="card-title">
-        <i class="material-icons">work</i>
-        <span>Job Details</span>
+      <div class="panel-foot">
+        <a class="btn ghost" routerLink="/main-menu/gig-summary">Cancel</a>
+        <button class="btn primary" type="submit" [disabled]="!valid() || saving()"><span class="icon">send</span> {{ saving() ? 'Logging…' : 'Log gig' }}</button>
       </div>
+    </form>
 
-      <div class="form-group">
-        <label for="job-type">Job Type *</label>
-        <input
-          type="text"
-          id="job-type"
-          class="form-control"
-          placeholder="Select job type..."
-          list="job-types-list"
-          formControlName="jobType"
-        />
-        <datalist id="job-types-list">
-          <option
-            *ngFor="let job of jobTypes"
-            [value]="job.name"
-          ></option>
-        </datalist>
-      </div>
-
-      <div class="form-group">
-        <label for="start-date">Start Date *</label>
-        <input
-          type="date"
-          id="start-date"
-          class="form-control"
-          formControlName="startDate"
-        />
-      </div>
-
-      <div class="form-row">
-        <div class="form-group flex-2">
-          <label for="duration-unit">Duration Unit *</label>
-          <select
-            id="duration-unit"
-            class="form-control"
-            formControlName="durationUnit"
-          >
-            <option value="">Select unit</option>
-            <option
-              *ngFor="let unit of durationUnits"
-              [value]="unit.value"
-            >
-              {{ unit.label }}
-            </option>
-          </select>
-        </div>
-
-        <div class="form-group flex-1">
-          <label for="duration-value">Value *</label>
-          <input
-            type="number"
-            id="duration-value"
-            class="form-control"
-            placeholder="0"
-            formControlName="durationValue"
-          />
-        </div>
-      </div>
-    </div>
-
-    <!-- Submit Button -->
-    <button type="submit" (click)="onSubmit()" class="submit-btn">
-      <i class="material-icons">send</i>
-      <span>Submit Gig</span>
-    </button>
-
-    <!-- Loading State (hidden by default) -->
-    <button type="button" class="submit-btn loading" style="display: none;">
-      <div class="spinner"></div>
-      <span>Submitting...</span>
-    </button>
-
-  </form>
+    <aside class="panel next">
+      <h2>What happens next</h2>
+      <ol>
+        <li><span class="icon">hourglass_top</span><div><strong>The contractor verifies</strong><small>They confirm you did the work. +5 to your score.</small></div></li>
+        <li><span class="icon">task_alt</span><div><strong>You mark it complete</strong><small>When the job is done. +5 more.</small></div></li>
+        <li><span class="icon">workspace_premium</span><div><strong>It goes on your certificate</strong><small>Share it with lenders and employers.</small></div></li>
+      </ol>
+      <div class="notice"><span class="icon">info</span><span>Only log real work. False gigs are rejected and can be disputed by the contractor.</span></div>
+    </aside>
+  </div>
 </div>

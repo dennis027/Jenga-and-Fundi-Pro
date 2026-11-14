@@ -8,6 +8,7 @@ import { Main } from './components/main/main';
 import { EmailVerification } from './components/auth/email-verification/email-verification';
 import { Dash404 } from './components/dash-404/dash-404';
 import { JengaDash } from './components/jenga-dash/jenga-dash';
+import { JobPosts } from './components/job-posts/job-posts';
 import { AllGigs } from './components/all-gigs/all-gigs';
 import { VerifyGigs } from './components/verify-gigs/verify-gigs';
 import { ManageWorkers } from './components/manage-workers/manage-workers';
@@ -33,6 +34,7 @@ export const routes: Routes = [
         {path:'reports',canActivate: [AuthGuard],component:Reports},
         {path:'add-gig-type',canActivate: [AuthGuard],component:AddGigTypes},
         {path:'add-sites',canActivate: [AuthGuard],component:AddSites},
+        {path:'job-posts',canActivate: [AuthGuard],component:JobPosts},
         {path:'MPESA-Payments',canActivate: [AuthGuard],component:MpesaPayments},
         {path:'analytics',canActivate: [AuthGuard],component:Analytics},
         {path:'profile',canActivate: [AuthGuard],component:Profile},

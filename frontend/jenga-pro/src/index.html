@@ -2,18 +2,30 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <title>Jenga  Pro</title>
+  <title>Jenga Pro</title>
   <base href="/">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#465fff">
   <link rel="icon" type="image/x-icon" href="favicon.ico">
-  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
-  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0&icon_names=account_circle" />
-  <link
-  rel="stylesheet"
-  href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0"
-/>
-
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400..600,0..1,0&icon_names=add,add_business,add_photo_alternate,add_task,apartment,arrow_back,arrow_forward,badge,calendar_month,call,campaign,category,check,chevron_right,close,construction,dark_mode,delete,done,done_all,download,edit,engineering,error,error_outline,expand_more,face,fact_check,filter_list,flag,flip,gavel,handyman,history,hourglass_empty,hourglass_top,image,info,keyboard_double_arrow_left,keyboard_double_arrow_right,light_mode,location_on,lock,logout,mail,mark_email_read,menu,military_tech,monitoring,more_horiz,notifications,pause_circle,payments,pending_actions,percent,person,person_off,person_search,photo_camera,photo_library,play_circle,receipt_long,refresh,save,schedule,search,select_all,send,send_to_mobile,share,smartphone,space_dashboard,star,task_alt,timeline,travel_explore,tune,upload,verified,verified_user,visibility,visibility_off,work,work_history,work_off,workspace_premium&display=block">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
+  <script>
+    /* apply the saved / system theme before first paint (no white flash) */
+    try {
+      var m = localStorage.getItem('theme') || 'system';
+      var d = m === 'dark' || (m === 'system' && matchMedia('(prefers-color-scheme: dark)').matches);
+      document.documentElement.setAttribute('data-theme', d ? 'dark' : 'light');
+    } catch (e) {}
+    /* reveal icons once the icon font is ready, so ligature names never flash */
+    (function () {
+      var done = function () { document.documentElement.classList.add('icons-ready'); };
+      try { document.fonts.load('24px "Material Symbols Outlined"').then(done, done); } catch (e) { done(); }
+      setTimeout(done, 4000);
+    })();
+  </script>
 </head>
 <body>
   <app-root></app-root>

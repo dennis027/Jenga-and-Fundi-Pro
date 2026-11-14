@@ -1,44 +1,20 @@
-import { Component, inject, OnInit, OnDestroy, PLATFORM_ID, ChangeDetectorRef } from '@angular/core';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
+import { HttpClient } from '@angular/common/http';
+import { Component, OnDestroy, OnInit, PLATFORM_ID, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { ActivatedRoute, Router } from '@angular/router';
+import { catchError, forkJoin, of } from 'rxjs';
+import { environment } from '../../../environments/environment';
 import { AppBarService } from '../../services/app-bar-service';
-import { Router } from '@angular/router';
+import { duration, initials } from '../../shell/ui';
 
-interface Gig {
-  id: number;
-  start_date: string;
-  duration_value: number;
-  duration_unit: string;
-  client_name: string;
-  client_phone: string;
-  county: string;
-  constituency: string;
-  ward: string;
-  amount_paid: string;
-  is_verified: boolean;
-  created_at: string;
-  is_complete: boolean;
-  worker: number;
-  job_type: number;
-  logged_by: number;
-  verified_by: number | null;
-  organization: number;
-}
+const API = environment.apiUrl + 'api/';
 
-interface WorkerData {
-  id: number;
-  username: string;
-  full_name: string;
-  email: string;
-  phone: string;
-  county: string;
-  constituency: string;
-  ward: string;
-  is_verified: boolean;   // email confirmed
-  id_verified?: boolean;  // identity documents approved by staff
-  credit_score: number;
-  gigs: Gig[];
-  logged_gigs: Gig[];
+interface Known { username: string; name: string; gigs: number; sites: Set<string>; last: string; }
+interface Profile {
+  id: number; username: string; full_name: string; phone: string; county: string; constituency: string; ward: string;
+  is_verified: boolean; id_verified: boolean; credit_score: number; gigs: any[];
+  completed_gigs: number; rating_avg: number | null; ratings_count: number;
 }
 
 @Component({
@@ -49,259 +25,69 @@ interface WorkerData {
   styleUrl: './manage-workers.css',
 })
 export class ManageWorkers implements OnInit, OnDestroy {
+  private http = inject(HttpClient);
   private appBar = inject(AppBarService);
-  private platformId = inject(PLATFORM_ID);
+  private route = inject(ActivatedRoute);
   private router = inject(Router);
-  private cdr = inject(ChangeDetectorRef);
+  private browser = isPlatformBrowser(inject(PLATFORM_ID));
+  initials = initials; duration = duration;
 
-  searchQuery: string = '';
-  workerData: WorkerData | null = null;
-  isLoading = false;
-  activeTab: 'gigs' | 'logged' = 'gigs';
+  q = signal('');
+  filter = signal('');
+  known = signal<Known[]>([]);
+  loading = signal(true);
+  searching = signal(false);
+  profile = signal<Profile | null>(null);
+  notFound = signal(false);
 
-  // Demo data for multiple workers
-  private demoWorkers: WorkerData[] = [
-    {
-      id: 2,
-      username: "dennis027",
-      full_name: "Dennis Kimani",
-      email: "lewob61357@elafans.com",
-      phone: "0712345678",
-      county: "Lamu",
-      constituency: "Lamu West",
-      ward: "Hongwe",
-      is_verified: true,
-      credit_score: 10,
-      gigs: [
-        {
-          id: 1,
-          start_date: "2026-01-20",
-          duration_value: 2,
-          duration_unit: "weeks",
-          client_name: "Dennis Mac",
-          client_phone: "0700000000",
-          county: "Meru",
-          constituency: "Tigania West",
-          ward: "Kianjai",
-          amount_paid: "0.00",
-          is_verified: true,
-          created_at: "2026-01-20T08:50:55.124947Z",
-          is_complete: false,
-          worker: 2,
-          job_type: 3,
-          logged_by: 2,
-          verified_by: 1,
-          organization: 1
-        },
-        {
-          id: 3,
-          start_date: "2025-07-15",
-          duration_value: 3,
-          duration_unit: "weeks",
-          client_name: "Njesh",
-          client_phone: "078121111",
-          county: "Nairobi",
-          constituency: "Westlands",
-          ward: "Parklands",
-          amount_paid: "0.00",
-          is_verified: true,
-          created_at: "2026-01-24T20:45:38.723964Z",
-          is_complete: false,
-          worker: 2,
-          job_type: 57,
-          logged_by: 2,
-          verified_by: 1,
-          organization: 8
-        }
-      ],
-      logged_gigs: [
-        {
-          id: 1,
-          start_date: "2026-01-20",
-          duration_value: 2,
-          duration_unit: "weeks",
-          client_name: "Dennis Mac",
-          client_phone: "0700000000",
-          county: "Meru",
-          constituency: "Tigania West",
-          ward: "Kianjai",
-          amount_paid: "0.00",
-          is_verified: true,
-          created_at: "2026-01-20T08:50:55.124947Z",
-          is_complete: false,
-          worker: 2,
-          job_type: 3,
-          logged_by: 2,
-          verified_by: 1,
-          organization: 1
-        },
-        {
-          id: 3,
-          start_date: "2025-07-15",
-          duration_value: 3,
-          duration_unit: "weeks",
-          client_name: "Njesh",
-          client_phone: "078121111",
-          county: "Nairobi",
-          constituency: "Westlands",
-          ward: "Parklands",
-          amount_paid: "0.00",
-          is_verified: true,
-          created_at: "2026-01-24T20:45:38.723964Z",
-          is_complete: false,
-          worker: 2,
-          job_type: 57,
-          logged_by: 2,
-          verified_by: 1,
-          organization: 8
-        }
-      ]
-    },
-    {
-      id: 3,
-      username: "jane_doe",
-      full_name: "Jane Wanjiru",
-      email: "jane.wanjiru@example.com",
-      phone: "0723456789",
-      county: "Nairobi",
-      constituency: "Starehe",
-      ward: "Nairobi Central",
-      is_verified: true,
-      credit_score: 15,
-      gigs: [
-        {
-          id: 10,
-          start_date: "2026-01-25",
-          duration_value: 1,
-          duration_unit: "week",
-          client_name: "Peter Omondi",
-          client_phone: "0734567890",
-          county: "Nairobi",
-          constituency: "Langata",
-          ward: "Karen",
-          amount_paid: "5000.00",
-          is_verified: true,
-          created_at: "2026-01-25T10:00:00Z",
-          is_complete: false,
-          worker: 3,
-          job_type: 5,
-          logged_by: 3,
-          verified_by: 1,
-          organization: 1
-        }
-      ],
-      logged_gigs: [
-        {
-          id: 11,
-          start_date: "2026-01-10",
-          duration_value: 2,
-          duration_unit: "weeks",
-          client_name: "Alice Muthoni",
-          client_phone: "0745678901",
-          county: "Kiambu",
-          constituency: "Kiambaa",
-          ward: "Ndenderu",
-          amount_paid: "8000.00",
-          is_verified: true,
-          created_at: "2026-01-10T09:00:00Z",
-          is_complete: true,
-          worker: 3,
-          job_type: 5,
-          logged_by: 3,
-          verified_by: 1,
-          organization: 1
-        }
-      ]
-    }
-  ];
+  shownKnown = computed(() => {
+    const f = this.filter().toLowerCase();
+    return this.known().filter((k) => !f || `${k.name} ${k.username}`.toLowerCase().includes(f));
+  });
 
-  constructor() {}
+  ngOnInit() {
+    this.appBar.setTitle('Workers');
+    this.appBar.clearActions();
+    if (!this.browser) return;
+    this.loadKnown();
+    this.route.queryParamMap.subscribe((p) => {
+      const q = p.get('q');
+      if (q) { this.q.set(q); this.search(q); } else { this.profile.set(null); this.notFound.set(false); }
+    });
+  }
+  ngOnDestroy() {}
 
-  ngOnInit(): void {
-    this.appBar.setTitle('Manage Workers');
-    this.appBar.setBack(true);
-    
-    // Set mobile action buttons
-    this.appBar.setActions([
-      { 
-        id: 'search-worker',
-        icon: 'search',
-        ariaLabel: 'Search',
-        onClick: () => {
-          this.searchWorkers();
-        }
-      }
-    ]);
+  loadKnown() {
+    forkJoin({
+      open: this.http.get<any[]>(API + 'org-gigs-list/').pipe(catchError(() => of([]))),
+      done: this.http.get<any[]>(API + 'contractor/completed-gigs/').pipe(catchError(() => of([]))),
+    }).subscribe(({ open, done }) => {
+      const map = new Map<string, Known>();
+      [...open, ...done].forEach((g) => {
+        const k = map.get(g.worker_username) || { username: g.worker_username, name: g.worker_name, gigs: 0, sites: new Set<string>(), last: g.start_date };
+        k.gigs++; k.sites.add(g.organization_name); if (g.start_date > k.last) k.last = g.start_date;
+        map.set(g.worker_username, k);
+      });
+      this.known.set([...map.values()].sort((a, b) => b.last.localeCompare(a.last)));
+      this.loading.set(false);
+    });
   }
 
-  ngOnDestroy(): void {
-    this.appBar.setActions([]);
-    this.appBar.setBack(false);
+  submit() {
+    const q = this.q().trim();
+    if (q) this.router.navigate([], { queryParams: { q } });
+  }
+  open(k: Known) { this.router.navigate([], { queryParams: { q: k.username } }); }
+  back() { this.router.navigate([], { queryParams: {} }); }
+
+  search(q: string) {
+    this.searching.set(true);
+    this.notFound.set(false);
+    this.http.get<Profile>(API + 'workers/search/', { params: { q } }).subscribe({
+      next: (p) => { this.profile.set(p); this.searching.set(false); },
+      error: () => { this.profile.set(null); this.notFound.set(true); this.searching.set(false); },
+    });
   }
 
-  searchWorkers(): void {
-    const query = this.searchQuery.trim().toLowerCase();
-    
-    if (!query) {
-      return;
-    }
-
-    this.isLoading = true;
-    this.workerData = null;
-    this.cdr.detectChanges();
-
-    // Simulate API call
-    setTimeout(() => {
-      // Search through demo workers by username, full_name, email, or phone
-      const foundWorker = this.demoWorkers.find(worker => 
-        worker.username.toLowerCase().includes(query) ||
-        worker.full_name.toLowerCase().includes(query) ||
-        worker.email.toLowerCase().includes(query) ||
-        worker.phone.includes(query)
-      );
-
-      if (foundWorker) {
-        this.workerData = foundWorker;
-        this.activeTab = 'gigs';
-      } else {
-        this.workerData = null;
-      }
-
-      this.isLoading = false;
-      this.cdr.detectChanges();
-    }, 800);
-  }
-
-  switchTab(tab: 'gigs' | 'logged'): void {
-    this.activeTab = tab;
-  }
-
-  formatDate(dateStr: string): string {
-    const date = new Date(dateStr);
-    const options: Intl.DateTimeFormatOptions = {
-      day: '2-digit',
-      month: 'short',
-      year: 'numeric'
-    };
-    return date.toLocaleString('en-US', options);
-  }
-
-  getGigLocation(gig: Gig): string {
-    return `${gig.ward}, ${gig.constituency}, ${gig.county}`;
-  }
-
-  getGigStatus(gig: Gig): { text: string; class: string } {
-    if (gig.is_complete) {
-      return { text: 'Completed', class: 'completed' };
-    } else if (gig.is_verified) {
-      return { text: 'Verified', class: 'verified' };
-    } else {
-      return { text: 'Pending', class: 'pending' };
-    }
-  }
-
-  clearSearch(): void {
-    this.searchQuery = '';
-    this.workerData = null;
-  }
+  scoreTone(s: number) { return s >= 60 ? 'ok' : s >= 30 ? 'warn' : 'danger'; }
 }

@@ -1,146 +1,94 @@
-import {
-  Component,
-  signal,
-  afterNextRender,
-  inject,
-  OnInit,
-  OnDestroy,
-  PLATFORM_ID,
-} from '@angular/core';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
-import { AppBarService } from '../../services/app-bar-service';
-import { GigServices } from '../../services/gig-services';
-import { Router } from '@angular/router';
-import { TokenService } from '../../services/token-service';
-import { SharedImports } from '../../shared-imports/imports';
+import { HttpClient } from '@angular/common/http';
+import { Component, OnDestroy, OnInit, PLATFORM_ID, computed, inject, signal } from '@angular/core';
+import { FormsModule } from '@angular/forms';
 import { MatSnackBar } from '@angular/material/snack-bar';
+import { environment } from '../../../environments/environment';
+import { AppBarService } from '../../services/app-bar-service';
+import { SiteContextService } from '../../shell/site-context';
+import { daysAgo, duration, initials } from '../../shell/ui';
+
+const API = environment.apiUrl + 'api/';
 
 interface Gig {
-  id: number;
-  client_name: string;
-  client_phone: string;
-  ward: string;
-  constituency: string;
-  county: string;
-  start_date: string;
-  duration_value: number;
-  duration_unit: string;
-  is_verified: boolean;
+  id: number; worker_name: string; job_type_name: string; organization: number; organization_name: string;
+  start_date: string; duration_value: number; duration_unit: string; amount_paid: string; is_verified: boolean;
+  county: string; constituency: string; ward: string; created_at: string;
 }
 
 @Component({
   selector: 'app-verify-gigs',
   standalone: true,
-  imports: [CommonModule, SharedImports],
+  imports: [CommonModule, FormsModule],
   templateUrl: './verify-gigs.html',
-  styleUrls: ['./verify-gigs.css'],
+  styleUrl: './verify-gigs.css',
 })
 export class VerifyGigs implements OnInit, OnDestroy {
-  // ✅ Signals for reactive state management
-  isMobile = signal(false);
-  isLoading = signal(false);
-  unverifiedGigs = signal<Gig[]>([]);
-
+  private http = inject(HttpClient);
+  private snack = inject(MatSnackBar);
   private appBar = inject(AppBarService);
-  private gigService = inject(GigServices);
-  private router = inject(Router);
-  private platformId = inject(PLATFORM_ID);
-  private tokenService = inject(TokenService);
-  private snackBar = inject(MatSnackBar);
+  private browser = isPlatformBrowser(inject(PLATFORM_ID));
+  site = inject(SiteContextService);
+  initials = initials; daysAgo = daysAgo; duration = duration;
 
+  loading = signal(true);
+  gigs = signal<Gig[]>([]);
+  q = signal('');
+  selected = signal<Set<number>>(new Set());
+  busy = signal(false);
 
-  private showSuccess(message: string) {
-    this.snackBar.open(message, 'Close', {
-      duration: 3000,
-      panelClass: ['success-snackbar'],
-      horizontalPosition: 'right',
-      verticalPosition: 'top',
+  pending = computed(() => {
+    const q = this.q().toLowerCase();
+    return this.gigs()
+      .filter((g) => !g.is_verified)
+      .filter((g) => this.site.id() === null || g.organization === this.site.id())
+      .filter((g) => !q || `${g.worker_name} ${g.job_type_name} ${g.organization_name} ${g.ward}`.toLowerCase().includes(q))
+      .sort((a, b) => a.start_date.localeCompare(b.start_date));
+  });
+  allSelected = computed(() => this.pending().length > 0 && this.pending().every((g) => this.selected().has(g.id)));
+  workersWaiting = computed(() => new Set(this.pending().map((g) => g.worker_name)).size);
+  pendingValue = computed(() => this.pending().reduce((s, g) => s + Number(g.amount_paid || 0), 0));
+
+  ngOnInit() {
+    this.appBar.setTitle('Verify gigs');
+    this.appBar.setActions([{ id: 'refresh', icon: 'refresh', ariaLabel: 'Refresh', onClick: () => this.load() }]);
+    if (this.browser) this.load();
+  }
+  ngOnDestroy() { this.appBar.clearActions(); }
+
+  load() {
+    this.loading.set(true);
+    this.http.get<Gig[]>(API + 'org-gigs-list/').subscribe({
+      next: (g) => { this.gigs.set(g); this.selected.set(new Set()); this.loading.set(false); },
+      error: () => this.loading.set(false),
     });
   }
 
-  private showError(message: string) {
-    this.snackBar.open(message, 'Close', {
-      duration: 4000,
-      panelClass: ['error-snackbar'],
-      horizontalPosition: 'right',
-      verticalPosition: 'top',
-    });
+  toggle(id: number) {
+    const s = new Set(this.selected());
+    s.has(id) ? s.delete(id) : s.add(id);
+    this.selected.set(s);
+  }
+  toggleAll() {
+    this.selected.set(this.allSelected() ? new Set() : new Set(this.pending().map((g) => g.id)));
   }
 
+  verifySelected() { this.verify(Array.from(this.selected())); }
 
-  private isBrowser: boolean;
-  private resizeHandler = () => this.checkScreen();
-
-  constructor() {
-    this.isBrowser = isPlatformBrowser(this.platformId);
-    if (this.isBrowser) {
-      afterNextRender(() => {
-        this.checkScreen();
-        window.addEventListener('resize', this.resizeHandler);
-      });
-    }
-  }
-
-ngOnInit(): void {
-  this.appBar.setTitle('Verify Gigs');
-  this.appBar.setBack(true);
-
-  if (isPlatformBrowser(this.platformId) && this.tokenService.isLoggedIn()) {
-    this.getUnverifiedGigs();
-  } else if (isPlatformBrowser(this.platformId)) {
-    // Optionally redirect to login
-    this.router.navigate(['/login']);
-  }
-}
-
-
-  private checkScreen(): void {
-    if (!this.isBrowser) return;
-    this.isMobile.set(window.innerWidth < 992);
-  }
-
-  getUnverifiedGigs() {
-    this.isLoading.set(true);
-    this.gigService.getUnverifiedGigs().subscribe({
-      next: (data) => {
-        this.unverifiedGigs.set(data.filter((gig: Gig) => !gig.is_verified));
-        this.isLoading.set(false);
-        console.log('Unverified gigs fetched', data);
-      },
-      error: (err) => {
-        console.error('Error fetching unverified gigs', err);
-        this.isLoading.set(false);
-
-      }
-    });
-  }
-
-  verifyGig(gigId: number): void {
-    this.gigService.verifyGig(gigId).subscribe({
-      next: (response) => {
-        console.log('Gig verified', response);
-        // Remove the verified gig from the list
-        this.unverifiedGigs.set(
-          this.unverifiedGigs().filter(gig => gig.id !== gigId)
-        );
-         this.showSuccess('Gig Verified successfully!');
-      },
-      error: (err) => {
-        console.error('Error verifying gig', err);
-        if (err.status === 401) {
-          this.router.navigate(['/login']);
-        } else if (err.status !== 0) {
-          this.showError('Check Your network connection.');
-        }
-        this.showError('Failed to verify gig. Please try again.');
-      }
-    });
-  }
-
-  ngOnDestroy(): void {
-    if (this.isBrowser) {
-      window.removeEventListener('resize', this.resizeHandler);
-    }
-    this.appBar.clearActions();
+  verify(ids: number[]) {
+    if (!ids.length) return;
+    this.busy.set(true);
+    let done = 0, failed = 0;
+    ids.forEach((id) => this.http.post(API + `gigs/verify/${id}/`, {}).subscribe({
+      next: () => { done++; this.gigs.update((list) => list.map((g) => (g.id === id ? { ...g, is_verified: true } : g))); finish(); },
+      error: () => { failed++; finish(); },
+    }));
+    const finish = () => {
+      if (done + failed < ids.length) return;
+      this.busy.set(false);
+      this.selected.set(new Set());
+      this.snack.open(failed ? `${done} verified, ${failed} failed.` : `${done} gig${done > 1 ? 's' : ''} verified. Workers earned +5 each.`,
+        'OK', { duration: 3500, panelClass: failed ? 'error-snackbar' : 'success-snackbar' });
+    };
   }
 }

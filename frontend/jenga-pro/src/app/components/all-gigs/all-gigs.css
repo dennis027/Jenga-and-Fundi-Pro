@@ -1,0 +1,7 @@
+.who { display: flex; align-items: center; gap: 10px; }
+.who .avatar { width: 34px; height: 34px; font-size: .78rem; }
+.stars-btn { background: none; border: 0; padding: 4px; cursor: pointer; border-radius: 8px; }
+.stars-btn:hover { background: var(--surface-2); }
+.stars.big { gap: 6px; }
+.stars.big .icon { font-size: 36px; }
+.stars .icon:not(.fill) { color: var(--border-strong); }

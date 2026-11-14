@@ -1,33 +1,156 @@
-<!-- APP LAYOUT -->
-<div class="app-layout">
+<div class="shell" [class.collapsed]="collapsed()" [class.drawer-open]="drawerOpen()">
+  <!-- ============ sidebar ============ -->
+  <aside class="sidebar" aria-label="Main navigation">
+    <a class="brand" routerLink="/main-menu">
+      <span class="brand-mark"><span class="icon fill">{{ config.brandIcon }}</span></span>
+      <span class="brand-name">{{ config.brand }}</span>
+    </a>
 
-  <!-- SIDEBAR / DRAWER -->
-  <aside class="sidebar" [class.open]="sidebarOpen">
-    <div class="sidebar-header">Jenga Pro</div>
-
-    <nav class="nav-menu">
-      <a 
-        *ngFor="let link of links; let i = index" 
-        [routerLink]="link.route"
-        routerLinkActive="active"
-        [routerLinkActiveOptions]="{ exact: i === 0 }"
-        (click)="onNavLinkClick()">  
-        <i [class]="link.icon"></i>
-        <span>{{ link.name }}</span> 
-      </a>
+    <nav class="nav">
+      @for (section of config.sections; track section.title) {
+        <div class="nav-section">{{ section.title }}</div>
+        @for (item of section.items; track item.route) {
+          <a class="nav-link" [routerLink]="item.route" routerLinkActive="active"
+             [routerLinkActiveOptions]="{ exact: !!item.exact }" [attr.title]="collapsed() ? item.label : null">
+            <span class="icon">{{ item.icon }}</span>
+            <span class="nav-label">{{ item.label }}</span>
+            @if (item.badge && badges()[item.badge]) {
+              <span class="nav-badge">{{ badges()[item.badge] }}</span>
+            }
+          </a>
+        }
+      }
     </nav>
 
-    <!-- Logout button - hidden on mobile -->
-    <button class="logout-btn" (click)="logOut()">
-      <i class="fas fa-sign-out-alt"></i>
-      <span>Logout</span>
-    </button>
+    <div class="sidebar-foot">
+      <button class="nav-link as-button" type="button" (click)="theme.toggle()" [attr.title]="collapsed() ? 'Theme' : null">
+        <span class="icon">{{ theme.dark() ? 'light_mode' : 'dark_mode' }}</span>
+        <span class="nav-label">{{ theme.dark() ? 'Light mode' : 'Dark mode' }}</span>
+      </button>
+    </div>
   </aside>
+  <div class="scrim" (click)="drawerOpen.set(false)"></div>
 
-  <!-- MAIN CONTENT -->
-  <main class="content">
-    <app-mobile-app-bar></app-mobile-app-bar>
-    <router-outlet></router-outlet>
-  </main>
+  <!-- ============ main column ============ -->
+  <div class="main-col">
+    <header class="topbar">
+      <button class="icon-btn bordered collapse-btn" type="button" (click)="toggleCollapse()" aria-label="Collapse sidebar">
+        <span class="icon">{{ collapsed() ? 'keyboard_double_arrow_right' : 'keyboard_double_arrow_left' }}</span>
+      </button>
+      <button class="icon-btn bordered burger" type="button" (click)="drawerOpen.set(true)" aria-label="Open menu">
+        <span class="icon">menu</span>
+      </button>
+      <h1 class="topbar-title">{{ appBar.title() }}</h1>
 
+      <button class="search-trigger" type="button" (click)="openPalette()">
+        <span class="icon">search</span>
+        <span class="placeholder">Search pages and actions…</span>
+        <kbd>Ctrl K</kbd>
+      </button>
+
+      <div class="topbar-right">
+        @for (a of appBar.actions(); track a.id) {
+          <button class="icon-btn bordered" type="button" (click)="a.onClick()" [attr.aria-label]="a.ariaLabel" [title]="a.ariaLabel">
+            <span class="icon">{{ a.icon }}</span>
+          </button>
+        }
+
+        @if (contexts().length) {
+          <div class="dropdown">
+            <button class="context-btn" type="button" (click)="toggleMenu('context', $event)">
+              <span class="icon">apartment</span>
+              <span class="context-label">{{ site.label() }}</span>
+              <span class="icon chev">expand_more</span>
+            </button>
+            @if (menu() === 'context') {
+              <div class="menu menu-right" (click)="$event.stopPropagation()">
+                <div class="menu-title">{{ contextLabel }}</div>
+                <button class="menu-item" type="button" [class.on]="site.id() === null" (click)="chooseContext({ id: null, label: 'All sites' })">
+                  <span class="icon">select_all</span> All sites
+                </button>
+                @for (c of contexts(); track c.id) {
+                  <button class="menu-item" type="button" [class.on]="site.id() === c.id" (click)="chooseContext(c)">
+                    <span class="icon">apartment</span> {{ c.label }}
+                  </button>
+                }
+              </div>
+            }
+          </div>
+        }
+
+        <div class="dropdown">
+          <button class="icon-btn bordered bell" type="button" (click)="toggleMenu('notes', $event)" aria-label="Notifications">
+            <span class="icon">notifications</span>
+            @if (noteCount()) { <span class="bell-count">{{ noteCount() > 9 ? '9+' : noteCount() }}</span> }
+          </button>
+          @if (menu() === 'notes') {
+            <div class="menu menu-right notes" (click)="$event.stopPropagation()">
+              <div class="menu-title">Needs your attention</div>
+              @for (n of notifications(); track $index) {
+                <button class="note" type="button" (click)="go(n)">
+                  <span class="note-icon" [class]="'note-icon ' + n.tone"><span class="icon">{{ n.icon }}</span></span>
+                  <span class="note-text"><strong>{{ n.title }}</strong><small>{{ n.sub }}</small></span>
+                </button>
+              } @empty {
+                <div class="menu-empty"><span class="icon">done_all</span> You're all caught up.</div>
+              }
+            </div>
+          }
+        </div>
+
+        <div class="dropdown">
+          <button class="user-btn" type="button" (click)="toggleMenu('user', $event)">
+            <span class="avatar solid">
+              @if (user().picture) { <img [src]="user().picture" alt=""> } @else { {{ initials() }} }
+            </span>
+            <span class="user-name">{{ user().name || '…' }}</span>
+            <span class="icon chev">expand_more</span>
+          </button>
+          @if (menu() === 'user') {
+            <div class="menu menu-right" (click)="$event.stopPropagation()">
+              <div class="menu-user">
+                <strong>{{ user().name }}</strong>
+                <small>{{ user().subtitle }}</small>
+              </div>
+              <a class="menu-item" routerLink="/main-menu/profile"><span class="icon">person</span> My profile</a>
+              <button class="menu-item" type="button" (click)="theme.toggle()">
+                <span class="icon">{{ theme.dark() ? 'light_mode' : 'dark_mode' }}</span> {{ theme.dark() ? 'Light mode' : 'Dark mode' }}
+              </button>
+              <div class="menu-sep"></div>
+              <button class="menu-item danger" type="button" (click)="logOut()"><span class="icon">logout</span> Sign out</button>
+            </div>
+          }
+        </div>
+      </div>
+    </header>
+
+    <main class="content">
+      <router-outlet></router-outlet>
+    </main>
+  </div>
 </div>
+
+<!-- ============ command palette ============ -->
+@if (paletteOpen()) {
+  <div class="palette-scrim" (click)="paletteOpen.set(false)">
+    <div class="palette" role="dialog" aria-label="Search" (click)="$event.stopPropagation()">
+      <div class="palette-input">
+        <span class="icon">search</span>
+        <input #paletteInput type="text" [ngModel]="query()" (ngModelChange)="query.set($event); active.set(0)"
+               (keydown)="paletteKey($event)" placeholder="Search pages and actions…" aria-label="Search">
+        <kbd>Esc</kbd>
+      </div>
+      <div class="palette-list">
+        @for (r of results(); track r.label + r.route; let i = $index) {
+          <button class="palette-item" type="button" [class.on]="i === active()" (mouseenter)="active.set(i)" (click)="go(r)">
+            <span class="icon">{{ r.icon }}</span>
+            <span class="grow">{{ r.label }}</span>
+            <small>{{ r.hint }}</small>
+          </button>
+        } @empty {
+          <div class="menu-empty">No matches.</div>
+        }
+      </div>
+    </div>
+  </div>
+}

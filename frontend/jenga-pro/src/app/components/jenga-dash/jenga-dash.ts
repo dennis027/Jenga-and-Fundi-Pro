@@ -1,364 +1,103 @@
-import { Component, signal, afterNextRender, inject, OnInit, OnDestroy, ViewChild, PLATFORM_ID } from '@angular/core';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
-import { RouterModule, Router } from '@angular/router';
-import { MatMenuModule, MatMenuTrigger } from '@angular/material/menu';
-import { MatIconModule } from '@angular/material/icon';
-import { MatButtonModule } from '@angular/material/button';
-import { MatDividerModule } from '@angular/material/divider';
-import { AppBarService } from '../../services/app-bar-service';
-import { UserService } from '../../services/user-service';
-import { TokenService } from '../../services/token-service';
+import { HttpClient } from '@angular/common/http';
+import { Component, OnInit, PLATFORM_ID, computed, inject, signal } from '@angular/core';
+import { RouterModule } from '@angular/router';
+import { MatSnackBar } from '@angular/material/snack-bar';
+import { catchError, forkJoin, of } from 'rxjs';
 import { environment } from '../../../environments/environment';
-import { forkJoin } from 'rxjs';
-import { SharedImports } from '../../shared-imports/imports';
+import { AppBarService } from '../../services/app-bar-service';
+import { SiteContextService } from '../../shell/site-context';
 
-interface Gig {
-  id: number;
-  workerName: string;
-  siteName: string;
-  jobType: string;
-  date: string;
-  verified: boolean;
-}
+const API = environment.apiUrl + 'api/';
 
-interface WeeklyData {
-  day: string;
-  gigs: number;
-  date?: string;
-}
-
-interface Site {
-  id: number;
-  name: string;
-  workers: number;
-  gigs: number;
-  completion: number;
-}
-
-interface Worker {
-  id: number;
-  rank: number;
-  name: string;
-  avatar: string;
-  gigs: number;
-  rating: number;
-}
-
-interface CalendarDay {
-  date: string;
-  dayName: string;
-  dayNum: number;
-  gigs: number;
-}
-
-interface DashboardStats {
-  total_gigs: number;
-  unverified_gigs: number;
-  active_workers: number;
-  active_sites: number;
-  verified_this_week: number;
-  verification_rate: number;
-  avg_verification_time: number;
-}
+interface PendingGig { id: number; workerName: string; workerPhone: string; siteName: string; jobType: string; startDate: string; duration: string; location: string; }
+interface Stats { total_gigs: number; unverified_gigs: number; active_workers: number; active_sites: number; verified_this_week: number; verification_rate: number; }
+interface Worker { id: number; name: string; gigs: number; credit_score: number; }
+interface Site { id: number; name: string; county: string; constituency: string; ward: string; is_active: boolean; }
 
 @Component({
-  selector: 'app-supervisor-dash',
+  selector: 'app-jenga-dash',
   standalone: true,
-  imports: [
-    CommonModule, 
-    RouterModule,
-    MatMenuModule,
-    MatIconModule,
-    MatButtonModule,
-    MatDividerModule,
-    SharedImports
-  ],
+  imports: [CommonModule, RouterModule],
   templateUrl: './jenga-dash.html',
   styleUrl: './jenga-dash.css',
 })
-export class JengaDash implements OnInit, OnDestroy {
-  @ViewChild('accountMenuTrigger') accountMenuTrigger!: MatMenuTrigger;
-  
-  isMobile = signal(false);
-  isLoading = signal(true);
-  
+export class JengaDash implements OnInit {
+  private http = inject(HttpClient);
+  private snack = inject(MatSnackBar);
   private appBar = inject(AppBarService);
-  private router = inject(Router);
-  private userService = inject(UserService);
-  private platformId = inject(PLATFORM_ID);
-  private tokenService = inject(TokenService);
+  private browser = isPlatformBrowser(inject(PLATFORM_ID));
+  site = inject(SiteContextService);
 
-  // User data
-  username = signal<string>('');
-  email = signal<string>('');
-  fullname = signal<string>('');
-  imgFile = signal<string>('');
-  
-  // Stats (now from API)
-  totalGigs = signal<number>(0);
-  unverifiedGigs = signal<number>(0);
-  activeWorkers = signal<number>(0);
-  activeSites = signal<number>(0);
-  
-  // Analytics data (from API)
-  verifiedThisWeek = signal<number>(0);
-  verificationRate = signal<number>(0);
-  avgVerificationTime = signal<number>(0);
+  loading = signal(true);
+  name = signal('');
+  stats = signal<Stats | null>(null);
+  pending = signal<PendingGig[]>([]);
+  workers = signal<Worker[]>([]);
+  sites = signal<Site[]>([]);
+  paidThisMonth = signal(0);
+  verifying = signal<number | null>(null);
 
-  // Mobile calendar - last 7 days (from API)
-  last7Days = signal<CalendarDay[]>([]);
+  today = new Date();
+  greeting = (() => { const h = new Date().getHours(); return h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening'; })();
 
-  // Recent gigs (from API) - WITH PAGINATION
-  private allRecentGigs = signal<Gig[]>([]);
-  recentGigs = signal<Gig[]>([]);
-  showAllRecentGigs = signal<boolean>(false);
-  private readonly GIGS_LIMIT = 5;
+  visiblePending = computed(() => {
+    const s = this.site.id() === null ? null : this.site.label();
+    return this.pending().filter((g) => !s || g.siteName === s);
+  });
+  rate = computed(() => Math.round(this.stats()?.verification_rate ?? 0));
 
-  // Weekly chart data (from API)
-  weeklyData = signal<WeeklyData[]>([]);
-  maxWeeklyGigs = signal<number>(0);
-
-  // Top sites (from API) - WITH PAGINATION
-  private allTopSites = signal<Site[]>([]);
-  topSites = signal<Site[]>([]);
-  showAllTopSites = signal<boolean>(false);
-  private readonly SITES_LIMIT = 5;
-
-  // Top workers (from API) - WITH PAGINATION
-  private allTopWorkers = signal<Worker[]>([]);
-  topWorkers = signal<Worker[]>([]);
-  showAllTopWorkers = signal<boolean>(false);
-  private readonly WORKERS_LIMIT = 5;
-
-  constructor() {
-    afterNextRender(() => {
-      this.checkScreen();
-      window.addEventListener('resize', () => this.checkScreen());
-    });
-  }
-
-  private checkScreen(): void {
-    this.isMobile.set(window.innerWidth < 992);
-  }
-
-  ngOnInit(): void {
-    this.appBar.setTitle('Jenga Pro');
-    this.appBar.setBack(false);
-
-    this.appBar.setActions([
-      {
-        id: 'account',
-        icon: 'account_circle',
-        ariaLabel: 'Account',
-        onClick: () => {
-          setTimeout(() => this.accountMenuTrigger?.openMenu(), 0);
-        },
-      },
-    ]);
-    
-    // Browser-only logic
-    if (isPlatformBrowser(this.platformId)) {
-      if (this.tokenService.isLoggedIn()) {
-        this.loadDashboardData();
-      } else {
-        this.router.navigate(['/login']);
-      }
-    }
-  }
-
-  /**
-   * Load all dashboard data from API
-   */
-  private loadDashboardData(): void {
-    this.isLoading.set(true);
-
-    // Load all data in parallel using forkJoin
-    forkJoin({
-      userProfile: this.userService.getUserDetails(),
-      dashboardStats: this.userService.jengaStart(),
-      recentGigs: this.userService.recentGigs(),
-      topSites: this.userService.topSites(),
-      topWorkers: this.userService.topWorkers(),
-      calendar: this.userService.calendar()
-    }).subscribe({
-      next: (results) => {
-        console.log('Dashboard data loaded:', results);
-
-        // Set user data
-        this.username.set(results.userProfile.username || '');
-        this.fullname.set(results.userProfile.full_name || '');
-        this.email.set(results.userProfile.email || '');
-        
-        // Handle profile image
-        if (results.userProfile.profile_pic) {
-          const pic = results.userProfile.profile_pic;
-          this.imgFile.set(/^https?:\/\//.test(pic) ? pic : `${environment.apiUrl}${pic}`);
-        }
-
-        // Set dashboard stats
-        const stats = results.dashboardStats as DashboardStats;
-        this.totalGigs.set(stats.total_gigs);
-        this.unverifiedGigs.set(stats.unverified_gigs);
-        this.activeWorkers.set(stats.active_workers);
-        this.activeSites.set(stats.active_sites);
-        this.verifiedThisWeek.set(stats.verified_this_week);
-        this.verificationRate.set(stats.verification_rate);
-        this.avgVerificationTime.set(stats.avg_verification_time);
-
-        // Set recent gigs with pagination
-        this.allRecentGigs.set(results.recentGigs);
-        this.updateRecentGigsDisplay();
-
-        // Set top sites with pagination
-        this.allTopSites.set(results.topSites);
-        this.updateTopSitesDisplay();
-
-        // Set top workers with pagination
-        this.allTopWorkers.set(results.topWorkers);
-        this.updateTopWorkersDisplay();
-
-        // Set calendar data
-        this.last7Days.set(results.calendar);
-
-        // Generate weekly chart data from calendar
-        this.generateWeeklyChart(results.calendar);
-
-        this.isLoading.set(false);
-      },
-      error: (err) => {
-        console.error('Error loading dashboard data:', err);
-        this.isLoading.set(false);
-        
-        if (err.status === 401) {
-          console.error('Unauthorized - redirecting to login');
-          this.router.navigate(['/login']);
-        }
-      }
-    });
-  }
-
-  /**
-   * Update recent gigs display based on show all state
-   */
-  private updateRecentGigsDisplay(): void {
-    const allGigs = this.allRecentGigs();
-    if (this.showAllRecentGigs()) {
-      this.recentGigs.set(allGigs);
-    } else {
-      this.recentGigs.set(allGigs.slice(0, this.GIGS_LIMIT));
-    }
-  }
-
-  /**
-   * Toggle show all recent gigs
-   */
-  toggleRecentGigs(): void {
-    this.showAllRecentGigs.set(!this.showAllRecentGigs());
-    this.updateRecentGigsDisplay();
-  }
-
-  /**
-   * Update top sites display based on show all state
-   */
-  private updateTopSitesDisplay(): void {
-    const allSites = this.allTopSites();
-    if (this.showAllTopSites()) {
-      this.topSites.set(allSites);
-    } else {
-      this.topSites.set(allSites.slice(0, this.SITES_LIMIT));
-    }
-  }
-
-  /**
-   * Toggle show all top sites
-   */
-  toggleTopSites(): void {
-    this.showAllTopSites.set(!this.showAllTopSites());
-    this.updateTopSitesDisplay();
-  }
-
-  /**
-   * Update top workers display based on show all state
-   */
-  private updateTopWorkersDisplay(): void {
-    const allWorkers = this.allTopWorkers();
-    if (this.showAllTopWorkers()) {
-      this.topWorkers.set(allWorkers);
-    } else {
-      this.topWorkers.set(allWorkers.slice(0, this.WORKERS_LIMIT));
-    }
-  }
-
-  /**
-   * Toggle show all top workers
-   */
-  toggleTopWorkers(): void {
-    this.showAllTopWorkers.set(!this.showAllTopWorkers());
-    this.updateTopWorkersDisplay();
-  }
-
-  /**
-   * Check if there are more recent gigs to show
-   */
-  hasMoreRecentGigs(): boolean {
-    return this.allRecentGigs().length > this.GIGS_LIMIT;
-  }
-
-  /**
-   * Check if there are more top sites to show
-   */
-  hasMoreTopSites(): boolean {
-    return this.allTopSites().length > this.SITES_LIMIT;
-  }
-
-  /**
-   * Check if there are more top workers to show
-   */
-  hasMoreTopWorkers(): boolean {
-    return this.allTopWorkers().length > this.WORKERS_LIMIT;
-  }
-
-  /**
-   * Generate weekly chart data from calendar response
-   */
-  private generateWeeklyChart(calendar: CalendarDay[]): void {
-    if (!calendar || calendar.length === 0) return;
-
-    const weeklyData = calendar.map(day => ({
-      day: day.dayName,
-      gigs: day.gigs,
-      date: day.date
-    }));
-
-    this.weeklyData.set(weeklyData);
-    
-    // Calculate max for chart scaling
-    const maxGigs = Math.max(...weeklyData.map(d => d.gigs), 1);
-    this.maxWeeklyGigs.set(maxGigs);
-  }
-
-  /**
-   * Refresh dashboard data
-   */
-  refreshDashboard(): void {
-    this.loadDashboardData();
-  }
-
-  navigate(route: string): void {
-    this.router.navigate([route]);
-  }
-
-  goToProfile(): void {
-    this.router.navigate(['/main-menu/update-profile']);
-  }
-
-  logout(): void {
-    localStorage.removeItem('jenga_access_token');
-    localStorage.clear();
-    this.router.navigate(['/login']);
-  }
-
-  ngOnDestroy(): void {
+  ngOnInit() {
+    this.appBar.setTitle('Dashboard');
     this.appBar.clearActions();
+    if (this.browser) this.load();
+  }
+
+  load() {
+    this.loading.set(true);
+    const safe = <T>(o: any, fallback: T) => o.pipe(catchError(() => of(fallback)));
+    forkJoin({
+      user: safe(this.http.get<any>(API + 'user/'), null),
+      stats: safe(this.http.get<Stats>(API + 'contractor/dashboard/stats/'), null),
+      pending: safe(this.http.get<PendingGig[]>(API + 'contractor/dashboard/unverified-gigs/'), []),
+      workers: safe(this.http.get<Worker[]>(API + 'contractor/dashboard/top-workers/'), []),
+      sites: safe(this.http.get<Site[]>(API + 'user-organizations/'), []),
+      payments: safe(this.http.get<any[]>(API + 'single-messages/'), []),
+    }).subscribe((r: any) => {
+      this.name.set((r.user?.full_name || r.user?.username || '').split(' ')[0]);
+      this.stats.set(r.stats);
+      this.pending.set(r.pending);
+      this.workers.set(r.workers.slice(0, 5));
+      this.sites.set(r.sites);
+      const now = new Date();
+      const tx = Array.isArray(r.payments) ? r.payments : (r.payments?.results || r.payments?.transactions || []);
+      this.paidThisMonth.set(tx.filter((t: any) => {
+        const d = new Date(t.transaction_date);
+        return t.result_code === 0 && d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+      }).reduce((s: number, t: any) => s + Number(t.amount || 0), 0));
+      this.loading.set(false);
+    });
+  }
+
+  verify(g: PendingGig) {
+    this.verifying.set(g.id);
+    this.http.post<any>(API + `gigs/verify/${g.id}/`, {}).subscribe({
+      next: () => {
+        this.pending.update((list) => list.filter((x) => x.id !== g.id));
+        this.stats.update((s) => s && { ...s, unverified_gigs: Math.max(0, s.unverified_gigs - 1), verified_this_week: s.verified_this_week + 1 });
+        this.verifying.set(null);
+        this.snack.open(`Verified ${g.workerName}'s ${g.jobType.toLowerCase()} gig. +5 to their score.`, 'OK', { duration: 3500, panelClass: 'success-snackbar' });
+      },
+      error: (e) => {
+        this.verifying.set(null);
+        this.snack.open(e?.error?.detail || 'Could not verify this gig.', 'OK', { duration: 4000, panelClass: 'error-snackbar' });
+      },
+    });
+  }
+
+  initials(n: string) { return (n || '?').split(/\s+/).map((p) => p[0]).slice(0, 2).join('').toUpperCase(); }
+  ago(d: string) {
+    const days = Math.round((Date.now() - new Date(d).getTime()) / 86400000);
+    return days <= 0 ? 'today' : days === 1 ? 'yesterday' : `${days} days ago`;
   }
 }

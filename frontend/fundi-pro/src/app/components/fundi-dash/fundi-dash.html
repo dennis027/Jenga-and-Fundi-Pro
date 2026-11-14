@@ -1,376 +1,101 @@
-<!-- fundi-dash.component.html -->
-
-<!-- Hidden menu trigger for AppBar action button -->
-<button 
-  #accountMenuTrigger="matMenuTrigger"
-  [matMenuTriggerFor]="accountMenu"
-  style="display: none;">
-</button>
-
-<!-- Account Menu -->
-<mat-menu #accountMenu="matMenu">
-  <button mat-menu-item (click)="goToProfile()">
-    <mat-icon>person</mat-icon>
-    <span>Profile</span>
-  </button>
-  <button mat-menu-item (click)="goToSettings()">
-    <mat-icon>settings</mat-icon>
-    <span>Settings</span>
-  </button>
-  <mat-divider></mat-divider>
-  <button mat-menu-item (click)="logout()">
-    <mat-icon>logout</mat-icon>
-    <span>Logout</span>
-  </button>
-</mat-menu>
-
 <div class="page">
-  
-  <!-- Loading State -->
-  @if (isLoading()) {
-    <div class="loading-container">
-      <div class="spinner"></div>
-      <p>Loading dashboard...</p>
-    </div>
-  }
-
-  <!-- Mobile View -->
-  @if (isMobile() && !isLoading()) { 
-    <br><br>
-    
-    <!-- Welcome Card -->
-    <section class="card header-card">
-      <div class="header-content">
-        <img
-          [src]="imgFile() || 'assets/user.png'"
-          alt="Profile"
-          class="profile-avatar"
-        />
-        <div class="header-text">
-          <h2>Hello, {{ fullname() || username() }}!</h2>
-          <p>{{ email() }}</p>
-        </div>
-      </div>
-    </section>
-
-    <!-- Work History Status Card -->
-    <section class="card trust-status-card">
-      <h3>🛡️ Work History Status</h3>
-      <div class="trust-metrics">
-        <div class="metric-row">
-          <span class="label">Verified Days (30d)</span>
-          <span class="value">{{ verifiedDays() }}</span>
-        </div>
-        <div class="metric-row">
-          <span class="label">Verification Rate</span>
-          <span class="value">{{ verificationRate() }}%</span>
-        </div>
-        <div class="metric-row">
-          <span class="label">Sites Worked</span>
-          <span class="value">{{ sitesWorked() }}</span>
-        </div>
-        <div class="metric-row">
-          <span class="label">Disputes</span>
-          <span class="value">{{ disputes() }}</span>
-        </div>
-      </div>
-    </section>
-
-    <!-- Work Activity Timeline -->
-    <section class="card timeline-card">
-      <h3>📆 Work Activity (Last 30 Days)</h3>
-      <div class="activity-calendar">
-        @for (day of last30Days(); track day.date) {
-          <div class="day-cell" 
-               [class.verified]="day.status === 'verified'"
-               [class.pending]="day.status === 'pending'"
-               [class.empty]="day.status === 'empty'"
-               [title]="day.tooltip">
-            {{ day.dayNum }}
-          </div>
-        }
-      </div>
-      <div class="legend">
-        <span><span class="dot verified"></span> Verified</span>
-        <span><span class="dot pending"></span> Pending</span>
-        <span><span class="dot empty"></span> No work</span>
-      </div>
-    </section>
-
-        <!-- Work History Summary -->
-    <section class="card list-card" routerLink="/main-menu/gig-summary">
-      <div class="list-item">
-        <i class="material-icons green">work_outline</i>
-        <div>
-          <h4>Work History Summary</h4>
-          <p>{{ verifiedGigs() }} Verified / {{ totalGigs() }} Total Days</p>
-        </div>
-        <i class="material-icons">chevron_right</i>
-      </div>
-    </section>
-
-    <!-- Quick Actions Grid -->
-    <section class="mobile-nav">
-
-      <!-- Profile -->
-      <div class="nav-card" routerLink="/main-menu/profile">
-        <i class="material-icons">person</i>
-        <span>Profile</span>
-      </div>
-
-      <!-- Payment Proof -->
-      <div class="nav-card" routerLink="/main-menu/proof-of-payments">
-        <i class="material-icons">upload_file</i>
-        <span>Payment Proof</span>
-      </div>
-
-      <!-- M-Pesa -->
-      <div class="nav-card" routerLink="/main-menu/mpesa">
-        <i class="material-icons">payment</i>
-        <span>M-PESA</span>
-      </div>
-
-      <!-- Verification Status -->
-      <div class="nav-card" routerLink="/main-menu/verification-status">
-        <i class="material-icons">verified_user</i>
-        <span>Verification</span>
-      </div>
-
-      <!-- Work History -->
-      <div class="nav-card" routerLink="/main-menu/work-history">
-        <i class="material-icons">history</i>
-        <span>Work History</span>
-      </div>
-
-
-      <!-- Work History -->
-      <div class="nav-card" routerLink="/main-menu/credit-score">
-        <i class="material-icons">score</i>
-        <span>Credit Score</span>
-      </div>
-
-
-
-
-       <!-- Log Work -->
-      <div class="nav-card" routerLink="/main-menu/analytics">
-        <i class="material-icons">analytics</i>
-        <span>Analytics</span>
-      </div>
-
-
-    </section>
-
-
-
-    <!-- Profile Summary Card -->
-    <section class="card profile-card">
-      <h3>Profile Information</h3>
-      <div class="profile-info">
-        <div class="info-row">
-          <i class="material-icons">person</i>
-          <span>{{ fullname() || username() }}</span>
-        </div>
-        <div class="info-row">
-          <i class="material-icons">email</i>
-          <span>{{ email() }}</span>
-        </div>
-        @if (location()) {
-          <div class="info-row">
-            <i class="material-icons">location_on</i>
-            <span>{{ location() }}</span>
-          </div>
-        }
-      </div>
-    </section>
-
-    <!-- Credit Readiness Preview -->
-    <section class="card credit-preview-card">
-      <div class="locked-header">
-        <i class="material-icons">lock</i>
-        <h3>Credit Readiness (Preview)</h3>
-      </div>
-      <div class="preview-content">
-        <div class="preview-row">
-          <span>History length:</span>
-          <strong>{{ historyMonths() }} months</strong>
-        </div>
-        <div class="preview-row">
-          <span>Minimum required:</span>
-          <strong>3 months</strong>
-        </div>
-        <div class="status-row" [class.ready]="historyMonths() >= 3">
-          <span>Status:</span>
-          <strong>{{ getVerificationStatus() }}</strong>
-        </div>
-      </div>
-    </section>
-  }
-
-  <!-- Desktop View -->
-  @if (!isMobile() && !isLoading()) {
-    <!-- Desktop Header -->
-    <div class="desktop-header">
-      <h1>Work History Dashboard</h1>
-      <p>Track your verified work to build credibility</p>
-    </div>
-
-    <!-- Stats Grid -->
-    <div class="stats-grid">
-      <div class="stat-card">
-        <div class="stat-header">
-          <div class="stat-icon bg-blue">
-            <i class="material-icons">verified</i>
-          </div>
-        </div>
-        <h3>Verified Days</h3>
-        <p class="stat-value">{{ verifiedDays() }}</p>
-        <p class="stat-subtitle">Last 30 days</p>
-      </div>
-
-      <div class="stat-card">
-        <div class="stat-header">
-          <div class="stat-icon bg-green">
-            <i class="material-icons">location_city</i>
-          </div>
-        </div>
-        <h3>Sites Worked</h3>
-        <p class="stat-value">{{ sitesWorked() }}</p>
-        <p class="stat-subtitle">Active locations</p>
-      </div>
-
-      <div class="stat-card">
-        <div class="stat-header">
-          <div class="stat-icon bg-purple">
-            <i class="material-icons">trending_up</i>
-          </div>
-        </div>
-        <h3>Verification Rate</h3>
-        <p class="stat-value">{{ verificationRate() }}%</p>
-        <p class="stat-subtitle">Trust score</p>
-      </div>
-
-      <div class="stat-card">
-        <div class="stat-header">
-          <div class="stat-icon bg-orange">
-            <i class="material-icons">calendar_month</i>
-          </div>
-        </div>
-        <h3>Total Gigs</h3>
-        <p class="stat-value">{{ totalGigs() }}</p>
-        <p class="stat-subtitle">All time</p>
+  <section class="hero">
+    <div>
+      <div class="date">{{ today | date: 'EEEE, d MMMM y' }}</div>
+      <h1>{{ greeting }}{{ firstName() ? ', ' + firstName() : '' }} 👋</h1>
+      <p>Every gig a contractor verifies builds your record and your credit score.</p>
+      <div class="hero-actions">
+        <a class="hero-btn" routerLink="/main-menu/gigs"><span class="icon">add_task</span> Log a gig</a>
+        <a class="hero-btn" routerLink="/main-menu/credit-score"><span class="icon">share</span> Share my certificate</a>
+        <a class="hero-btn" routerLink="/main-menu/gig-summary"><span class="icon">work</span> My gigs</a>
       </div>
     </div>
+    <div class="hero-metric">
+      <div class="k">Credit score · {{ level().name }}</div>
+      <div class="v">{{ score() }}<span class="of">/100</span></div>
+      <div class="bar"><span [style.width.%]="score()"></span></div>
+      <div class="s">
+        @if (level().next) { {{ level().next! - score() }} points to {{ level().next === 30 ? 'Silver' : level().next === 60 ? 'Gold' : 'Platinum' }} · +5 per verified gig }
+        @else { Top level. Keep it up! }
+      </div>
+    </div>
+  </section>
 
-    <!-- Desktop Content Grid -->
-    <div class="desktop-grid">
-      <!-- Recent Work Logs -->
-      <div class="desktop-card recent-jobs">
-        <div class="card-header">
-          <h2>Recent Work Logs</h2>
-          <button mat-button (click)="refreshDashboard()">
-            <mat-icon>refresh</mat-icon>
-            Refresh
-          </button>
-        </div>
-        <div class="jobs-list">
-          @if (recentWorkLogs().length === 0) {
-            <div class="empty-state">
-              <i class="material-icons">work_off</i>
-              <p>No work logged yet</p>
+  <section class="panel">
+    <div class="panel-head">
+      <div><h2>Needs your attention</h2><p>Finish verified gigs to earn points, and keep your profile complete.</p></div>
+      <a class="link-more" routerLink="/main-menu/gig-summary">All my gigs <span class="icon">arrow_forward</span></a>
+    </div>
+    @if (loading()) {
+      <div class="rows">@for (i of [1, 2]; track i) { <div class="row"><div class="skeleton" style="height:38px;width:100%"></div></div> }</div>
+    } @else {
+      <div class="rows">
+        @for (g of ready(); track g.id) {
+          <div class="row">
+            <span class="row-icon ok"><span class="icon">task_alt</span></span>
+            <div class="grow">
+              <div class="title">{{ g.job_type_name }} at {{ g.organization_name }} was verified</div>
+              <div class="sub">{{ duration(g.duration_value, g.duration_unit) }} from {{ g.start_date | date: 'd MMM' }} · mark it complete when the work is done</div>
             </div>
-          } @else {
-            @for (log of recentWorkLogs(); track log.id) {
-              <div class="job-item">
-                <div class="job-main">
-                  <div class="job-info">
-                    <h3>{{ log.siteName }}</h3>
-                    <p>{{ log.jobType }}</p>
-                  </div>
-                  <span class="job-status">{{ formatDate(log.date) }}</span>
-                </div>
-                <div class="job-footer">
-                  <span class="status-badge" [class.completed]="log.verified" [class.pending]="!log.verified">
-                    <i class="material-icons">{{ log.verified ? 'verified' : 'schedule' }}</i>
-                    {{ log.verified ? 'Verified' : 'Pending' }}
-                  </span>
-                  @if (log.verified && log.foremanName) {
-                    <span class="verified-by">by {{ log.foremanName }}</span>
-                  }
-                </div>
-              </div>
-            }
-          }
-        </div>
+            <button class="btn primary sm" type="button" (click)="complete(g)" [disabled]="completing() === g.id">
+              <span class="icon">done</span> {{ completing() === g.id ? 'Saving…' : 'Mark complete (+5)' }}
+            </button>
+          </div>
+        }
+        @for (g of waiting(); track g.id) {
+          <div class="row">
+            <span class="row-icon warn"><span class="icon">hourglass_top</span></span>
+            <div class="grow">
+              <div class="title">{{ g.job_type_name }} at {{ g.organization_name }}</div>
+              <div class="sub">Waiting for the contractor to verify · logged {{ g.created_at | date: 'd MMM' }}</div>
+            </div>
+            <span class="badge warn">Waiting</span>
+          </div>
+        }
+        @if (me() && !me().id_verified) {
+          <div class="row">
+            <span class="row-icon info"><span class="icon">verified_user</span></span>
+            <div class="grow"><div class="title">Verify your ID</div><div class="sub">Upload your national ID and a selfie. Adds +20 to your score once approved.</div></div>
+            <a class="btn outline sm" routerLink="/main-menu/verification-status">Verify now</a>
+          </div>
+        }
+        @if (!ready().length && !waiting().length && me()?.id_verified) {
+          <div class="empty"><span class="icon">add_task</span><h3>Nothing waiting</h3><p>Log your next gig so the contractor can verify it.</p>
+            <a class="btn primary sm" routerLink="/main-menu/gigs"><span class="icon">add</span> Log a gig</a></div>
+        }
       </div>
+    }
+  </section>
 
-      <!-- Work Activity Timeline -->
-      <div class="desktop-card">
-        <div class="card-header">
-          <h2>Work Activity</h2>
-        </div>
-        <div class="timeline-desktop">
-          <div class="activity-calendar-desktop">
-            @for (day of last30Days(); track day.date) {
-              <div class="day-cell-desktop" 
-                   [class.verified]="day.status === 'verified'"
-                   [class.pending]="day.status === 'pending'"
-                   [class.empty]="day.status === 'empty'"
-                   [title]="day.tooltip">
-                {{ day.dayNum }}
-              </div>
+  <section class="stat-grid">
+    <div class="stat"><span class="tile green"><span class="icon">task_alt</span></span><div><div class="label">Completed gigs</div><div class="value">{{ history().length }}</div></div></div>
+    <div class="stat"><span class="tile blue"><span class="icon">calendar_month</span></span><div><div class="label">Verified days (30 days)</div><div class="value">{{ stats()?.verified_days ?? '–' }}</div></div></div>
+    <div class="stat"><span class="tile purple"><span class="icon">apartment</span></span><div><div class="label">Sites worked</div><div class="value">{{ stats()?.sites_worked ?? '–' }}</div></div></div>
+    <div class="stat"><span class="tile orange"><span class="icon">percent</span></span><div><div class="label">Verification rate</div><div class="value">{{ (stats()?.verification_rate ?? 0) | number: '1.0-0' }}%</div></div></div>
+  </section>
+
+  <section class="grid-2">
+    <div class="panel">
+      <div class="panel-head"><div><h2>Recent completed work</h2><p>Verified by the contractor and finished</p></div>
+        <a class="link-more" routerLink="/main-menu/gig-summary" [queryParams]="{ tab: 'completed' }">History <span class="icon">arrow_forward</span></a></div>
+      <div class="table-wrap">
+        <table class="tbl">
+          <thead><tr><th>Trade</th><th>Site</th><th>Start</th><th>Duration</th></tr></thead>
+          <tbody>
+            @for (h of history().slice(0, 5); track h.id) {
+              <tr><td class="cell-main">{{ h.job_type_name }}</td><td>{{ h.organization_name }}</td><td class="nowrap">{{ h.start_date | date: 'd MMM y' }}</td><td>{{ duration(h.duration_value, h.duration_unit) }}</td></tr>
+            } @empty {
+              <tr><td colspan="4"><div class="empty"><span class="icon">history</span><p>Completed gigs will show here.</p></div></td></tr>
             }
-          </div>
-          <div class="legend">
-            <span><span class="dot verified"></span> Verified</span>
-            <span><span class="dot pending"></span> Pending</span>
-            <span><span class="dot empty"></span> No work</span>
-          </div>
-        </div>
-
-        <!-- Trust Metrics -->
-        <div class="trust-metrics-desktop">
-          <h3>Trust Metrics</h3>
-          <div class="metric-item">
-            <span class="label">Verified Days (30d)</span>
-            <span class="value">{{ verifiedDays() }}</span>
-          </div>
-          <div class="metric-item">
-            <span class="label">Verification Rate</span>
-            <span class="value">{{ verificationRate() }}%</span>
-          </div>
-          <div class="metric-item">
-            <span class="label">Disputes</span>
-            <span class="value">{{ disputes() }}</span>
-          </div>
-          <div class="metric-item">
-            <span class="label">Credit Score</span>
-            <span class="value">{{ creditScore() }}/100</span>
-          </div>
-        </div>
+          </tbody>
+        </table>
       </div>
     </div>
-
-    <!-- Credit Readiness (Desktop) -->
-    <section class="card credit-preview-card-desktop">
-      <div class="locked-header">
-        <i class="material-icons">lock</i>
-        <h3>Credit Readiness (Preview)</h3>
-      </div>
-      <div class="preview-content-desktop">
-        <div class="preview-metric">
-          <span class="label">History length</span>
-          <span class="value">{{ historyMonths() }} months</span>
-        </div>
-        <div class="preview-metric">
-          <span class="label">Minimum required</span>
-          <span class="value">3 months</span>
-        </div>
-        <div class="preview-metric status" [class.ready]="historyMonths() >= 3">
-          <span class="label">Status</span>
-          <span class="value">{{ getVerificationStatus() }}</span>
-        </div>
-      </div>
-    </section>
-  }
+    <div class="panel cert">
+      <span class="cert-mark"><span class="icon fill">workspace_premium</span></span>
+      <h2>Your verified work certificate</h2>
+      <p>A link lenders and employers can open to see your contractor-verified gigs, ratings and score. No phone or ID number is shown.</p>
+      <a class="btn primary" routerLink="/main-menu/credit-score"><span class="icon">share</span> Share my certificate</a>
+    </div>
+  </section>
 </div>

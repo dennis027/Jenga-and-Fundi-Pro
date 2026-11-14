@@ -1,72 +1,59 @@
 <div class="page">
-  @if (isMobile()) {
-    <br><br>
-  }
-
-  @if (isLoading()) {
-    <div class="loading-container">
-      <div class="spinner"></div>
+  <div class="page-head">
+    <div>
+      <h1>Verify gigs</h1>
+      <p>Work logged by fundis at your sites. Only verify work you saw done. Each verification adds +5 to the worker's credit score.</p>
     </div>
-  }
-
-  @else if (unverifiedGigs().length === 0) {
-    <div class="empty-state">
-      <i class="material-icons empty-icon">verified</i>
-      <h3>All gigs are verified!</h3>
-      <p>No pending gigs to verify</p>
+    <div class="actions">
+      <button class="btn primary" type="button" (click)="verifySelected()" [disabled]="!selected().size || busy()">
+        <span class="icon">done_all</span> Verify selected{{ selected().size ? ' (' + selected().size + ')' : '' }}
+      </button>
     </div>
-  }
+  </div>
 
-  @else {
-    <div class="gigs-container">
-      @for (gig of unverifiedGigs(); track gig.id) {
-        <div class="gig-card">
-          <div class="gig-header">
-            <h3 class="client-name">{{ gig.client_name || 'No Name' }}</h3>
-            <span class="pending-badge">
-              <i class="material-icons">pending</i>
-              <span>Pending</span>
-            </span>
-          </div>
+  <div class="stat-grid">
+    <div class="stat"><span class="tile orange"><span class="icon">pending_actions</span></span>
+      <div><div class="label">Waiting for you</div><div class="value">{{ pending().length }}</div></div></div>
+    <div class="stat"><span class="tile blue"><span class="icon">engineering</span></span>
+      <div><div class="label">Workers waiting</div><div class="value">{{ workersWaiting() }}</div></div></div>
+    <div class="stat"><span class="tile green"><span class="icon">payments</span></span>
+      <div><div class="label">Value of pending work</div><div class="value"><small class="cur">KSh</small>{{ pendingValue() | number: '1.0-0' }}</div></div></div>
+  </div>
 
-          <div class="gig-info">
-            <div class="info-row">
-              <i class="material-icons">phone</i>
-              <span>{{ gig.client_phone || 'N/A' }}</span>
-            </div>
-            <div class="info-row">
-              <i class="material-icons">location_on</i>
-              <span>{{ gig.ward || 'N/A' }}, {{ gig.constituency || 'N/A' }}, {{ gig.county || 'N/A' }}</span>
-            </div>
-          </div>
-
-          <div class="divider"></div>
-
-          <div class="gig-details">
-            <div class="detail-item">
-              <div class="detail-label">
-                <i class="material-icons">calendar_today</i>
-                <span>Start Date</span>
-              </div>
-              <div class="detail-value">{{ gig.start_date || 'N/A' }}</div>
-            </div>
-            <div class="detail-item">
-              <div class="detail-label">
-                <i class="material-icons">schedule</i>
-                <span>Duration</span>
-              </div>
-              <div class="detail-value">{{ gig.duration_value || 'N/A' }} {{ gig.duration_unit || '' }}</div>
-            </div>
-          </div>
-
-          <div class="button-container">
-            <button class="verify-btn" (click)="verifyGig(gig.id)">
-              <i class="material-icons">verified</i>
-              <span>Verify Gig</span>
-            </button>
-          </div>
-        </div>
-      }
+  <div class="panel">
+    <div class="toolbar">
+      <div class="muted">{{ site.id() === null ? 'All your sites' : site.label() }} · oldest first</div>
+      <label class="search"><input type="search" placeholder="Search worker, trade or site" [ngModel]="q()" (ngModelChange)="q.set($event)"><span class="icon">search</span></label>
     </div>
-  }
+
+    @if (loading()) {
+      <div class="panel-body"><div class="skeleton" style="height:160px"></div></div>
+    } @else if (!pending().length) {
+      <div class="empty"><span class="icon">task_alt</span><h3>Nothing to verify</h3><p>{{ q() ? 'No pending gigs match your search.' : 'New gigs logged at your sites will appear here.' }}</p></div>
+    } @else {
+      <div class="table-wrap">
+        <table class="tbl">
+          <thead>
+            <tr>
+              <th style="width:44px"><input type="checkbox" class="check" [checked]="allSelected()" (change)="toggleAll()" aria-label="Select all"></th>
+              <th>Worker</th><th>Trade</th><th>Site</th><th>Dates</th><th class="right">Agreed pay (KSh)</th><th></th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (g of pending(); track g.id) {
+              <tr [class.sel]="selected().has(g.id)">
+                <td><input type="checkbox" class="check" [checked]="selected().has(g.id)" (change)="toggle(g.id)" [attr.aria-label]="'Select ' + g.worker_name"></td>
+                <td><div class="who"><span class="avatar">{{ initials(g.worker_name) }}</span><span class="cell-main">{{ g.worker_name }}</span></div></td>
+                <td>{{ g.job_type_name }}</td>
+                <td><div class="cell-main">{{ g.organization_name }}</div><div class="cell-sub">{{ g.ward }}</div></td>
+                <td><div>{{ g.start_date | date: 'd MMM y' }}</div><div class="cell-sub">{{ duration(g.duration_value, g.duration_unit) }} · logged {{ daysAgo(g.created_at) }}</div></td>
+                <td class="right num">{{ +g.amount_paid | number: '1.2-2' }}</td>
+                <td><div class="row-actions"><button class="btn primary sm" type="button" (click)="verify([g.id])" [disabled]="busy()"><span class="icon">check</span> Verify</button></div></td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  </div>
 </div>

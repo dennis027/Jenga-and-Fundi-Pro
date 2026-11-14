@@ -73,8 +73,8 @@ export class Profile implements OnInit {
   imgUrl = environment.apiUrl; // Match your dashboard base URL
 
   ngOnInit() {
-    this.appBar.setTitle('Update Profile');
-    this.appBar.setBack(true);
+    this.appBar.setTitle('My profile');
+    this.appBar.clearActions();
     this.initializeForm();
 
     if (isPlatformBrowser(this.platformId)) {

@@ -1,310 +1,94 @@
-
-<br><br>
 <div class="page">
-  
-  <!-- Desktop Action Bar -->
-  <div class="desktop-actions">
-    <div class="actions-left">
-      <h1 class="page-title">
-        <i class="material-icons">work_outline</i>
-        My Gigs
-      </h1>
-      @if(!isLoading()) {
-      <span class="gig-count" >
-        {{ gigs().length }} {{ gigs().length === 1 ? 'Gig' : 'Gigs' }}
-      </span>
-      }
- 
+  <div class="page-head">
+    <div>
+      <h1>My gigs</h1>
+      <p>Log a gig, wait for the site's contractor to verify it, then mark it complete. Each step adds to your credit score.</p>
     </div>
-    <div class="actions-right">
-      <button class="action-btn secondary-btn" (click)="fetchGigs()" [disabled]="isLoading()">
-        <i class="material-icons">refresh</i>
-        <span>Reload</span>
-      </button>
-      <button class="action-btn primary-btn" (click)="openAddGigDialog()">
-        <i class="material-icons">add</i>
-        <span>Add Gig</span>
-      </button>
-    </div>
+    <div class="actions"><a class="btn primary" routerLink="/main-menu/gigs"><span class="icon">add_task</span> Log a gig</a></div>
   </div>
 
-  <!-- Loading State -->
-  @if (isLoading()) {
-    <div class="loading-container">
-      <div class="spinner-large"></div>
-      <p>Loading your gigs...</p>
-    </div>
-  }
+  <ol class="steps">
+    <li [class.on]="tab() === 'waiting'"><span class="n">1</span><div><strong>Log</strong><small>Record the work at a site</small></div></li>
+    <li [class.on]="tab() === 'ready'"><span class="n">2</span><div><strong>Contractor verifies</strong><small>+5 to your score</small></div></li>
+    <li [class.on]="tab() === 'completed'"><span class="n">3</span><div><strong>Mark complete</strong><small>+5 more, goes on your certificate</small></div></li>
+  </ol>
 
-  <!-- Empty State -->
-  @else if (gigs().length === 0) {
-    <div class="empty-state">
-      <div class="empty-icon">
-        <i class="material-icons">work_outline</i>
+  <div class="panel">
+    <div class="toolbar">
+      <div class="seg" role="tablist">
+        @for (t of tabs; track t.id) {
+          <button type="button" role="tab" [class.on]="tab() === t.id" (click)="tab.set(t.id)">{{ t.label }} <span class="count">{{ counts()[t.id] }}</span></button>
+        }
       </div>
-      <h3>No Gigs Found</h3>
-      <p>You haven't logged any gigs yet.<br>Start by adding your first gig!</p>
-      <button style="color: black;" class="add-first-btn" (click)="openAddGigDialog()">
-        <i class="material-icons">add</i>
-        <span >Add Your First Gig</span>
-      </button>
+      <label class="search"><input type="search" placeholder="Search trade or site" [ngModel]="q()" (ngModelChange)="q.set($event)"><span class="icon">search</span></label>
     </div>
-  }
 
-  <!-- Gigs Grid -->
-  @else {
-    <div class="gigs-grid">
-      @for (gig of gigs(); track gig.id) {
-        <div class="gig-card" [class.verified]="gig.is_verified">
-          
-          <!-- Header with Status -->
-          <div class="card-header">
-            <h3>{{ getJobTypeName(gig.job_type) }}</h3>
-            <div class="status-badge" [class.approved]="gig.is_verified" [class.pending]="!gig.is_verified">
-              <i class="material-icons">{{ gig.is_verified ? 'check_circle' : 'access_time' }}</i>
-              <span>{{ gig.is_verified ? 'APPROVED' : 'PENDING' }}</span>
-            </div>
-          </div>
-
-          <!-- Client Information -->
-          <div class="info-box client-info">
-            <div class="info-row">
-              <i class="material-icons">person</i>
-              <div class="info-content">
-                <span class="label">Client</span>
-                <span class="value">{{ gig.client_name || 'Not specified' }}</span>
-              </div>
-            </div>
-            <div class="info-row">
-              <i class="material-icons">phone</i>
-              <div class="info-content">
-                <span class="label">Phone</span>
-                <span class="value">{{ gig.client_phone || 'Not provided' }}</span>
-              </div>
-            </div>
-          </div>
-
-          <!-- Location Information -->
-          <div class="info-box location-info">
-            <div class="info-row">
-              <i class="material-icons">location_city</i>
-              <div class="info-content">
-                <span class="label">County</span>
-                <span class="value">{{ gig.county || 'Not specified' }}</span>
-              </div>
-            </div>
-            <div class="info-row">
-              <i class="material-icons">account_balance</i>
-              <div class="info-content">
-                <span class="label">Constituency</span>
-                <span class="value">{{ gig.constituency || 'Not specified' }}</span>
-              </div>
-            </div>
-            <div class="info-row">
-              <i class="material-icons">place</i>
-              <div class="info-content">
-                <span class="label">Ward</span>
-                <span class="value">{{ gig.ward || 'Not specified' }}</span>
-              </div>
-            </div>
-          </div>
-
-          <!-- Job Details -->
-          <div class="info-box job-details" [class.verified-bg]="gig.is_verified">
-            <div class="info-row">
-              <i class="material-icons">calendar_today</i>
-              <div class="info-content">
-                <span class="label">Start Date</span>
-                <span class="value">{{ gig.start_date || 'Not set' }}</span>
-              </div>
-            </div>
-            <div class="info-row">
-              <i class="material-icons">schedule</i>
-              <div class="info-content">
-                <span class="label">Duration</span>
-                <span class="value">{{ gig.duration_value || '?' }} {{ gig.duration_unit || '' }}</span>
-              </div>
-            </div>
-          </div>
-
-        </div>
-      }
-    </div>
-  }
-
+    @if (loading()) {
+      <div class="panel-body"><div class="skeleton" style="height:180px"></div></div>
+    } @else if (!rows().length) {
+      <div class="empty">
+        @switch (tab()) {
+          @case ('waiting') { <span class="icon">hourglass_empty</span><h3>No gigs waiting</h3><p>Log a gig after you start work at a site.</p><a class="btn primary sm" routerLink="/main-menu/gigs"><span class="icon">add</span> Log a gig</a> }
+          @case ('ready') { <span class="icon">task_alt</span><h3>Nothing to complete</h3><p>Gigs appear here once the contractor verifies them.</p> }
+          @case ('completed') { <span class="icon">history</span><h3>No completed gigs yet</h3><p>Finished, verified work is listed here.</p> }
+        }
+      </div>
+    } @else {
+      <div class="table-wrap">
+        <table class="tbl">
+          <thead><tr><th>Trade</th><th>Site</th><th>Start</th><th>Duration</th>@if (tab() !== 'completed') { <th class="right">Agreed pay (KSh)</th> }<th>Status</th><th></th></tr></thead>
+          <tbody>
+            @for (g of rows(); track g.id) {
+              <tr>
+                <td class="cell-main">{{ g.job_type_name }}</td>
+                <td><div>{{ g.organization_name }}</div><div class="cell-sub">{{ g.ward }}, {{ g.county }}</div></td>
+                <td class="nowrap">{{ g.start_date | date: 'd MMM y' }}</td>
+                <td class="nowrap">{{ duration(g.duration_value, g.duration_unit) }}</td>
+                @if (tab() !== 'completed') { <td class="right num">{{ +g.amount_paid | number: '1.2-2' }}</td> }
+                <td>
+                  @if (tab() === 'completed') { <span class="badge ok">Completed</span> }
+                  @else if (g.is_verified) { <span class="badge info">Verified</span> }
+                  @else { <span class="badge warn">Waiting</span> }
+                  @if (disputeFor(tab() === 'completed' ? 'history' : 'gig', g.id); as d) {
+                    <span class="badge" [class.danger]="d.status === 'open'" title="Dispute">Dispute {{ d.status }}</span>
+                  }
+                </td>
+                <td>
+                  <div class="row-actions">
+                    @if (tab() === 'ready') {
+                      <button class="btn primary sm" type="button" (click)="complete(g)" [disabled]="completing() === g.id"><span class="icon">done</span> Complete</button>
+                    }
+                    @if (!disputeFor(tab() === 'completed' ? 'history' : 'gig', g.id)) {
+                      <button class="icon-btn" type="button" (click)="openDispute(tab() === 'completed' ? 'history' : 'gig', g)" title="Report a problem" aria-label="Report a problem"><span class="icon">flag</span></button>
+                    }
+                  </div>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  </div>
 </div>
 
-<!-- ============================================ -->
-<!-- ADD GIG DIALOG TEMPLATE -->
-<!-- ============================================ -->
-<ng-template #addGigDialog>
-  <div class="dialog-container">
-    <div class="dialog-header" mat-dialog-title>
-      <div class="header-content">
-        <div class="header-icon">
-          <i class="material-icons">work_outline</i>
-        </div>
-        <div class="header-text">
-          <h2>Log New Gig</h2>
-          <p>Provide accurate details to build your work history</p>
-        </div>
-      </div>
-      <button type="button" class="close-btn" mat-dialog-close aria-label="Close dialog">
-        <i class="material-icons">close</i>
-      </button>
+<dialog class="modal" #disputeDialog>
+  @if (disputing(); as d) {
+    <div class="modal-head">
+      <div><h2>Report a problem</h2><p>{{ d.row.job_type_name }} at {{ d.row.organization_name }} · {{ d.row.start_date | date: 'd MMM y' }}</p></div>
+      <button class="icon-btn" type="button" (click)="closeDispute()" aria-label="Close"><span class="icon">close</span></button>
     </div>
-
-    <form class="dialog-body" mat-dialog-content [formGroup]="gigForm" (ngSubmit)="onSubmit()">
-      
-      <!-- Client Info -->
-      <div class="form-section">
-        <h3 class="section-title">
-          <i class="material-icons">person</i>
-          Client Information
-        </h3>
-        
-        <div class="form-group">
-          <label>Client Name *</label>
-          
-        <select 
-            class="form-control" 
-            [class.error]="hasError('organization')"
-            formControlName="organization" 
-            (change)="getOrgDetails($event)"
-          >
-            <option  value="">Select Client</option>
-            <option  *ngFor="let c of organizations" [value]="c.id">
-              {{ c.name }}
-            </option>
-          </select>
-          @if (hasError('organization')) {
-            <span class="error-message">{{ getErrorMessage('organization') }}</span>
-          }
-        </div>
-        @if(selectedPhoneNumber || selectedCounty || selectedConstituency || selectedWard ){
-          <div  class="customer-details">
-            <ul>
-            @if(selectedPhoneNumber){
-                <strong>Phone Number:</strong>
-                <li>{{selectedPhoneNumber}}</li>
-              }
-            @if(selectedCounty ){
-                <strong>County:</strong>
-                <li>{{selectedCounty}}</li>
-            }
-            @if(selectedConstituency ){
-                <strong>Constituency:</strong>
-                <li>{{selectedConstituency}}</li>
-            }
-            @if(selectedWard){
-                <strong>Ward:</strong>
-              <li>{{selectedWard}}</li>
-            }
-            </ul>
-          </div>
-      }
-
+    <div class="modal-body">
+      <div class="field">
+        <label for="dispute-reason">What is wrong?</label>
+        <textarea id="dispute-reason" class="input" rows="4" placeholder="e.g. I worked 10 days, not 8. Or: the contractor has not verified after 2 weeks."
+                  [ngModel]="reason()" (ngModelChange)="reason.set($event)"></textarea>
+        <span class="hint">The site's contractor and our team can see this. At least 10 characters.</span>
       </div>
-
-      <!-- Job Details -->
-      <div class="form-section">
-        <h3 class="section-title">
-          <i class="material-icons">work</i>
-          Job Details
-        </h3>
-        
-        <div class="form-group">
-          <label>Job Type *</label>
-          <select 
-            class="form-control" 
-            [class.error]="hasError('job_type')"
-            formControlName="job_type"
-          >
-            <option value="">Select job type</option>
-            <option *ngFor="let jt of gigTypes" [value]="jt.id">
-              {{ jt.name }}
-            </option>
-          </select>
-          @if (hasError('job_type')) {
-            <span class="error-message">{{ getErrorMessage('job_type') }}</span>
-          }
-        </div>
-
-        <div class="form-group">
-          <label>Start Date *</label>
-          <input
-            type="date"
-            class="form-control"
-            [class.error]="hasError('start_date')"
-            formControlName="start_date"
-          />
-          @if (hasError('start_date')) {
-            <span class="error-message">{{ getErrorMessage('start_date') }}</span>
-          }
-        </div>
-
-        <div class="form-row">
-          <div class="form-group flex-2">
-            <label>Duration Unit *</label>
-            <select 
-              class="form-control" 
-              [class.error]="hasError('duration_unit')"
-              formControlName="duration_unit"
-            >
-              <option value="">Select unit</option>
-              <option value="days">Days</option>
-              <option value="weeks">Weeks</option>
-              <option value="months">Months</option>
-            </select>
-            @if (hasError('duration_unit')) {
-              <span class="error-message">{{ getErrorMessage('duration_unit') }}</span>
-            }
-          </div>
-
-          <div class="form-group flex-1">
-            <label>Value *</label>
-            <input
-              type="number"
-              class="form-control"
-              [class.error]="hasError('duration_value')"
-              formControlName="duration_value"
-              placeholder="0"
-              min="1"
-            />
-            @if (hasError('duration_value')) {
-              <span class="error-message">{{ getErrorMessage('duration_value') }}</span>
-            }
-          </div>
-        </div>
-      </div>
-
-
-      <!-- Submit Buttons -->
-      <div class="dialog-footer" mat-dialog-actions>
-        <button
-          type="button"
-          class="cancel-btn"
-          mat-dialog-close
-          [disabled]="isSubmitting()"
-        >
-          <i class="material-icons">close</i>
-          <span>Cancel</span>
-        </button>
-
-        <button
-          type="submit"
-          class="submit-btn"
-          [disabled]="gigForm.invalid || isSubmitting()"
-        >
-          @if (isSubmitting()) {
-            <div class="spinner-small"></div>
-            <span>Submitting...</span>
-          } @else {
-            <i class="material-icons">send</i>
-            <span>Submit Gig</span>
-          }
-        </button>
-      </div>
-    </form>
-  </div>
-</ng-template>
+    </div>
+    <div class="modal-foot">
+      <button class="btn ghost" type="button" (click)="closeDispute()">Cancel</button>
+      <button class="btn primary" type="button" (click)="sendDispute()" [disabled]="reason().trim().length < 10 || sending()">{{ sending() ? 'Sending…' : 'Send' }}</button>
+    </div>
+  }
+</dialog>

@@ -1,1 +1,95 @@
-<p>all-gigs works!</p>
+<div class="page">
+  <div class="page-head">
+    <div>
+      <h1>All gigs</h1>
+      <p>Every gig logged at your sites: waiting for verification, in progress, and completed. Rate completed work to build workers' records.</p>
+    </div>
+    <div class="actions">
+      <button class="btn outline" type="button" (click)="exportCsv()" [disabled]="!shown().length"><span class="icon">download</span> Export CSV</button>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="toolbar">
+      <div class="seg" role="tablist">
+        @for (t of tabs; track t.id) {
+          <button type="button" role="tab" [class.on]="tab() === t.id" (click)="tab.set(t.id)">{{ t.label }} <span class="count">{{ counts()[t.id] }}</span></button>
+        }
+      </div>
+      <label class="search"><input type="search" placeholder="Search worker, trade or site" [ngModel]="q()" (ngModelChange)="q.set($event)"><span class="icon">search</span></label>
+    </div>
+
+    @if (loading()) {
+      <div class="panel-body"><div class="skeleton" style="height:200px"></div></div>
+    } @else if (!shown().length) {
+      <div class="empty"><span class="icon">work_history</span><h3>No gigs here</h3><p>{{ q() ? 'Nothing matches your search.' : 'Gigs logged at your sites will appear here.' }}</p></div>
+    } @else {
+      <div class="table-wrap">
+        <table class="tbl">
+          <thead><tr><th>Worker</th><th>Trade</th><th>Site</th><th>Start</th><th>Duration</th><th class="right">Pay (KSh)</th><th>Status</th><th></th></tr></thead>
+          <tbody>
+            @for (r of shown(); track r.key) {
+              <tr>
+                <td><div class="who"><span class="avatar">{{ initials(r.worker_name) }}</span><span class="cell-main">{{ r.worker_name }}</span></div></td>
+                <td>{{ r.job_type_name }}</td>
+                <td>{{ r.organization_name }}</td>
+                <td class="nowrap">{{ r.start_date | date: 'd MMM y' }}</td>
+                <td class="nowrap">{{ duration(r.duration_value, r.duration_unit) }}</td>
+                <td class="right num">{{ r.amount === null ? '—' : (r.amount | number: '1.2-2') }}</td>
+                <td>
+                  @switch (r.status) {
+                    @case ('pending') { <span class="badge warn">Pending</span> }
+                    @case ('verified') { <span class="badge info">In progress</span> }
+                    @case ('completed') { <span class="badge ok">Completed</span> }
+                  }
+                </td>
+                <td>
+                  <div class="row-actions">
+                    @if (r.status === 'pending') {
+                      <button class="btn primary sm" type="button" (click)="verify(r)"><span class="icon">check</span> Verify</button>
+                    } @else if (r.status === 'completed') {
+                      @if (r.rating) {
+                        <button class="stars-btn" type="button" (click)="openRate(r)" [title]="'Change rating'">
+                          <span class="stars">@for (i of [1, 2, 3, 4, 5]; track i) { <span class="icon" [class.fill]="i <= r.rating.stars">star</span> }</span>
+                        </button>
+                      } @else {
+                        <button class="btn outline sm" type="button" (click)="openRate(r)"><span class="icon">star</span> Rate</button>
+                      }
+                    }
+                  </div>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  </div>
+</div>
+
+<dialog class="modal" #rateDialog (close)="rating.set(null)">
+  @if (rating(); as r) {
+    <div class="modal-head">
+      <div><h2>Rate this work</h2><p>{{ r.worker_name }} · {{ r.job_type_name }} at {{ r.organization_name }}</p></div>
+      <button class="icon-btn" type="button" (click)="closeRate()" aria-label="Close"><span class="icon">close</span></button>
+    </div>
+    <div class="modal-body">
+      <div class="stars big" role="radiogroup" aria-label="Stars">
+        @for (i of [1, 2, 3, 4, 5]; track i) {
+          <button type="button" role="radio" [attr.aria-checked]="stars() === i" (click)="stars.set(i)" [attr.aria-label]="i + ' stars'">
+            <span class="icon" [class.fill]="i <= stars()">star</span>
+          </button>
+        }
+      </div>
+      <div class="field">
+        <label for="rate-comment">Comment (optional)</label>
+        <textarea id="rate-comment" class="input" rows="3" placeholder="Quality, punctuality, safety…" [ngModel]="comment()" (ngModelChange)="comment.set($event)"></textarea>
+        <span class="hint">The worker's average rating appears on their work certificate.</span>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn ghost" type="button" (click)="closeRate()">Cancel</button>
+      <button class="btn primary" type="button" (click)="saveRating()" [disabled]="!stars() || saving()">{{ saving() ? 'Saving…' : 'Save rating' }}</button>
+    </div>
+  }
+</dialog>
