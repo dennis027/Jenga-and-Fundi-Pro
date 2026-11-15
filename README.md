@@ -10,10 +10,10 @@ M-Pesa.
 | **Fundi Pro** | [frontend/fundi-pro/](frontend/fundi-pro/) | Angular 20 (SSR / prerender), Material 20 | Worker portal: log gigs, work history, credit score, payments |
 | **Jenga Pro** | [frontend/jenga-pro/](frontend/jenga-pro/) | Angular 20 (SSR / prerender), Material 20 | Contractor portal: verify gigs, manage workers/sites, reports, M-Pesa |
 
-**Live:** [Fundi Pro](https://fundi-pro-portal.onrender.com) (workers) ·
-[Jenga Pro](https://jenga-pro-portal.onrender.com) (contractors) ·
-[API docs](https://fundi-jenga-api.onrender.com/api/docs/). Free hosting: the first request
-after a quiet spell can take about a minute while the services wake up. Test logins are under
+**Live:** [Fundi Pro](https://dennis027.github.io/Jenga-and-Fundi-Pro/fundi-pro/) (workers) ·
+[Jenga Pro](https://dennis027.github.io/Jenga-and-Fundi-Pro/jenga-pro/) (contractors) — on GitHub Pages ·
+[API](https://fundi-jenga-api.onrender.com/api/docs/) on Render. The free API sleeps when idle, so
+the first request after a quiet spell can take about a minute. Test logins are under
 [Test accounts](#test-accounts).
 
 ## Screenshots
@@ -186,17 +186,23 @@ docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build
 - frontends run `ng serve` with their source mounted. They use
   `src/environments/environment.ts` (API `http://127.0.0.1:8000/`)
 
-## Deploying to Render (Docker platform)
+## Hosting
 
-[render.yaml](render.yaml) is a Render Blueprint that runs every component as a Docker
-container, built from the same Dockerfiles as the local stack:
+| Part | Where | URL |
+|---|---|---|
+| Fundi Pro, Jenga Pro (static Angular builds) | GitHub Pages | `https://dennis027.github.io/Jenga-and-Fundi-Pro/fundi-pro/`, `/jenga-pro/` |
+| API (Django) | Render, Docker, free | `https://fundi-jenga-api.onrender.com` |
+| Database | Neon Postgres (us-east-1) | — |
+
+## Deploying the API to Render (Docker)
+
+[render.yaml](render.yaml) is a Render Blueprint for the API, built from the same
+Dockerfile as the local stack:
 
 | Render service | Type | Plan | Public URL |
 |---|---|---|---|
 | `fundi-jenga-api` | Docker web service | free | `https://fundi-jenga-api.onrender.com` |
 | `fundi-jenga-redis` | Key Value (Redis) | free, 25 MB, private network only | (internal) |
-| `fundi-pro-portal` | Docker web service (Angular SSR) | free | `https://fundi-pro-portal.onrender.com` |
-| `jenga-pro-portal` | Docker web service (Angular SSR) | free | `https://jenga-pro-portal.onrender.com` |
 
 The **database stays on Neon** (`us-east-1`), so no data moves. All services are in Render's
 `virginia` region, next to Neon. Migrations run automatically when the API starts.
@@ -207,19 +213,20 @@ The **database stays on Neon** (`us-east-1`), so no data moves. All services are
    `.env.render` (or later: service → **Environment → Add from .env** and paste the file).
 4. **Apply.** Render builds the images. The API is healthy when `/healthz/` returns
    `{"status": "ok", "checks": {"database": "ok", "redis": "ok"}}`.
-5. Verify: `https://fundi-pro-portal.onrender.com` and `https://jenga-pro-portal.onrender.com`.
-   The `jenga-pro` / `fundi-pro` test accounts only exist locally; to create them on Render, run
-   `python manage.py seed_test_users --force` in the API's **Shell** tab.
+5. Verify `https://fundi-jenga-api.onrender.com/healthz/`. The portals are on GitHub Pages
+   (next section). To create the test accounts there, run
+   `python manage.py seed_test_users --force` against the live database.
 
 Wired automatically: `REDIS_URL` (from the Key Value instance), a new random `SECRET_KEY`,
 the `onrender.com` host in `ALLOWED_HOSTS`, `PORT`, HTTPS redirect, secure cookies and HSTS.
-`API_URL` is passed to the frontend builds as a Docker build arg.
+The API accepts browser requests from `https://dennis027.github.io` (`CORS_ALLOWED_ORIGINS`,
+`CSRF_TRUSTED_ORIGINS`).
 
 **Moving off the old service (`fundi-jenga-oro`):**
 - It keeps running until you delete it. Delete it only after the new services work.
 - Clients that call `https://fundi-jenga-oro.onrender.com` must change to
-  `https://fundi-jenga-api.onrender.com`. That includes the Flutter app and the GitHub Pages
-  build: set the repo variable `PAGES_API_URL`. A custom domain (e.g. `api.yourdomain.com`)
+  `https://fundi-jenga-api.onrender.com`. That includes the Flutter app. The portals already
+  use the new API. A custom domain (e.g. `api.yourdomain.com`)
   on the API service avoids this for future moves.
 - Update the M-Pesa callback URL registered with Safaricom, if it is fixed there. The API
   sends `MPESA_CALLBACK_URL` with each STK push, and it's preset to the new host.
@@ -234,7 +241,7 @@ change the API to `plan: 0.5c-512mb` and add the `disk` block shown in `render.y
 The free Key Value instance has no persistence, which is fine here: it only holds cache,
 sessions (backed by Postgres) and short-lived OTP codes. A restart just forces new OTPs.
 
-## GitHub Pages (both portals)
+## GitHub Pages (both portals — the only frontend hosting)
 
 `.github/workflows/pages.yml` builds both portals on every push to `main` that touches
 `frontend/` and publishes them as **one** Pages site:

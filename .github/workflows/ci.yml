@@ -111,8 +111,8 @@ jobs:
     runs-on: ubuntu-latest
     env:
       RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
-      # fundi-jenga-api, fundi-pro-portal, jenga-pro-portal
-      RENDER_SERVICES: srv-dbrotv4ipgvc739ookt0 srv-dbrou015efls73djh8o0 srv-dbrou0kipgvc739ooq6g
+      # fundi-jenga-api (the portals are on GitHub Pages: pages.yml)
+      RENDER_SERVICES: srv-dbrotv4ipgvc739ookt0
     steps:
       - name: Trigger Render deploys
         if: env.RENDER_API_KEY != ''

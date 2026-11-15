@@ -1,6 +1,6 @@
 
 export const environment = {
   production: true,
-  apiUrl: 'https://fundi-jenga-oro.onrender.com/'
+  apiUrl: 'https://fundi-jenga-api.onrender.com/'
 };
 
