@@ -66,7 +66,24 @@ jobs:
       - name: Django checks
         run: python manage.py check
       - name: Tests
-        run: python manage.py test app -v 2
+        shell: bash
+        run: |
+          set -o pipefail
+          python manage.py test app -v 2 2>&1 | tee test.log && exit 0
+          # Surface each failing test and the end of its traceback as an annotation
+          # (visible on the commit's checks page without opening the log).
+          python3 - <<'PY'
+          import re
+          log = open("test.log").read()
+          blocks = re.findall(r"^(?:FAIL|ERROR): .*?(?=^={20,}|^-{20,}\nRan )", log, re.S | re.M)
+          for b in blocks[:9]:
+              lines = b.strip().splitlines()
+              msg = "\n".join(lines[:2] + ["..."] + lines[-12:])
+              print("::error title=" + lines[0][:120].replace(":", " ") + "::" + msg.replace("%", "%25").replace("\r", "").replace("\n", "%0A"))
+          if not blocks:
+              print("::error title=tests::" + "\n".join(log.splitlines()[-25:]).replace("%", "%25").replace("\n", "%0A"))
+          PY
+          exit 1
 
   design-system:
     runs-on: ubuntu-latest
