@@ -285,3 +285,33 @@ class YourDataTests(Base):
         self.assertEqual(GigHistory.objects.filter(worker=u).count(), 1)
         self.assertFalse(CrewMember.objects.exists())
         self.assertEqual(self.client.post("/api/login/", {"username": "fundi", "password": "pw-12345678"}).status_code // 100, 4)
+
+
+@override_settings(PASSWORD_HASHERS=["django.contrib.auth.hashers.MD5PasswordHasher"])
+class ShowcaseSeedTests(TestCase):
+    def test_add_then_remove_leaves_no_trace_and_never_texts_demo_users(self):
+        from io import StringIO
+        from unittest import mock
+        from django.core.management import call_command
+        from app import notify
+        call_command("seed_test_users", stdout=StringIO())
+        before = {m: m.objects.count() for m in (Organization, Gig, GigHistory, GigsAvailable, JobApplication, SafetyIncident)}
+        call_command("seed_showcase", stdout=StringIO())
+        self.assertGreater(Gig.objects.count() + GigHistory.objects.count(), 150)
+        self.assertGreater(ActivityLog.objects.count(), 100)
+        boss = User.objects.get(username="jenga-pro")
+        self.assertTrue(Notification.objects.filter(user=boss).exists())
+        demo = User.objects.filter(email__endswith=notify.DEMO_EMAIL_DOMAIN, account_type="01").first()
+        with self.settings(SMS_NOTIFICATIONS=True, EMAIL_ASYNC=False), mock.patch.object(notify, "_gateway") as gw:
+            self.assertFalse(notify.sms(demo, "hello"))
+            gw.assert_not_called()
+        # scores match their recorded history
+        from django.db.models import Sum
+        for u in User.objects.annotate(t=Sum("score_history__change")):
+            self.assertEqual(u.credit_score or 0, u.t or 0, u.username)
+        call_command("seed_showcase", "--remove", stdout=StringIO())
+        self.assertFalse(User.objects.filter(email__endswith=notify.DEMO_EMAIL_DOMAIN).exists())
+        for m, n in before.items():
+            self.assertEqual(m.objects.count(), n, m.__name__)
+        me = User.objects.get(username="fundi-pro")
+        self.assertEqual(me.credit_score, 0)

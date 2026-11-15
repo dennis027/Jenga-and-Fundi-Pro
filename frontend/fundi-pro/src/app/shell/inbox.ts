@@ -10,6 +10,7 @@ const ICONS: Record<string, [string, ShellNotification['tone']]> = {
   application_accepted: ['celebration', 'ok'], application_declined: ['info', 'info'], new_applicant: ['front_hand', 'info'],
   invitation: ['mail', 'info'], invitation_accepted: ['celebration', 'ok'], invitation_declined: ['info', 'info'],
   job_alert: ['campaign', 'info'], id_approved: ['verified_user', 'ok'], id_rejected: ['error', 'danger'],
+  payment: ['payments', 'ok'], gig_logged: ['fact_check', 'warn'],
   incident: ['health_and_safety', 'danger'], incident_resolved: ['health_and_safety', 'ok'], site_rated: ['star', 'info'],
 };
 

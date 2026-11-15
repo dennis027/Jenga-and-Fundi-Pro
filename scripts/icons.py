@@ -14,6 +14,8 @@ ROOT = pathlib.Path(__file__).resolve().parent.parent
 APPS = ["fundi-pro", "jenga-pro"]
 SPAN = re.compile(r'class="[^"]*\b(?:icon|material-symbols-outlined)\b[^"]*"[^>]*>\s*([^<]+?)\s*<', re.S)
 PROP = re.compile(r"""[iI]con\s*:\s*['"]([a-z0-9_]+)['"]""")
+ICON_MAP = re.compile(r"const ICONS\b[^=]*=\s*\{(.*?)\};", re.S)
+TONES = {"info", "ok", "warn", "danger"}
 WORD = re.compile(r"""['"]([a-z][a-z0-9_]{2,})['"]""")
 
 def scan():
@@ -29,6 +31,9 @@ def scan():
             elif re.fullmatch(r"[a-z0-9_]+", body):
                 names.add(body)
         names.update(PROP.findall(text))
+        # icon lookup tables: const ICONS = { kind: 'icon' | ['icon', 'tone'], ... };
+        for block in ICON_MAP.findall(text):
+            names.update(w for w in WORD.findall(block) if w not in TONES)
     return sorted(n for n in names if not n.isdigit())
 
 def url(names):

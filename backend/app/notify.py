@@ -11,6 +11,9 @@ from .mail import _executor  # shared background thread pool
 
 logger = logging.getLogger(__name__)
 
+# Showcase / demo accounts (seed_showcase) use this email domain and never get texts.
+DEMO_EMAIL_DOMAIN = "@demo.fundijenga.test"
+
 
 def _to_e164(phone):
     p = "".join(ch for ch in str(phone or "") if ch.isdigit() or ch == "+")
@@ -38,6 +41,8 @@ def _send(to, text):
 def sms(user, text):
     """Queue an SMS to a user if alerts are enabled and they have a valid phone. Returns True if queued."""
     if not settings.SMS_NOTIFICATIONS or not user:
+        return False
+    if (getattr(user, "email", "") or "").endswith(DEMO_EMAIL_DOMAIN):
         return False
     to = _to_e164(getattr(user, "phone", None))
     if not to:
