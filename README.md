@@ -10,6 +10,64 @@ M-Pesa.
 | **Fundi Pro** | [frontend/fundi-pro/](frontend/fundi-pro/) | Angular 20 (SSR / prerender), Material 20 | Worker portal: log gigs, work history, credit score, payments |
 | **Jenga Pro** | [frontend/jenga-pro/](frontend/jenga-pro/) | Angular 20 (SSR / prerender), Material 20 | Contractor portal: verify gigs, manage workers/sites, reports, M-Pesa |
 
+**Live:** [Fundi Pro](https://fundi-pro-portal.onrender.com) (workers) ·
+[Jenga Pro](https://jenga-pro-portal.onrender.com) (contractors) ·
+[API docs](https://fundi-jenga-api.onrender.com/api/docs/). Free hosting: the first request
+after a quiet spell can take about a minute while the services wake up. Test logins are under
+[Test accounts](#test-accounts).
+
+## Screenshots
+
+Taken from a local stack loaded with the demo data (`seed_demo_data`). Click any image for full size.
+
+### Jenga Pro (contractors)
+
+| **Dashboard** | **Notifications** |
+|---|---|
+| [![Dashboard](docs/screenshots/jenga-dashboard.png)](docs/screenshots/jenga-dashboard.png) | [![Notifications](docs/screenshots/jenga-notifications.png)](docs/screenshots/jenga-notifications.png) |
+| Gigs waiting for verification, quick actions, site switcher. | Things that need you now, then recent events with *Mark all read*. |
+| **Verify gigs** | **Reject with a reason** |
+| [![Verify gigs](docs/screenshots/jenga-verify-gigs.png)](docs/screenshots/jenga-verify-gigs.png) | [![Reject a gig](docs/screenshots/jenga-reject-gig.png)](docs/screenshots/jenga-reject-gig.png) |
+| Select several and verify them in one go. Each adds +5 to the worker's score. | The gig is removed and the worker is told why. |
+| **Find workers by trade** | **Applicants and crew invites** |
+| [![Find workers](docs/screenshots/jenga-workers-find.png)](docs/screenshots/jenga-workers-find.png) | [![Applicants](docs/screenshots/jenga-job-applicants.png)](docs/screenshots/jenga-job-applicants.png) |
+| Trades, day rate, availability, score and rating. Star a worker to add them to *My crew*. | Accept or decline applicants, or invite people from your crew. |
+| **Payroll** | **Labour budgets** |
+| [![Payroll](docs/screenshots/jenga-payroll.png)](docs/screenshots/jenga-payroll.png) | [![Budgets](docs/screenshots/jenga-budgets.png)](docs/screenshots/jenga-budgets.png) |
+| Agreed pay, gig days and days checked in per worker. Downloads as CSV. | Spend against budget per site; red when over. |
+| **Site ratings** | **Site safety** |
+| [![Site ratings](docs/screenshots/jenga-site-ratings.png)](docs/screenshots/jenga-site-ratings.png) | [![Safety](docs/screenshots/jenga-safety.png)](docs/screenshots/jenga-safety.png) |
+| What workers say about your sites, and how often they were paid on time. | Injuries, near misses and hazards reported at your sites. |
+| **Activity** | **Dark mode** |
+| [![Activity](docs/screenshots/jenga-activity.png)](docs/screenshots/jenga-activity.png) | [![Dark mode](docs/screenshots/jenga-dark.png)](docs/screenshots/jenga-dark.png) |
+| A dated record of verifications, rejections, hires and reports. | Follows the system setting, or switch from the sidebar. |
+
+### Fundi Pro (workers)
+
+| **Dashboard** | **Kiswahili** |
+|---|---|
+| [![Dashboard](docs/screenshots/fundi-dashboard.png)](docs/screenshots/fundi-dashboard.png) | [![Kiswahili](docs/screenshots/fundi-kiswahili.png)](docs/screenshots/fundi-kiswahili.png) |
+| Credit score, gigs to finish, daily site check-in. | Switch language from the user menu. |
+| **Find work** | **My gigs** |
+| [![Find work](docs/screenshots/fundi-find-work.png)](docs/screenshots/fundi-find-work.png) | [![My gigs](docs/screenshots/fundi-my-gigs.png)](docs/screenshots/fundi-my-gigs.png) |
+| Open jobs with site ratings, saved jobs, applications and job alerts. | Log → contractor verifies → mark complete. Rate the site afterwards. |
+| **Earnings statement** | **Credit score and certificate** |
+| [![Statement](docs/screenshots/fundi-statement.png)](docs/screenshots/fundi-statement.png) | [![Credit score](docs/screenshots/fundi-credit-score.png)](docs/screenshots/fundi-credit-score.png) |
+| Verified work and agreed pay for any period, as CSV, for a SACCO or lender. | How the score is earned, and a shareable verified-work certificate. |
+| **Work profile and your data** | **On a phone** |
+| [![Profile](docs/screenshots/fundi-profile.png)](docs/screenshots/fundi-profile.png) | <img src="docs/screenshots/fundi-mobile.png" alt="Fundi Pro on a phone" width="300"> |
+| Trades, experience, day rate, availability; download or delete your data. | Installable as an app (PWA). |
+
+### Sign-in
+
+| **Jenga Pro** | **Fundi Pro** |
+|---|---|
+| [![Jenga Pro sign-in](docs/screenshots/jenga-login.png)](docs/screenshots/jenga-login.png) | [![Fundi Pro sign-in](docs/screenshots/fundi-login.png)](docs/screenshots/fundi-login.png) |
+
+To refresh them, start the dev stack, run
+`docker compose exec backend python manage.py seed_demo_data --reset`, then
+[`python3 scripts/screenshots.py`](scripts/screenshots.py) (headless Chrome, 1440×900).
+
 Architecture, design decisions and known issues: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 Git history and how the repos were merged: [docs/GIT-HISTORY.md](docs/GIT-HISTORY.md).
 
