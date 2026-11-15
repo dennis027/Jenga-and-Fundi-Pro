@@ -18,6 +18,7 @@ import africastalking
 import environ
 
 import os
+import sys
 import dj_database_url
 
 
@@ -255,6 +256,10 @@ STORAGES = {
     "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
     "staticfiles": {"BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage"},
 }
+# Tests render admin pages without running collectstatic first (CI starts from a clean
+# checkout), so they use plain storage; the manifest is only needed when serving.
+if len(sys.argv) > 1 and sys.argv[1] == "test":
+    STORAGES["staticfiles"] = {"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"}
 
 # Optional S3-compatible object storage for uploads (Cloudflare R2, AWS S3,
 # Backblaze B2...). Needed on hosts without a persistent disk (Render free).
